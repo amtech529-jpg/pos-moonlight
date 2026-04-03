@@ -1,0 +1,71 @@
+name: frontend
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State Management
+  provider:
+
+  # Desktop Window Management
+  bitsdojo_window:
+  desktop_multi_window:
+  sizer:
+  flutter_svg:
+  animations:
+  flutter_animate:
+  file_picker:
+  path:
+  path_provider:
+  shared_preferences:
+  dio:
+  json_annotation:
+  intl:
+  syncfusion_flutter_datepicker:
+  pdf: ^3.10.7
+  excel: ^2.1.0
+  open_file: ^3.3.2
+  flutter_localization: ^0.3.3
+  fl_chart: ^1.1.1
+  printing: ^5.14.2
+  esc_pos_utils: ^1.1.0
+  
+  # Barcode Scanner Support
+  audioplayers: ^5.2.1
+  vibration: ^1.8.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+  build_runner:
+  json_serializable:
+  msix:
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  fonts:
+   - family: Jameel Noori Nastaleeq
+     fonts:
+      - asset: assets/fonts/NotoNastaliqUrdu.ttf
+  
+  assets:
+    
+    - assets/images/
+
+dependency_overrides:
+  image: ^4.3.0

@@ -1,0 +1,51 @@
+# Core Django and DRF
+Django
+djangorestframework
+django-cors-headers
+
+# Database
+psycopg2-binary
+dj-database-url
+
+# Static files
+whitenoise
+#
+
+# WSGI server
+gunicorn
+
+# Data handling
+pandas
+openpyxl
+
+# Authentication & Security
+djangorestframework-simplejwt
+django-oauth-toolkit
+
+# API Documentation
+drf-spectacular
+django-extensions
+
+# Development tools
+python-decouple
+django-debug-toolbar
+
+# Image handling
+Pillow
+python-barcode[images]
+
+# Utilities
+python-dateutil
+pytz
+
+# PDF Generation
+reportlab
+
+# Testing
+factory-boy
+pytest-django
+
+# Real-time WebSockets
+channels
+daphne
+channels-redis

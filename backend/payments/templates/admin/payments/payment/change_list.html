@@ -1,0 +1,51 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block content_title %}
+    <h1>{% trans "Payments" %}</h1>
+    {% if payment_stats %}
+        <div class="payment-stats" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007cba;">
+            <h3 style="margin-top: 0; color: #007cba;">Payment Statistics</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div style="text-align: center; padding: 10px; background: white; border-radius: 3px; border: 1px solid #ddd;">
+                    <strong>Total Payments</strong><br>
+                    <span style="font-size: 24px; color: #007cba;">{{ payment_stats.total_payments }}</span>
+                </div>
+                <div style="text-align: center; padding: 10px; background: white; border-radius: 3px; border: 1px solid #ddd;">
+                    <strong>Total Amount</strong><br>
+                    <span style="font-size: 24px; color: #28a745;">PKR {{ payment_stats.total_amount|floatformat:2 }}</span>
+                </div>
+                <div style="text-align: center; padding: 10px; background: white; border-radius: 3px; border: 1px solid #ddd;">
+                    <strong>Net Amount</strong><br>
+                    <span style="font-size: 24px; color: #17a2b8;">PKR {{ payment_stats.net_amount|floatformat:2 }}</span>
+                </div>
+                <div style="text-align: center; padding: 10px; background: white; border-radius: 3px; border: 1px solid #ddd;">
+                    <strong>Recent (30 days)</strong><br>
+                    <span style="font-size: 24px; color: #ffc107;">{{ payment_stats.recent_activity.payments_last_30_days }}</span>
+                </div>
+            </div>
+            <div style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                <div style="text-align: center; padding: 8px; background: white; border-radius: 3px; border: 1px solid #ddd;">
+                    <strong>Final Payments</strong><br>
+                    <span style="color: #28a745;">{{ payment_stats.final_payments_count }}</span>
+                </div>
+                <div style="text-align: center; padding: 8px; background: white; border-radius: 3px; border: 1px solid #ddd;">
+                    <strong>Partial Payments</strong><br>
+                    <span style="color: #ffc107;">{{ payment_stats.partial_payments_count }}</span>
+                </div>
+                <div style="text-align: center; padding: 8px; background: white; border-radius: 3px; border: 1px solid #ddd;">
+                    <strong>Total Bonus</strong><br>
+                    <span style="color: #28a745;">PKR {{ payment_stats.total_bonus|floatformat:2 }}</span>
+                </div>
+                <div style="text-align: center; padding: 8px; background: white; border-radius: 3px; border: 1px solid #ddd;">
+                    <strong>Total Deduction</strong><br>
+                    <span style="color: #dc3545;">PKR {{ payment_stats.total_deduction|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+{% endblock %}

@@ -1,0 +1,61 @@
+[√] Flutter (Channel stable, 3.32.4, on Microsoft Windows [Version 10.0.26100.4946], locale en-US) [1,820ms]
+    • Flutter version 3.32.4 on channel stable at E:\Installation\flutter
+    • Upstream repository https://github.com/flutter/flutter.git
+    • Framework revision 6fba2447e9 (3 months ago), 2025-06-12 19:03:56 -0700
+    • Engine revision 8cd19e509d
+    • Dart version 3.8.1
+    • DevTools version 2.45.1
+
+[√] Windows Version (11 Pro 64-bit, 24H2, 2009) [9.2s]
+
+[!] Android toolchain - develop for Android devices (Android SDK version 36.0.0) [14.3s]
+    • Android SDK at E:\Installation\Android\Sdk
+    • Platform android-36, build-tools 36.0.0
+    • Java binary at: E:\Installation\Android Studio\jbr\bin\java
+      This is the JDK bundled with the latest Android Studio installation on this machine.
+      To manually set the JDK path, use: `flutter config --jdk-dir="path/to/jdk"`.
+    • Java version OpenJDK Runtime Environment (build 21.0.6+-13391695-b895.109)
+    ! Some Android licenses not accepted. To resolve this, run: flutter doctor --android-licenses
+
+[√] Chrome - develop for the web [302ms]
+    • Chrome at C:\Program Files\Google\Chrome\Application\chrome.exe
+
+[√] Visual Studio - develop Windows apps (Visual Studio Community 2022 17.14.12) [299ms]
+    • Visual Studio at E:\Installation\Microsoft Visual Studio\2022\Community
+    • Visual Studio Community 2022 version 17.14.36408.4
+    • Windows 10 SDK version 10.0.26100.0
+
+[√] Android Studio (version 2025.1.1) [68ms]
+    • Android Studio at E:\Installation\Android Studio
+    • Flutter plugin can be installed from:
+       https://plugins.jetbrains.com/plugin/9212-flutter
+    • Dart plugin can be installed from:
+       https://plugins.jetbrains.com/plugin/6351-dart
+    • Java version OpenJDK Runtime Environment (build 21.0.6+-13391695-b895.109)
+
+[√] Connected device (3 available) [942ms]
+    • Windows (desktop) • windows • windows-x64    • Microsoft Windows [Version 10.0.26100.4946]
+    • Chrome (web)      • chrome  • web-javascript • Google Chrome 139.0.7258.139
+    • Edge (web)        • edge    • web-javascript • Microsoft Edge 139.0.3405.111
+
+[√] Network resources [1,416ms]
+    • All expected network resources are available.
+
+
+
+
+
+---------------------------------------------------
+
+
+
+python version 13.2.6
+
+
+
+
+---------------------------------------------------
+
+
+
+for installation must read backend/requirements.txt
