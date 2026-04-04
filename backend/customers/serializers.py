@@ -428,6 +428,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
             'status_display',
             'phone_verified',
             'email_verified',
+            'business_name',
             'is_new_customer',
             'last_order_date',
             'is_active',

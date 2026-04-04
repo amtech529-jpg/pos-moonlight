@@ -12,6 +12,7 @@ import '../../../src/providers/quotation_provider.dart';
 import '../../../src/providers/vendor_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/drop_down.dart';
+import '../customer/add_customer_dialog.dart';
 
 class EditQuotationDialog extends StatefulWidget {
   final QuotationModel quotation;
@@ -288,18 +289,21 @@ class _EditQuotationDialogState extends State<EditQuotationDialog> {
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: Colors.grey[200]!),
                           ),
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildSectionTitle("Customer Information"),
-                                const SizedBox(height: 16),
-                                _buildCustomerSelection(),
-                                const SizedBox(height: 24),
-                                _buildSectionTitle("Event Details"),
-                                const SizedBox(height: 16),
-                                _buildEventFields(),
-                              ],
+                          child: ScrollConfiguration(
+                            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildSectionTitle("Customer Information"),
+                                  const SizedBox(height: 16),
+                                  _buildCustomerSelection(),
+                                  const SizedBox(height: 24),
+                                  _buildSectionTitle("Event Details"),
+                                  const SizedBox(height: 16),
+                                  _buildEventFields(),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -356,57 +360,79 @@ class _EditQuotationDialogState extends State<EditQuotationDialog> {
   }
 
   Widget _buildCustomerSelection() {
-    return Column(
-      children: [
-        Consumer<CustomerProvider>(
-          builder: (context, provider, _) {
-            return PremiumDropdownField<Customer>(
-              label: 'Select Customer *',
-              hint: 'Choose an existing customer',
-              items: provider.customers
-                  .map((customer) => DropdownItem<Customer>(
-                      value: customer,
-                      label: '${customer.name} (${customer.phone})'
-                  ))
-                  .toList(),
-              value: _selectedCustomer,
-              onChanged: (customer) {
-                setState(() {
-                  _selectedCustomer = customer;
-                  if (customer != null) {
-                    _customerNameController.text = customer.name;
-                    _customerPhoneController.text = customer.phone;
-                    _companyNameController.text = customer.businessName ?? "";
+    return Consumer<CustomerProvider>(
+      builder: (context, provider, _) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: PremiumDropdownField<Customer>(
+                label: 'Select Customer *',
+                hint: 'Choose an existing customer',
+                items: provider.customers
+                    .map((customer) => DropdownItem<Customer>(
+                        value: customer,
+                        label: '${customer.name} (${customer.phone})'
+                    ))
+                    .toList(),
+                value: _selectedCustomer,
+                onChanged: (customer) {
+                  setState(() {
+                    _selectedCustomer = customer;
+                    if (customer != null) {
+                      _customerNameController.text = customer.name;
+                      _customerPhoneController.text = customer.phone;
+                      _companyNameController.text = customer.businessName ?? "";
+                    }
+                  });
+                },
+                prefixIcon: Icons.person_search_rounded,
+              ),
+            ),
+            const SizedBox(width: 12),
+            InkWell(
+              onTap: () async {
+                await showDialog(
+                  context: context,
+                  builder: (_) => AddCustomerDialog(),
+                );
+                if (mounted) {
+                  final currProvider = context.read<CustomerProvider>();
+                  if (currProvider.customers.isNotEmpty) {
+                    setState(() {
+                       _selectedCustomer = currProvider.customers.first;
+                       _customerNameController.text = _selectedCustomer!.name;
+                       _customerPhoneController.text = _selectedCustomer!.phone;
+                       _companyNameController.text = _selectedCustomer!.businessName ?? "";
+                    });
                   }
-                });
+                }
               },
-              prefixIcon: Icons.person_search_rounded,
-            );
-          },
-        ),
-        
-        if (_selectedCustomer != null) ...[
-          const SizedBox(height: 16),
-          const Divider(height: 32),
-          _buildTextField("Customer Full Name", _customerNameController, enabled: false),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField("Phone Number", _customerPhoneController, enabled: false)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField("Email", TextEditingController(text: _selectedCustomer?.email ?? ""), enabled: false)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField("City", TextEditingController(text: _selectedCustomer?.city ?? ""), enabled: false)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField("Company Name", _companyNameController, enabled: false)),
-            ],
-          ),
-        ],
-      ],
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                height: 52, // Setting back to 52px which is the standard height of a PremiumField border box
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryMaroon.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.primaryMaroon.withOpacity(0.35), width: 1.5),
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  children: [
+                    Icon(Icons.person_add_alt_1_rounded, size: 20, color: AppTheme.primaryMaroon),
+                    const SizedBox(width: 8),
+                    const Text(
+                      "Add New", 
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.primaryMaroon)
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -585,100 +611,102 @@ class _EditQuotationDialogState extends State<EditQuotationDialog> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryMaroon.withOpacity(0.1),
+              color: AppTheme.primaryMaroon,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
             ),
             child: const Row(
               children: [
-                Expanded(flex: 3, child: Text("Product / Service", style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.primaryMaroon))),
-                Expanded(child: Text("Qty", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.primaryMaroon))),
-                Expanded(child: Text("Rate", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.primaryMaroon))),
-                Expanded(child: Text("Days", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.primaryMaroon))),
-                Expanded(child: Text("Event", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.primaryMaroon))),
-                Expanded(child: Text("Total", textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.primaryMaroon))),
-                SizedBox(width: 40),
+                Expanded(flex: 3, child: Text("Product / Service", style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
+                Expanded(child: Text("Qty", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
+                Expanded(child: Text("Rate", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
+                Expanded(child: Text("Days", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
+                Expanded(child: Text("Event", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
+                Expanded(child: Text("Total", textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
+                SizedBox(width: 30),
               ],
             ),
           ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _items.length,
-              itemBuilder: (context, index) {
-                final item = _items[index];
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.grey[100]!)),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3, 
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item.productName ?? "Product", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                            if (item.rentedFromPartner)
-                              Consumer<VendorProvider>(
-                                builder: (context, provider, _) {
-                                  final vendor = provider.vendors.where((v) => v.id == item.partner).firstOrNull;
-                                  return Text(
-                                    "Partner: ${vendor?.name ?? 'Unknown'}", 
-                                    style: const TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold)
-                                  );
-                                }
-                              )
-                            else
-                              const Text("Internal Stock", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                          ],
-                        )
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _items.length,
+            itemBuilder: (context, index) {
+              final item = _items[index];
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Colors.grey[100]!)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(item.productName ?? "Product",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          if (item.rentedFromPartner)
+                            Consumer<VendorProvider>(
+                              builder: (context, provider, _) {
+                                final vendor = provider.vendors.where((v) => v.id == item.partner).firstOrNull;
+                                return Text("Partner: ${vendor?.name ?? 'Unknown'}",
+                                    style: const TextStyle(fontSize: 9, color: Colors.orange, fontWeight: FontWeight.bold));
+                              },
+                            )
+                          else
+                            const Text("Internal Stock", style: TextStyle(fontSize: 9, color: Colors.grey)),
+                        ],
                       ),
-                      Expanded(
-                        child: _buildInlineField(
-                          item.quantity.toString(), 
-                          (v) => _updateItem(index, quantity: int.tryParse(v)),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return "";
-                            final qty = int.tryParse(v);
-                            if (qty == null || qty <= 0) return "";
-                            if (!item.rentedFromPartner && item.availableStock != null && qty > item.availableStock!) {
-                              return "Error";
-                            }
-                            return null;
-                          },
-                        )
+                    ),
+                    Expanded(
+                      child: _buildInlineField(
+                        item.quantity.toString(),
+                        (v) => _updateItem(index, quantity: int.tryParse(v)),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return "";
+                          final qty = int.tryParse(v);
+                          if (qty == null || qty <= 0) return "";
+                          if (!item.rentedFromPartner && item.availableStock != null && qty > item.availableStock!) return "Error";
+                          return null;
+                        },
                       ),
-                      Expanded(child: _buildInlineField(item.rate.toString(), (v) => _updateItem(index, rate: double.tryParse(v)))),
-                      Expanded(
-                        child: item.pricingType == 'PER_DAY'
-                            ? _buildInlineField(item.days.toString(), (v) => _updateItem(index, days: int.tryParse(v)))
-                            : const Center(child: Text("-", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+                    ),
+                    Expanded(child: _buildInlineField(item.rate.toString(), (v) => _updateItem(index, rate: double.tryParse(v)))),
+                    Expanded(
+                      child: item.pricingType == 'PER_DAY'
+                          ? _buildInlineField(item.days.toString(), (v) => _updateItem(index, days: int.tryParse(v)))
+                          : const Center(child: Text("-", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+                    ),
+                    Expanded(
+                      child: item.pricingType == 'PER_EVENT'
+                          ? _buildInlineField(item.days.toString(), (v) => _updateItem(index, days: int.tryParse(v)))
+                          : const Center(child: Text("-", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+                    ),
+                    Expanded(
+                      child: Text(
+                        "Rs. ${item.total.toStringAsFixed(0)}",
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppTheme.primaryMaroon),
                       ),
-                      Expanded(
-                        child: item.pricingType == 'PER_EVENT'
-                            ? _buildInlineField(item.days.toString(), (v) => _updateItem(index, days: int.tryParse(v)))
-                            : const Center(child: Text("-", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+                    ),
+                    InkWell(
+                      onTap: () => setState(() => _items.removeAt(index)),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(Icons.remove_circle_outline, color: Colors.red.shade400, size: 18),
                       ),
-                      Expanded(
-                        child: Text(
-                          "Rs. ${item.total.toStringAsFixed(0)}", 
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black)
-                        )
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 22), 
-                        onPressed: () => setState(() => _items.removeAt(index)),
-                        tooltip: "Remove Item",
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           const Divider(height: 1),
           Padding(
@@ -991,11 +1019,13 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
         padding: const EdgeInsets.all(32),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1348,6 +1378,7 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
                 ],
               ),
             ],
+          ),
           ),
         ),
       ),

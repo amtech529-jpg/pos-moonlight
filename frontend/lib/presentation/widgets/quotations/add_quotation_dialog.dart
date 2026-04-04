@@ -254,8 +254,10 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
                 child: Divider(height: 16, thickness: 1.5),
               ),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 24),
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 24),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -304,6 +306,7 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
                     ),
                   ),
                 ),
+               ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -969,8 +972,10 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
         padding: const EdgeInsets.all(32),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            child: SingleChildScrollView(
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1448,6 +1453,7 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
                 ],
               ),
             ],
+          ),
           ),
         ),
       ),
