@@ -343,6 +343,13 @@ class CustomerModel {
     return phoneVerified && emailVerified;
   }
 
+  String get orderDisplayName {
+    if (customerType.toUpperCase() == 'BUSINESS' && businessName != null && businessName!.isNotEmpty) {
+      return businessName!;
+    }
+    return name;
+  }
+
   @override
   String toString() {
     return 'CustomerModel(id: $id, name: $name, phone: $phone, email: $email, status: $status, customerType: $customerType)';

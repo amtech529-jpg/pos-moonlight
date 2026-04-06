@@ -241,11 +241,11 @@ class _SalesPageState extends State<SalesPage> {
 
     final authProvider = Provider.of<AuthProvider>(context);
     final currentUser = authProvider.currentUser;
-    final bool canAddSale = currentUser?.canPerform('Invoice & Payment', 'add') ?? true;
+    final bool canAddSale = currentUser?.canPerform('Invoice & Payments', 'add') ?? true;
     final bool canAddReturn = currentUser?.canPerform('Return & Tally', 'add') ?? true;
-    final bool canViewHistory = currentUser?.canPerform('Invoice & Payment', 'view') ?? true;
-    final bool canEditSale = currentUser?.canPerform('Invoice & Payment', 'edit') ?? true;
-    final bool canDeleteSale = currentUser?.canPerform('Invoice & Payment', 'delete') ?? true;
+    final bool canViewHistory = currentUser?.canPerform('Invoice & Payments', 'view') ?? true;
+    final bool canEditSale = currentUser?.canPerform('Invoice & Payments', 'edit') ?? true;
+    final bool canDeleteSale = currentUser?.canPerform('Invoice & Payments', 'delete') ?? true;
 
     return Scaffold(
       backgroundColor: AppTheme.creamWhite,

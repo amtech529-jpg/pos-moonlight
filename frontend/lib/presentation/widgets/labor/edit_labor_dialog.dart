@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
@@ -40,6 +41,15 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
   late Animation<double> _fadeAnimation;
 
   bool _isUpdating = false;
+  
+  final _cityFocusNode = FocusNode();
+  final _areaFocusNode = FocusNode();
+  final _cityChipsFirstFocusNode = FocusNode();
+  final _areaChipsFirstFocusNode = FocusNode();
+  final _designationFocusNode = FocusNode();
+  final _salaryFocusNode = FocusNode();
+  final _incentiveFocusNode = FocusNode();
+  final _ageFocusNode = FocusNode();
 
   final List<String> _commonCities = [
     'Karachi',
@@ -103,7 +113,15 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
     _incentiveController.dispose();
     _areaController.dispose();
     _cityController.dispose();
-    _ageController.dispose();
+    _areaController.dispose();
+    _cityFocusNode.dispose();
+    _areaFocusNode.dispose();
+    _cityChipsFirstFocusNode.dispose();
+    _areaChipsFirstFocusNode.dispose();
+    _designationFocusNode.dispose();
+    _salaryFocusNode.dispose();
+    _incentiveFocusNode.dispose();
+    _ageFocusNode.dispose();
     super.dispose();
   }
 
@@ -254,25 +272,61 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
     );
   }
 
-  Widget _buildQuickSelectChip({required String label, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(context.borderRadius('small')),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding / 2),
-        decoration: BoxDecoration(
-          color: AppTheme.accentGold.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(context.borderRadius('small')),
-          border: Border.all(color: AppTheme.accentGold.withOpacity(0.3), width: 1),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: context.captionFontSize,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.accentGold,
-          ),
-        ),
+  Widget _buildQuickSelectChip({
+    required String label, 
+    required VoidCallback onTap,
+    FocusNode? focusNode,
+    bool isSelected = false,
+  }) {
+    
+    return Focus(
+      focusNode: focusNode,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.enter || 
+              event.logicalKey == LogicalKeyboardKey.space) {
+            onTap();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Builder(
+        builder: (context) {
+          final bool isFocused = Focus.of(context).hasFocus;
+          return InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(context.borderRadius('small')),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding / 2),
+              decoration: BoxDecoration(
+                color: isSelected 
+                    ? AppTheme.primaryMaroon 
+                    : (isFocused ? AppTheme.primaryMaroon.withOpacity(0.2) : AppTheme.accentGold.withOpacity(0.1)),
+                borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                border: Border.all(
+                  color: (isSelected || isFocused) ? AppTheme.primaryMaroon : AppTheme.accentGold.withOpacity(0.3), 
+                  width: (isSelected || isFocused) ? 1.5 : 1,
+                ),
+                boxShadow: isFocused ? [
+                  BoxShadow(
+                    color: AppTheme.primaryMaroon.withOpacity(0.2),
+                    blurRadius: 4,
+                    spreadRadius: 1,
+                  )
+                ] : [],
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: context.captionFontSize,
+                  fontWeight: (isSelected || isFocused) ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? Colors.white : (isFocused ? AppTheme.primaryMaroon : AppTheme.accentGold),
+                ),
+              ),
+            ),
+          );
+        }
       ),
     );
   }
@@ -508,6 +562,8 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           prefixIcon: Icons.phone_outlined,
           keyboardType: TextInputType.phone,
           enabled: !_isUpdating,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_cityFocusNode),
           validator: (value) {
             if (value?.isEmpty ?? true) {
               return l10n.pleaseEnterPhoneNumber;
@@ -557,6 +613,7 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
               : l10n.enterJobDesignation,
           controller: _designationController,
           prefixIcon: Icons.work_outline,
+          focusNode: _designationFocusNode,
           enabled: !_isUpdating,
           validator: (value) {
             if (value?.isEmpty ?? true) {
@@ -564,6 +621,8 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
             }
             return null;
           },
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_salaryFocusNode),
         ),
         SizedBox(height: context.cardPadding),
         GestureDetector(
@@ -587,8 +646,11 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           hint: context.shouldShowCompactLayout ? l10n.enterSalary : l10n.enterMonthlySalaryInPKR,
           controller: _salaryController,
           prefixIcon: Icons.account_balance_wallet_outlined,
+          focusNode: _salaryFocusNode,
           keyboardType: TextInputType.number,
           enabled: !_isUpdating,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_incentiveFocusNode),
           validator: (value) {
             if (value?.isEmpty ?? true) {
               return l10n.pleaseEnterSalary;
@@ -605,8 +667,11 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           hint: 'Enter fixed incentive amount',
           controller: _incentiveController,
           prefixIcon: Icons.card_giftcard_outlined,
+          focusNode: _incentiveFocusNode,
           keyboardType: TextInputType.number,
           enabled: !_isUpdating,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_ageFocusNode),
           validator: (value) {
             if (value != null && value.isNotEmpty) {
               if (double.tryParse(value) == null) {
@@ -647,6 +712,7 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           hint: context.shouldShowCompactLayout ? l10n.enterAge : l10n.enterAgeMinimum18Years,
           controller: _ageController,
           prefixIcon: Icons.cake_outlined,
+          focusNode: _ageFocusNode,
           keyboardType: TextInputType.number,
           enabled: !_isUpdating,
           validator: (value) {
@@ -697,7 +763,10 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           hint: l10n.enterCity,
           controller: _cityController,
           prefixIcon: Icons.location_city_outlined,
+          focusNode: _cityFocusNode,
           enabled: !_isUpdating,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_cityChipsFirstFocusNode),
           validator: (value) {
             if (value?.isEmpty ?? true) {
               return l10n.pleaseEnterCity;
@@ -709,15 +778,16 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
         Wrap(
           spacing: context.smallPadding / 2,
           runSpacing: context.smallPadding / 4,
-          children: _commonCities
-              .take(4)
-              .map(
-                (city) => _buildQuickSelectChip(
-              label: city,
-              onTap: () => setState(() => _cityController.text = city),
+          children: _commonCities.take(4).toList().asMap().entries.map((entry) => _buildQuickSelectChip(
+              label: entry.value,
+              isSelected: _cityController.text.toLowerCase() == entry.value.toLowerCase(),
+              onTap: () {
+                setState(() => _cityController.text = entry.value);
+                FocusScope.of(context).requestFocus(_areaFocusNode);
+              },
+              focusNode: entry.key == 0 ? _cityChipsFirstFocusNode : null,
             ),
-          )
-              .toList(),
+          ).toList(),
         ),
       ],
     );
@@ -734,7 +804,10 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           hint: l10n.enterArea,
           controller: _areaController,
           prefixIcon: Icons.map_outlined,
+          focusNode: _areaFocusNode,
           enabled: !_isUpdating,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_areaChipsFirstFocusNode),
           validator: (value) {
             if (value?.isEmpty ?? true) {
               return l10n.pleaseEnterArea;
@@ -746,15 +819,16 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
         Wrap(
           spacing: context.smallPadding / 2,
           runSpacing: context.smallPadding / 4,
-          children: _commonAreas
-              .take(4)
-              .map(
-                (area) => _buildQuickSelectChip(
-              label: area,
-              onTap: () => setState(() => _areaController.text = area),
+          children: _commonAreas.take(4).toList().asMap().entries.map((entry) => _buildQuickSelectChip(
+              label: entry.value,
+              isSelected: _areaController.text.toLowerCase() == entry.value.toLowerCase(),
+              onTap: () {
+                setState(() => _areaController.text = entry.value);
+                FocusScope.of(context).requestFocus(_designationFocusNode);
+              },
+              focusNode: entry.key == 0 ? _areaChipsFirstFocusNode : null,
             ),
-          )
-              .toList(),
+          ).toList(),
         ),
       ],
     );

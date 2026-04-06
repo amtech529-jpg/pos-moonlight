@@ -6,6 +6,7 @@ import '../../../src/models/order/order_model.dart';
 import '../../../src/providers/order_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../src/providers/customer_provider.dart';
 import 'order_table_helpers.dart';
 
 class EnhancedOrderTable extends StatefulWidget {
@@ -268,6 +269,10 @@ class _EnhancedOrderTableState extends State<EnhancedOrderTable> {
     try {
       final l10n = AppLocalizations.of(context)!;
       final columnWidths = _getColumnWidths(context);
+      
+      final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
+      final customer = customerProvider.allCustomers.where((c) => c.id == order.customerId).firstOrNull;
+      final displayName = customer?.orderDisplayName ?? (order.customerName.isNotEmpty ? order.customerName : l10n.notAvailable);
 
       return Container(
         decoration: BoxDecoration(
@@ -306,7 +311,7 @@ class _EnhancedOrderTableState extends State<EnhancedOrderTable> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    order.customerName.isNotEmpty ? order.customerName : l10n.notAvailable,
+                    displayName,
                     style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

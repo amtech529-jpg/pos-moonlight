@@ -43,7 +43,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     
     // Safety check for view permission
     if (currentUser != null && currentUser.roleName != 'Admin') {
-      if (!currentUser.hasPermission('User Management')) {
+      if (!currentUser.hasPermission('User Roles')) {
         return const Center(child: Text("You do not have permission to access User Management", style: TextStyle(color: Colors.black, fontSize: 18)));
       }
     }
@@ -63,6 +63,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   if (currentUser?.roleName == 'Admin') ...[
                     const SizedBox(height: 24),
                     _buildPermissionMatrixSection(context, l10n, userProvider),
+                    if (userProvider.roles.length <= 1) ...[
+                      const SizedBox(height: 16),
+                      _buildSetupProductionRolesButton(userProvider),
+                    ],
                   ],
                 ],
               ),
@@ -70,8 +74,42 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
+  Widget _buildSetupProductionRolesButton(UserProvider provider) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.blue.withOpacity(0.1)),
+        ),
+        child: Column(
+          children: [
+            const Text(
+              "Missing Accountant or Storekeeper roles?",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () async {
+                await provider.createRole('Accountant', 'Handles financial data and ledger');
+                await provider.createRole('Storekeeper', 'Manages inventory and products');
+              },
+              icon: const Icon(Icons.flash_on_rounded),
+              label: const Text("Initialize Default Roles"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildUserManagementSection(BuildContext context, AppLocalizations l10n, UserProvider userProvider, UserModel? currentUser) {
-    final bool canAdd = currentUser?.canPerform('User Management', 'add') ?? true;
+    final bool canAdd = currentUser?.canPerform('User Roles', 'add') ?? true;
 
     return Container(
       decoration: BoxDecoration(
@@ -167,7 +205,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   Widget _buildUserRow(UserModel user, UserProvider provider, UserModel? currentUser) {
     debugPrint('ROW_DATA: ${user.fullName} | ${user.email} | ${user.roleName}');
-    final bool canEdit = currentUser?.canPerform('User Management', 'edit') ?? true;
+    final bool canEdit = currentUser?.canPerform('User Roles', 'edit') ?? true;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -303,29 +341,65 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                l10n.rolePermissionMatrix,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.rolePermissionMatrix,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Manage access for different user roles",
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
+                ],
               ),
-              if (userProvider.roles.isNotEmpty)
-                DropdownButton<RoleModel>(
-                  value: selectedRoleForMatrix ?? userProvider.roles.first,
-                  items: userProvider.roles.map((role) {
-                    return DropdownMenuItem(
-                      value: role,
-                      child: Text(role.name),
-                    );
-                  }).toList(),
-                  onChanged: (role) {
-                    setState(() {
-                      selectedRoleForMatrix = role;
-                    });
-                  },
-                ),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => _showAddRoleDialog(context, userProvider),
+                    icon: const Icon(Icons.shield_outlined, size: 18),
+                    label: const Text("Add Role"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFBD0D1D),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  if (userProvider.roles.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<RoleModel>(
+                          value: selectedRoleForMatrix ?? userProvider.roles.first,
+                          items: userProvider.roles.map((role) {
+                            return DropdownMenuItem(
+                              value: role,
+                              child: Text(role.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            );
+                          }).toList(),
+                          onChanged: (role) {
+                            setState(() {
+                              selectedRoleForMatrix = role;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -347,7 +421,23 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
           const SizedBox(height: 12),
           if (selectedRoleForMatrix != null)
-            ...selectedRoleForMatrix!.permissions.map((perm) => _buildPermissionRow(perm.moduleName, perm, userProvider)).toList(),
+            ...userProvider.availableModules.map((module) {
+              // Find existing permission for this module or create a blank one
+              final existingPerm = selectedRoleForMatrix!.permissions.cast<PermissionModel?>().firstWhere(
+                (p) => p?.moduleName == module,
+                orElse: () => null,
+              );
+              
+              final displayPerm = existingPerm ?? PermissionModel(
+                moduleName: module,
+                canView: selectedRoleForMatrix!.name == 'Admin',
+                canAdd: selectedRoleForMatrix!.name == 'Admin',
+                canEdit: selectedRoleForMatrix!.name == 'Admin',
+                canDelete: selectedRoleForMatrix!.name == 'Admin',
+              );
+              
+              return _buildPermissionRow(module, displayPerm, userProvider);
+            }).toList(),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -404,29 +494,154 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _updatePerm(PermissionModel perm, String type, bool value, UserProvider provider) {
-    // Implement update logic locally then call API
+    // Logic improved to handle all modules
     if (selectedRoleForMatrix == null) return;
     
-    final updatedPerms = selectedRoleForMatrix!.permissions.map((p) {
-      if (p.moduleName == perm.moduleName) {
-        return PermissionModel(
-          moduleName: p.moduleName,
-          canView: type == 'view' ? value : p.canView,
-          canAdd: type == 'add' ? value : p.canAdd,
-          canEdit: type == 'edit' ? value : p.canEdit,
-          canDelete: type == 'delete' ? value : p.canDelete,
-        );
+    // Create a new set of permissions for ALL modules to ensure backend receives full state
+    final updatedPerms = provider.availableModules.map((module) {
+      final existing = selectedRoleForMatrix!.permissions.cast<PermissionModel?>().firstWhere(
+        (p) => p?.moduleName == module, 
+        orElse: () => null
+      );
+      
+      bool v = existing?.canView ?? false;
+      bool a = existing?.canAdd ?? false;
+      bool e = existing?.canEdit ?? false;
+      bool d = existing?.canDelete ?? false;
+
+      if (module == perm.moduleName) {
+        if (type == 'view') v = value;
+        if (type == 'add') a = value;
+        if (type == 'edit') e = value;
+        if (type == 'delete') d = value;
       }
-      return p;
+
+      return {
+        'module_name': module,
+        'can_view': v,
+        'can_add': a,
+        'can_edit': e,
+        'can_delete': d,
+      };
     }).toList();
 
-    provider.updateRolePermissions(selectedRoleForMatrix!.id, updatedPerms.map((e) => e.toJson()).toList()).then((success) {
+    provider.updateRolePermissions(selectedRoleForMatrix!.id, updatedPerms).then((success) {
       if (success) {
         setState(() {
           selectedRoleForMatrix = provider.roles.firstWhere((r) => r.id == selectedRoleForMatrix!.id);
         });
       }
     });
+  }
+
+  void _showAddRoleDialog(BuildContext context, UserProvider provider) {
+    final nameController = TextEditingController();
+    final descController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: EdgeInsets.zero,
+        contentPadding: const EdgeInsets.all(24),
+        title: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: AppTheme.primaryMaroon,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.shield_outlined, color: Colors.white, size: 24),
+              const SizedBox(width: 12),
+              const Text(
+                "Create New Role",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+              ),
+            ],
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Role Name", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: nameController,
+              style: const TextStyle(color: Colors.black, fontSize: 16),
+              decoration: InputDecoration(
+                hintText: "e.g. Accountant",
+                hintStyle: TextStyle(color: Colors.grey[400]),
+                filled: true,
+                fillColor: Colors.grey[50],
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryMaroon, width: 1.5)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text("Description", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: descController,
+              style: const TextStyle(color: Colors.black, fontSize: 16),
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: "Define user responsibilities",
+                hintStyle: TextStyle(color: Colors.grey[400]),
+                filled: true,
+                fillColor: Colors.grey[50],
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryMaroon, width: 1.5)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              "CANCEL", 
+              style: TextStyle(
+                color: Colors.red, 
+                fontWeight: FontWeight.w900, 
+                fontSize: 16,
+                letterSpacing: 1.1,
+              )
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryMaroon,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              if (nameController.text.isNotEmpty) {
+                final success = await provider.createRole(nameController.text, descController.text);
+                if (success && context.mounted) Navigator.pop(context);
+              }
+            },
+            child: const Text(
+              "CREATE ROLE", 
+              style: TextStyle(
+                color: Colors.white, 
+                fontWeight: FontWeight.w900, 
+                fontSize: 16,
+                letterSpacing: 1.2,
+              )
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCheckbox(bool isChecked, Function(bool) onChanged) {

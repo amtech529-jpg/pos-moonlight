@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
@@ -38,6 +39,8 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
   final _incentiveFocusNode = FocusNode();
   final _areaFocusNode = FocusNode();
   final _cityFocusNode = FocusNode();
+  final _cityChipsFirstFocusNode = FocusNode();
+  final _areaChipsFirstFocusNode = FocusNode();
   final _ageFocusNode = FocusNode();
 
   String _selectedGender = 'M';
@@ -101,8 +104,10 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
     _designationFocusNode.dispose();
     _salaryFocusNode.dispose();
     _incentiveFocusNode.dispose();
-    _areaFocusNode.dispose();
     _cityFocusNode.dispose();
+    _areaFocusNode.dispose();
+    _cityChipsFirstFocusNode.dispose();
+    _areaChipsFirstFocusNode.dispose();
     _ageFocusNode.dispose();
     super.dispose();
   }
@@ -410,27 +415,62 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
     );
   }
 
-  Widget _buildQuickSelectChip({required String label, required String currentValue, required VoidCallback onTap}) {
+  Widget _buildQuickSelectChip({
+    required String label, 
+    required String currentValue, 
+    required VoidCallback onTap,
+    FocusNode? focusNode,
+  }) {
     final isSelected = label.toLowerCase() == currentValue.toLowerCase();
     
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(context.borderRadius('small')),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding / 2),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryMaroon : AppTheme.accentGold.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(context.borderRadius('small')),
-          border: Border.all(color: isSelected ? AppTheme.primaryMaroon : AppTheme.accentGold.withOpacity(0.3), width: 1),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: context.captionFontSize,
-            fontWeight: FontWeight.w500,
-            color: isSelected ? Colors.white : AppTheme.accentGold,
-          ),
-        ),
+    return Focus(
+      focusNode: focusNode,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.enter || 
+              event.logicalKey == LogicalKeyboardKey.space) {
+            onTap();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Builder(
+        builder: (context) {
+          final bool isFocused = Focus.of(context).hasFocus;
+          return InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(context.borderRadius('small')),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding / 2),
+              decoration: BoxDecoration(
+                color: isSelected 
+                    ? AppTheme.primaryMaroon 
+                    : (isFocused ? AppTheme.primaryMaroon.withOpacity(0.2) : AppTheme.accentGold.withOpacity(0.1)),
+                borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                border: Border.all(
+                  color: (isSelected || isFocused) ? AppTheme.primaryMaroon : AppTheme.accentGold.withOpacity(0.3), 
+                  width: (isSelected || isFocused) ? 1.5 : 1,
+                ),
+                boxShadow: isFocused ? [
+                  BoxShadow(
+                    color: AppTheme.primaryMaroon.withOpacity(0.2),
+                    blurRadius: 4,
+                    spreadRadius: 1,
+                  )
+                ] : [],
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: context.captionFontSize,
+                  fontWeight: (isSelected || isFocused) ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? Colors.white : (isFocused ? AppTheme.primaryMaroon : AppTheme.accentGold),
+                ),
+              ),
+            ),
+          );
+        }
       ),
     );
   }
@@ -874,7 +914,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
           prefixIcon: Icons.location_city_outlined,
           focusNode: _cityFocusNode,
           textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_areaFocusNode),
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_cityChipsFirstFocusNode),
           enabled: !_isCreating,
           validator: (value) {
             if (value?.isEmpty ?? true) {
@@ -887,16 +927,16 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
         Wrap(
           spacing: context.smallPadding / 2,
           runSpacing: context.smallPadding / 4,
-          children: _commonCities
-              .take(4)
-              .map(
-                (city) => _buildQuickSelectChip(
-              label: city,
+          children: _commonCities.take(4).toList().asMap().entries.map((entry) => _buildQuickSelectChip(
+              label: entry.value,
               currentValue: _cityController.text,
-              onTap: () => setState(() => _cityController.text = city),
+              onTap: () {
+                setState(() => _cityController.text = entry.value);
+                FocusScope.of(context).requestFocus(_areaFocusNode);
+              },
+              focusNode: entry.key == 0 ? _cityChipsFirstFocusNode : null,
             ),
-          )
-              .toList(),
+          ).toList(),
         ),
       ],
     );
@@ -915,7 +955,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
           prefixIcon: Icons.map_outlined,
           focusNode: _areaFocusNode,
           textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_designationFocusNode),
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_areaChipsFirstFocusNode),
           enabled: !_isCreating,
           validator: (value) {
             if (value?.isEmpty ?? true) {
@@ -928,16 +968,16 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
         Wrap(
           spacing: context.smallPadding / 2,
           runSpacing: context.smallPadding / 4,
-          children: _commonAreas
-              .take(4)
-              .map(
-                (area) => _buildQuickSelectChip(
-              label: area,
+          children: _commonAreas.take(4).toList().asMap().entries.map((entry) => _buildQuickSelectChip(
+              label: entry.value,
               currentValue: _areaController.text,
-              onTap: () => setState(() => _areaController.text = area),
+              onTap: () {
+                setState(() => _areaController.text = entry.value);
+                FocusScope.of(context).requestFocus(_designationFocusNode);
+              },
+              focusNode: entry.key == 0 ? _areaChipsFirstFocusNode : null,
             ),
-          )
-              .toList(),
+          ).toList(),
         ),
       ],
     );

@@ -372,7 +372,7 @@ class _EditQuotationDialogState extends State<EditQuotationDialog> {
                 items: provider.customers
                     .map((customer) => DropdownItem<Customer>(
                         value: customer,
-                        label: '${customer.name} (${customer.phone})'
+                        label: '${customer.orderDisplayName} (${customer.phone})'
                     ))
                     .toList(),
                 value: _selectedCustomer,

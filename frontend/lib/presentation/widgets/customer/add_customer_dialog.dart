@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
@@ -25,7 +26,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
-  final _countryController = TextEditingController(text: 'Pakistan');
+  final _countryController = TextEditingController();
   final _businessNameController = TextEditingController();
   final _taxNumberController = TextEditingController();
   final _notesController = TextEditingController();
@@ -33,6 +34,12 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
   // Focus Nodes
   final _businessNameFocusNode = FocusNode();
   final _notesFocusNode = FocusNode();
+  
+  // Quick Select Focus Nodes
+  final _cityChipsFirstFocusNode = FocusNode();
+  final _countryChipsFirstFocusNode = FocusNode();
+  final _cityFocusNode = FocusNode();
+  final _countryFocusNode = FocusNode();
 
   // Form state
   String _selectedCustomerType = 'INDIVIDUAL';
@@ -86,6 +93,10 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
     _notesController.dispose();
     _businessNameFocusNode.dispose();
     _notesFocusNode.dispose();
+    _cityChipsFirstFocusNode.dispose();
+    _countryChipsFirstFocusNode.dispose();
+    _cityFocusNode.dispose();
+    _countryFocusNode.dispose();
     super.dispose();
   }
 
@@ -632,16 +643,23 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
           hint: 'Enter city',
           controller: _cityController,
           prefixIcon: Icons.location_city_outlined,
+          focusNode: _cityFocusNode,
           textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_cityChipsFirstFocusNode),
         ),
         SizedBox(height: context.smallPadding),
         Wrap(
           spacing: context.smallPadding / 2,
           runSpacing: context.smallPadding / 4,
-          children: _commonCities.take(4).map((city) => _buildQuickSelectChip(
-            label: city,
-            isSelected: _cityController.text == city,
-            onTap: () => setState(() => _cityController.text = city),
+          children: _commonCities.take(4).toList().asMap().entries.map((entry) => _buildQuickSelectChip(
+            label: entry.value,
+            isSelected: _cityController.text == entry.value,
+            onTap: () {
+              setState(() => _cityController.text = entry.value);
+              // Move focus to Country field after selecting city
+              FocusScope.of(context).requestFocus(_countryFocusNode);
+            },
+            focusNode: entry.key == 0 ? _cityChipsFirstFocusNode : null,
           )).toList(),
         ),
       ],
@@ -657,23 +675,27 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
           hint: 'Enter country',
           controller: _countryController,
           prefixIcon: Icons.public_outlined,
+          focusNode: _countryFocusNode,
           textInputAction: TextInputAction.next,
-          onSubmitted: (_) {
-            if (_showBusinessFields) {
-              FocusScope.of(context).requestFocus(_businessNameFocusNode);
-            } else {
-              FocusScope.of(context).requestFocus(_notesFocusNode);
-            }
-          },
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_countryChipsFirstFocusNode),
         ),
         SizedBox(height: context.smallPadding),
         Wrap(
           spacing: context.smallPadding / 2,
           runSpacing: context.smallPadding / 4,
-          children: _commonCountries.take(4).map((country) => _buildQuickSelectChip(
-            label: country,
-            isSelected: _countryController.text == country,
-            onTap: () => setState(() => _countryController.text = country),
+          children: _commonCountries.take(4).toList().asMap().entries.map((entry) => _buildQuickSelectChip(
+            label: entry.value,
+            isSelected: _countryController.text == entry.value,
+            onTap: () {
+              setState(() => _countryController.text = entry.value);
+              // Move focus forward after selecting country
+              if (_showBusinessFields) {
+                FocusScope.of(context).requestFocus(_businessNameFocusNode);
+              } else {
+                FocusScope.of(context).requestFocus(_notesFocusNode);
+              }
+            },
+            focusNode: entry.key == 0 ? _countryChipsFirstFocusNode : null,
           )).toList(),
         ),
       ],
@@ -766,39 +788,65 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
+    FocusNode? focusNode,
   }) {
     // Special highlight for Islamabad and Pakistan as per user request
     final bool isSpecialLabel = label == 'Islamabad' || label == 'Pakistan';
     final Color activeColor = isSpecialLabel ? Colors.teal : AppTheme.accentGold;
     
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(context.borderRadius('small')),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.smallPadding,
-          vertical: context.smallPadding / 2,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? activeColor.withOpacity(0.2) 
-              : AppTheme.accentGold.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(context.borderRadius('small')),
-          border: Border.all(
-            color: isSelected 
-                ? activeColor 
-                : Colors.grey.shade300,
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: context.captionFontSize,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? activeColor : Colors.grey[600],
-          ),
-        ),
+    return Focus(
+      focusNode: focusNode,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.enter || 
+              event.logicalKey == LogicalKeyboardKey.space) {
+            onTap();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Builder(
+        builder: (context) {
+          final bool isFocused = Focus.of(context).hasFocus;
+          return InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(context.borderRadius('small')),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: context.smallPadding,
+                vertical: context.smallPadding / 2,
+              ),
+              decoration: BoxDecoration(
+                color: isSelected 
+                    ? activeColor.withOpacity(0.2) 
+                    : (isFocused ? activeColor.withOpacity(0.1) : AppTheme.accentGold.withOpacity(0.05)),
+                borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                border: Border.all(
+                  color: isSelected 
+                      ? activeColor 
+                      : (isFocused ? activeColor : Colors.grey.shade300),
+                  width: (isSelected || isFocused) ? 1.5 : 1,
+                ),
+                boxShadow: isFocused ? [
+                  BoxShadow(
+                    color: activeColor.withOpacity(0.2),
+                    blurRadius: 4,
+                    spreadRadius: 1,
+                  )
+                ] : [],
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: context.captionFontSize,
+                  fontWeight: (isSelected || isFocused) ? FontWeight.w700 : FontWeight.w500,
+                  color: (isSelected || isFocused) ? activeColor : Colors.grey[600],
+                ),
+              ),
+            ),
+          );
+        }
       ),
     );
   }

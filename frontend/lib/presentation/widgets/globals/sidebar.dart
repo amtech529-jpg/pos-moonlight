@@ -36,7 +36,7 @@ class _SidebarState extends State<Sidebar> {
       {
         'icon': Icons.dashboard_outlined,
         'activeIcon': Icons.dashboard,
-        'title': l10n.dashboard,
+        'title': "Dashboard",
       },
       {
         'icon': Icons.shopping_bag_outlined,
@@ -51,27 +51,27 @@ class _SidebarState extends State<Sidebar> {
       {
         'icon': Icons.description_outlined,
         'activeIcon': Icons.description,
-        'title': "Quotation",
+        'title': "Quotations",
       },
       {
         'icon': Icons.event_note_outlined,
         'activeIcon': Icons.event_note,
-        'title': "Order & Rental",
+        'title': "Orders & Rental",
       },
       {
         'icon': Icons.people_outline_rounded,
         'activeIcon': Icons.people,
-        'title': "Customer Management",
+        'title': "Customers Managements",
       },
       {
         'icon': Icons.receipt_long_outlined,
         'activeIcon': Icons.receipt_long,
-        'title': "Invoice & Payment",
+        'title': "Invoice & Payments",
       },
       {
         'icon': Icons.handshake_outlined,
         'activeIcon': Icons.handshake,
-        'title': "Partner/Payables",
+        'title': "Patner & Payable",
       },
       {
         'icon': Icons.assignment_return_outlined,
@@ -86,7 +86,7 @@ class _SidebarState extends State<Sidebar> {
       {
         'icon': Icons.account_balance_wallet_outlined,
         'activeIcon': Icons.account_balance_wallet,
-        'title': "Expense Management",
+        'title': "Expenses Managements",
       },
       {
         'icon': Icons.build_outlined,
@@ -96,22 +96,22 @@ class _SidebarState extends State<Sidebar> {
       {
         'icon': Icons.badge_outlined,
         'activeIcon': Icons.badge,
-        'title': "HR & Salary",
+        'title': "HR & Salaries",
       },
       {
         'icon': Icons.bar_chart_outlined,
         'activeIcon': Icons.bar_chart,
-        'title': l10n.reportsAnalytics,
+        'title': "Reports & analysis",
       },
       {
         'icon': Icons.manage_accounts_outlined,
         'activeIcon': Icons.manage_accounts,
-        'title': l10n.userRoles,
+        'title': "User Roles",
       },
       {
         'icon': Icons.file_download_outlined,
         'activeIcon': Icons.file_download,
-        'title': "Import/Export",
+        'title': "Import/Exports",
       },
       {
         'icon': Icons.security_outlined,
@@ -132,19 +132,19 @@ class _SidebarState extends State<Sidebar> {
       "Dashboard": "Dashboard",
       "Purchase": "Purchase",
       "Inventory": "Inventory",
-      "Quotation": "Quotation",
-      "Order & Rental": "Order & Rental",
-      "Customer Management": "Customer Management",
-      "Invoice & Payment": "Invoice & Payment",
-      "Partner/Payables": "Partner/Payables",
+      "Quotations": "Quotations",
+      "Orders & Rental": "Orders & Rental",
+      "Customers Managements": "Customers Managements",
+      "Invoice & Payments": "Invoice & Payments",
+      "Patner & Payable": "Patner & Payable",
       "Return & Tally": "Return & Tally",
       "Ledger": "Ledger",
-      "Expense Management": "Expense Management",
+      "Expenses Managements": "Expenses Managements",
       "Tools & Consumables": "Tools & Consumables",
-      "HR & Salary": "HR & Salary",
-      "Reports & Analytics": "Reports", // Matching l10n name if possible
-      "User Roles": "User Management", // Special case
-      "Import/Export": "Import/Export",
+      "HR & Salaries": "HR & Salaries",
+      "Reports & analysis": "Reports & analysis",
+      "User Roles": "User Roles",
+      "Import/Exports": "Import/Exports",
       "Backup": "Backup",
     };
 
@@ -238,9 +238,7 @@ class _SidebarState extends State<Sidebar> {
                 
                 // Permission Check
                 if (user != null && !user.isSuperuser && user.roleName != 'Admin') {
-                  // Special check for User Roles - usually only Admin
-                  if (title.contains("User Roles")) return const SizedBox.shrink();
-                  
+                  // Admin roles can always see User Roles, but for others we check specifically
                   final moduleName = moduleMapping[title] ?? title;
                   if (!user.hasPermission(moduleName)) {
                     return const SizedBox.shrink();

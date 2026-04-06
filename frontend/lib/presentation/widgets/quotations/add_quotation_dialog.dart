@@ -356,7 +356,7 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
                 items: provider.customers
                     .map((customer) => DropdownItem<Customer>(
                         value: customer,
-                        label: '${customer.name} (${customer.phone})'
+                        label: '${customer.orderDisplayName} (${customer.phone})'
                     ))
                     .toList(),
                 value: _selectedCustomer,

@@ -140,6 +140,13 @@ class Customer {
     }
   }
 
+  String get orderDisplayName {
+    if (customerType.toUpperCase() == 'BUSINESS' && businessName != null && businessName!.isNotEmpty) {
+      return businessName!;
+    }
+    return name;
+  }
+
   Customer copyWith({
     String? id,
     String? name,

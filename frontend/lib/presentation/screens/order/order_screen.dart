@@ -10,6 +10,7 @@ import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import '../../widgets/order/add_order_dialog.dart';
 import '../../widgets/order/view_order_dialog.dart';
 import '../../widgets/order/edit_order_dialog.dart';
+import 'package:frontend/src/providers/customer_provider.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -53,8 +54,8 @@ class _OrderPageState extends State<OrderPage> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final currentUser = authProvider.currentUser;
-    final bool canAdd = currentUser?.canPerform('Order & Rental', 'add') ?? true;
-    final bool canEdit = currentUser?.canPerform('Order & Rental', 'edit') ?? true;
+    final bool canAdd = currentUser?.canPerform('Orders & Rental', 'add') ?? true;
+    final bool canEdit = currentUser?.canPerform('Orders & Rental', 'edit') ?? true;
 
     return Scaffold(
       backgroundColor: Colors.transparent, // Inherit global pinkish/beige background
@@ -317,7 +318,11 @@ class _OrderPageState extends State<OrderPage> {
 
   Widget _buildOrderRow(BuildContext context, OrderModel order, String itemsCount, Color statusColor, bool canEdit) {
     final String id = order.id.substring(0, 8).toUpperCase();
-    final String client = order.customerName;
+    
+    final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
+    final customer = customerProvider.allCustomers.where((c) => c.id == order.customerId).firstOrNull;
+    final String client = customer?.orderDisplayName ?? order.customerName;
+    
     final String amount = "PKR ${order.totalAmount.toStringAsFixed(0)}";
     final String date = order.dateOrdered.toString().split(' ')[0];
     final String status = order.status.name;

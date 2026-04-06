@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/src/theme/app_theme.dart';
 import '../../../src/providers/invoice_provider.dart';
+import '../../../src/providers/customer_provider.dart';
+import '../../../src/providers/order_provider.dart';
 import '../../../src/models/sales/sale_model.dart';
 import '../../widgets/sales/view_invoice_dialog.dart';
 import '../../widgets/sales/edit_invoice_dialog.dart';
@@ -327,6 +329,21 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
   }
 
   Widget _buildInvoiceRow(BuildContext context, InvoiceModel invoice, Color statusColor) {
+    final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
+    
+    // First try using the explicit customerId, else try via orderId.
+    String? customerId = invoice.customerId;
+    if (customerId == null && invoice.orderId != null) {
+      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      final matchingOrder = orderProvider.allOrders.where((o) => o.id == invoice.orderId).firstOrNull;
+      if (matchingOrder != null) {
+        customerId = matchingOrder.customerId;
+      }
+    }
+    
+    final customer = customerProvider.allCustomers.where((c) => c.id == customerId).firstOrNull;
+    final displayName = customer?.orderDisplayName ?? (invoice.customerName ?? 'Unknown');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -344,7 +361,7 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
       child: Row(
         children: [
           Expanded(flex: 2, child: Text(invoice.invoiceNumber, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
-          Expanded(flex: 3, child: Text(invoice.customerName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Color(0xFF333333)), overflow: TextOverflow.ellipsis)),
+          Expanded(flex: 3, child: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Color(0xFF333333)), overflow: TextOverflow.ellipsis)),
           Expanded(flex: 2, child: Text("Rs. ${invoice.grandTotal.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12), textAlign: TextAlign.center)),
           Expanded(flex: 2, child: Text("Rs. ${invoice.amountPaid.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Colors.green), textAlign: TextAlign.center)),
           Expanded(

@@ -714,6 +714,7 @@ class InvoiceModel {
   final String id;
   final String saleId;
   final String? orderId;
+  final String? customerId;
   final String saleInvoiceNumber;
   final String customerName;
   final double grandTotal;
@@ -808,6 +809,7 @@ class InvoiceModel {
     required this.id,
     required this.saleId,
     this.orderId,
+    this.customerId,
     required this.saleInvoiceNumber,
     required this.customerName,
     required this.grandTotal,
@@ -860,10 +862,29 @@ class InvoiceModel {
         sId = _parseString(saleData['id']) ?? '';
       }
 
+      // Handle orderId extraction
+      dynamic orderData = json['order'] ?? json['order_id'];
+      String? oId;
+      if (orderData is String) {
+        oId = orderData;
+      } else if (orderData is Map) {
+        oId = _parseString(orderData['id']);
+      }
+
+      // Handle customerId extraction
+      dynamic custData = json['customer'] ?? json['customer_id'];
+      String? cId;
+      if (custData is String) {
+        cId = custData;
+      } else if (custData is Map) {
+        cId = _parseString(custData['id']);
+      }
+
       final invoice = InvoiceModel(
         id: json['id'] as String? ?? '',
         saleId: sId,
-        orderId: _parseString(json['order'] ?? json['order_id']),
+        orderId: oId,
+        customerId: cId,
         saleInvoiceNumber: json['sale_invoice_number'] as String? ?? '',
         customerName: json['customer_name'] as String? ?? '',
         grandTotal: grandTotal,

@@ -10,6 +10,7 @@ import 'package:frontend/presentation/widgets/quotations/edit_quotation_dialog.d
 import 'package:frontend/presentation/widgets/quotations/delete_quotation_dialog.dart';
 import 'package:frontend/src/models/quotation/quotation_model.dart';
 import 'package:frontend/src/services/pdf_quotation_service.dart';
+import 'package:frontend/src/providers/customer_provider.dart';
 
 class QuotationsScreen extends StatefulWidget {
   const QuotationsScreen({super.key});
@@ -55,10 +56,10 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
 
           final authProvider = Provider.of<AuthProvider>(context);
           final currentUser = authProvider.currentUser;
-          final bool canAdd = currentUser?.canPerform('Quotation', 'add') ?? true;
-          final bool canEdit = currentUser?.canPerform('Quotation', 'edit') ?? true;
-          final bool canDelete = currentUser?.canPerform('Quotation', 'delete') ?? true;
-          final bool canAddOrder = currentUser?.canPerform('Order & Rental', 'add') ?? true;
+          final bool canAdd = currentUser?.canPerform('Quotations', 'add') ?? true;
+          final bool canEdit = currentUser?.canPerform('Quotations', 'edit') ?? true;
+          final bool canDelete = currentUser?.canPerform('Quotations', 'delete') ?? true;
+          final bool canAddOrder = currentUser?.canPerform('Orders & Rental', 'add') ?? true;
 
           return RefreshIndicator(
             onRefresh: () => provider.initialize(),
@@ -243,7 +244,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
             child: Text("No quotations found.", style: TextStyle(color: Colors.grey)),
           )
         else ...[
-          ...filtered.map((q) => _buildTableRow(q, canEdit, canDelete, canAddOrder)).toList(),
+          ...filtered.map((q) => _buildTableRow(context, q, canEdit, canDelete, canAddOrder)).toList(),
           if (context.watch<QuotationProvider>().hasMore)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
@@ -267,7 +268,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
     );
   }
 
-  Widget _buildTableRow(QuotationModel quotation, bool canEdit, bool canDelete, bool canAddOrder) {
+  Widget _buildTableRow(BuildContext context, QuotationModel quotation, bool canEdit, bool canDelete, bool canAddOrder) {
     Color statusColor = const Color(0xFFFE813E); // Brand Orange for PENDING
     Color textOnStatus = Colors.white;
     double opacity = 0.94;
@@ -281,6 +282,10 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
       textOnStatus = Colors.white;
       opacity = 0.94;
     }
+
+    final cdProvider = Provider.of<CustomerProvider>(context, listen: false);
+    final customer = cdProvider.allCustomers.where((c) => c.id == quotation.customer).firstOrNull;
+    final displayName = customer?.orderDisplayName ?? quotation.customerName;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -310,7 +315,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
               children: [
                 Text(quotation.eventName,
                     style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                Text(quotation.customerName,
+                Text(displayName,
                     style: const TextStyle(color: Color(0xFF666666), fontSize: 12)),
               ],
             ),

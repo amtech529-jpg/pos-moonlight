@@ -5,6 +5,7 @@ import 'dart:async';
 import '../../../l10n/app_localizations.dart';
 import '../../../src/providers/invoice_provider.dart';
 import '../../../src/providers/order_provider.dart';
+import '../../../src/providers/customer_provider.dart';
 import '../../../src/models/order/order_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
@@ -97,8 +98,8 @@ class _CreateInvoiceDialogState extends State<CreateInvoiceDialog> {
               // 1. Select Order Dropdown
               const Text("Select Order *", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
               const SizedBox(height: 8),
-              Consumer2<OrderProvider, InvoiceProvider>(
-                builder: (context, orderProvider, invoiceProvider, child) {
+              Consumer3<OrderProvider, InvoiceProvider, CustomerProvider>(
+                builder: (context, orderProvider, invoiceProvider, customerProvider, child) {
                   final invoicedOrderIds = invoiceProvider.invoices
                       .where((inv) => inv.orderId != null)
                       .map((inv) => inv.orderId!)
@@ -132,9 +133,12 @@ class _CreateInvoiceDialogState extends State<CreateInvoiceDialog> {
                     value: _selectedOrderId,
                     items: orders.map((order) {
                       final orderIdShort = order.id.length > 8 ? order.id.substring(0, 8) : order.id;
+                      final customer = customerProvider.allCustomers.where((c) => c.id == order.customerId).firstOrNull;
+                      final String displayName = customer?.orderDisplayName ?? order.customerName;
+
                       return DropdownItem(
                         value: order.id,
-                        label: 'ORD-#$orderIdShort | ${order.customerName} (Rs. ${order.totalAmount.toStringAsFixed(0)})',
+                        label: 'ORD-#$orderIdShort | $displayName (Rs. ${order.totalAmount.toStringAsFixed(0)})',
                       );
                     }).toList(),
                     onChanged: (value) => setState(() => _selectedOrderId = value),

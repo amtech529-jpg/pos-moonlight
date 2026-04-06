@@ -1,4 +1,7 @@
-import 'dart:io';
+import 'dart:io' show Directory, File;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:frontend/src/utils/file_download_helper_stub.dart'
+    if (dart.library.html) 'package:frontend/src/utils/file_download_helper_web.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -62,12 +65,24 @@ class ImportExportService {
       );
 
       if (result != null) {
-        final file = File(result.files.single.path!);
         String fileName = result.files.single.name;
         
-        FormData formData = FormData.fromMap({
-          "file": await MultipartFile.fromFile(file.path, filename: fileName),
-        });
+        FormData formData;
+        if (kIsWeb) {
+          // On Web, use bytes
+          formData = FormData.fromMap({
+            "file": MultipartFile.fromBytes(
+              result.files.single.bytes!, 
+              filename: fileName,
+            ),
+          });
+        } else {
+          // On Desktop/Mobile, use file path
+          final file = File(result.files.single.path!);
+          formData = FormData.fromMap({
+            "file": await MultipartFile.fromFile(file.path, filename: fileName),
+          });
+        }
 
         final response = await _apiClient.post(
           ApiConfig.importData(modelName),
@@ -91,14 +106,13 @@ class ImportExportService {
   Future<void> _saveAndOpenFile(List<int> bytes, String fileName) async {
     try {
       if (kIsWeb) {
-        // Handle web download if needed (not implemented for now)
+        // Universal way to trigger download on Web
+        FileDownloadHelper.downloadFile(bytes, fileName);
         return;
       } 
       
-      Directory? directory = await getDownloadsDirectory();
-      if (directory == null) {
-        directory = await getApplicationDocumentsDirectory();
-      }
+      // For Desktop/Mobile below...
+      Directory directory = await getApplicationDocumentsDirectory();
       
       final String outputPath = p.join(directory.path, fileName);
       

@@ -14,7 +14,7 @@ class PdfInvoiceService {
   static const String whatsappNo = '0324-4580401, 0324-4580402';
   static const String emailAddress = 'moonlightevents707@gmail.com';
 
-  static Future<void> printInvoice(SaleModel sale) async {
+  static Future<Uint8List> generatePdfBytes(SaleModel sale) async {
     final pdf = pw.Document();
     
     // Load Logo if available
@@ -283,8 +283,12 @@ class PdfInvoiceService {
       ),
     );
 
-    // Generate PDF bytes with safety wait
-    final Uint8List pdfBytes = await pdf.save();
+    // Generate PDF bytes
+    return await pdf.save();
+  }
+
+  static Future<void> printInvoice(SaleModel sale) async {
+    final Uint8List pdfBytes = await generatePdfBytes(sale);
 
     // Sanitize filename for Windows compatibility (X-STRICT: Only Letters and Underline)
     String safeName = 'Invoice_${sale.invoiceNumber.isEmpty ? "Order" : sale.invoiceNumber}';

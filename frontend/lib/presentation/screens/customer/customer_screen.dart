@@ -126,9 +126,9 @@ class _CustomerPageState extends State<CustomerPage> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final currentUser = authProvider.currentUser;
-    final bool canAdd = currentUser?.canPerform('Customer Management', 'add') ?? true;
-    final bool canEdit = currentUser?.canPerform('Customer Management', 'edit') ?? true;
-    final bool canDelete = currentUser?.canPerform('Customer Management', 'delete') ?? true;
+    final bool canAdd = currentUser?.canPerform('Customers Managements', 'add') ?? true;
+    final bool canEdit = currentUser?.canPerform('Customers Managements', 'edit') ?? true;
+    final bool canDelete = currentUser?.canPerform('Customers Managements', 'delete') ?? true;
 
     return Scaffold(
       backgroundColor: AppTheme.creamWhite,

@@ -65,8 +65,51 @@ class InvoiceProvider extends ChangeNotifier {
       debugPrint('🔍 [InvoiceProvider] API Response message: ${response.message}');
 
       if (response.success && response.data != null) {
-        _invoices = response.data!;
-        debugPrint('🔍 [InvoiceProvider] Loaded ${_invoices.length} invoices');
+        final newInvoices = response.data!;
+        
+        // SMART MERGE: If we already have invoices, preserve their critical IDs 
+        // (orderId, customerId, saleId) if the new data is missing them.
+        if (_invoices.isNotEmpty) {
+          for (int i = 0; i < newInvoices.length; i++) {
+            final newInv = newInvoices[i];
+            final existingInv = _invoices.where((old) => old.id == newInv.id).firstOrNull;
+            
+            if (existingInv != null) {
+              final finalSaleId = (newInv.saleId.isEmpty) ? existingInv.saleId : newInv.saleId;
+              final finalOrderId = (newInv.orderId == null || newInv.orderId!.isEmpty) ? existingInv.orderId : newInv.orderId;
+              final finalCustId = (newInv.customerId == null || newInv.customerId!.isEmpty) ? existingInv.customerId : newInv.customerId;
+
+              newInvoices[i] = InvoiceModel(
+                id: newInv.id,
+                saleId: finalSaleId,
+                orderId: finalOrderId,
+                customerId: finalCustId,
+                saleInvoiceNumber: newInv.saleInvoiceNumber,
+                customerName: newInv.customerName,
+                grandTotal: newInv.grandTotal,
+                totalAmount: newInv.totalAmount,
+                amountPaid: newInv.amountPaid,
+                amountDue: newInv.amountDue,
+                writeOffAmount: newInv.writeOffAmount,
+                invoiceNumber: newInv.invoiceNumber,
+                issueDate: newInv.issueDate,
+                dueDate: newInv.dueDate ?? existingInv.dueDate,
+                status: newInv.status,
+                notes: newInv.notes ?? existingInv.notes,
+                termsConditions: newInv.termsConditions ?? existingInv.termsConditions,
+                pdfFile: newInv.pdfFile ?? existingInv.pdfFile,
+                emailSent: newInv.emailSent,
+                isActive: newInv.isActive,
+                createdAt: newInv.createdAt,
+                updatedAt: newInv.updatedAt,
+                createdBy: newInv.createdBy,
+              );
+            }
+          }
+        }
+        
+        _invoices = newInvoices;
+        debugPrint('🔍 [InvoiceProvider] Loaded ${_invoices.length} invoices (Smart Merge Applied)');
         notifyListeners();
       } else {
         debugPrint('❌ [InvoiceProvider] API Error: ${response.message}');
@@ -186,14 +229,44 @@ class InvoiceProvider extends ChangeNotifier {
       if (response.success && response.data != null) {
         final index = _invoices.indexWhere((i) => i.id == id);
         if (index != -1) {
+          final oldInvoice = _invoices[index];
           var updatedInvoice = response.data!;
           
-          // Allow backend-provided payment details to be used
+          // Use stronger preservation logic for IDs (handle null and empty strings)
+          final finalSaleId = (updatedInvoice.saleId.isEmpty) ? oldInvoice.saleId : updatedInvoice.saleId;
+          final finalOrderId = (updatedInvoice.orderId == null || updatedInvoice.orderId!.isEmpty) ? oldInvoice.orderId : updatedInvoice.orderId;
+          final finalCustId = (updatedInvoice.customerId == null || updatedInvoice.customerId!.isEmpty) ? oldInvoice.customerId : updatedInvoice.customerId;
+
+          final patchedInvoice = InvoiceModel(
+            id: updatedInvoice.id,
+            saleId: finalSaleId,
+            orderId: finalOrderId,
+            customerId: finalCustId,
+            saleInvoiceNumber: updatedInvoice.saleInvoiceNumber,
+            customerName: updatedInvoice.customerName,
+            grandTotal: updatedInvoice.grandTotal,
+            totalAmount: updatedInvoice.totalAmount,
+            amountPaid: updatedInvoice.amountPaid,
+            amountDue: updatedInvoice.amountDue,
+            writeOffAmount: updatedInvoice.writeOffAmount,
+            invoiceNumber: updatedInvoice.invoiceNumber,
+            issueDate: updatedInvoice.issueDate,
+            dueDate: updatedInvoice.dueDate ?? oldInvoice.dueDate,
+            status: updatedInvoice.status,
+            notes: updatedInvoice.notes ?? oldInvoice.notes,
+            termsConditions: updatedInvoice.termsConditions ?? oldInvoice.termsConditions,
+            pdfFile: updatedInvoice.pdfFile ?? oldInvoice.pdfFile,
+            emailSent: updatedInvoice.emailSent,
+            isActive: updatedInvoice.isActive,
+            createdAt: updatedInvoice.createdAt,
+            updatedAt: updatedInvoice.updatedAt,
+            createdBy: updatedInvoice.createdBy,
+          );
           
-          _invoices[index] = updatedInvoice;
+          _invoices[index] = patchedInvoice;
           _setSuccess('Invoice updated successfully');
           notifyListeners();
-          debugPrint('✅ [InvoiceProvider] Invoice updated in list');
+          debugPrint('✅ [InvoiceProvider] Invoice updated in list (patched with preserved IDs)');
         }
         return true;
       } else {

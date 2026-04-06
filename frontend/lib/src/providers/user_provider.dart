@@ -15,6 +15,27 @@ class UserProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  // Master List of 17 Modules in the POS
+  final List<String> availableModules = [
+    'Dashboard',
+    'Purchase',
+    'Inventory',
+    'Quotations',
+    'Orders & Rental',
+    'Customers Managements',
+    'Invoice & Payments',
+    'Patner & Payable',
+    'Return & Tally',
+    'Ledger',
+    'Expenses Managements',
+    'Tools & Consumables',
+    'HR & Salaries',
+    'Reports & analysis',
+    'User Roles',
+    'Import/Exports',
+    'Backup',
+  ];
+
   final ApiClient _apiClient = ApiClient();
 
   // Fetch all users
@@ -98,7 +119,7 @@ class UserProvider extends ChangeNotifier {
         '/roles/$roleId/permissions/',
         data: {'permissions': permissions},
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         await fetchRoles(); // Refresh roles
         return true;
       } else {
@@ -107,6 +128,33 @@ class UserProvider extends ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = 'Error updating permissions: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Create new Role
+  Future<bool> createRole(String name, String description) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiClient.post('/roles/', data: {
+        'name': name,
+        'description': description,
+      });
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        await fetchRoles();
+        return true;
+      } else {
+        _errorMessage = response.data['message'] ?? 'Failed to create role';
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Error creating role: $e';
       return false;
     } finally {
       _isLoading = false;
