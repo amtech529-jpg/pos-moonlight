@@ -13,12 +13,16 @@ class EnhancedVendorTable extends StatefulWidget {
   final Function(VendorModel) onEdit;
   final Function(VendorModel) onDelete;
   final Function(VendorModel) onView;
+  final bool canEdit;
+  final bool canDelete;
 
   const EnhancedVendorTable({
     super.key,
     required this.onEdit,
     required this.onDelete,
     required this.onView,
+    this.canEdit = true,
+    this.canDelete = true,
   });
 
   @override
@@ -162,7 +166,7 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
   double _getTableWidth(BuildContext context) {
     return ResponsiveBreakpoints.responsive(
       context,
-      tablet: 1200.0, // ✅ REDUCED
+      tablet: 1200.0,
       small: 1300.0,
       medium: 1400.0,
       large: 1500.0,
@@ -170,28 +174,25 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
     );
   }
 
-  // ✅ REDUCED COLUMN WIDTHS FOR TIGHTER SPACING
   List<double> _getColumnWidths(BuildContext context) {
     if (context.shouldShowCompactLayout) {
       return [
-        140.0, // Name (reduced from 180)
-        160.0, // Business Name (reduced from 200)
-        130.0, // Phone (reduced from 140)
-        100.0, // Status (reduced from 120)
-        70.0,  // Ledger (reduced from 100)
-        120.0, // Created At (reduced from 150)
-        250.0, // Actions (reduced from 300)
+        140.0, // 0 Name
+        160.0, // 1 Business
+        130.0, // 2 Phone
+        100.0, // 3 Status
+        120.0, // 4 Created
+        250.0, // 5 Actions
       ];
     } else {
       return [
-        140.0, // Name
-        160.0, // Business Name
-        130.0, // Phone
-        120.0, // Location
-        100.0, // Status
-        70.0,  // Ledger
-        120.0, // Created At
-        250.0, // Actions
+        140.0, // 0 Name
+        160.0, // 1 Business
+        130.0, // 2 Phone
+        200.0, // 3 Address (Increase width for address)
+        100.0, // 4 Status
+        120.0, // 5 Created
+        250.0, // 6 Actions
       ];
     }
   }
@@ -202,60 +203,39 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
 
     return Row(
       children: [
-        // Name
         Container(
           width: columnWidths[0],
-          padding: EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.only(right: 8),
           child: _buildSortableHeaderCell(context, l10n.name, 'name'),
         ),
-
-        // Business Name
         Container(
           width: columnWidths[1],
-          padding: EdgeInsets.only(right: 8),
-          child: _buildSortableHeaderCell(
-              context, l10n.businessName, 'business_name'),
+          padding: const EdgeInsets.only(right: 8),
+          child: _buildSortableHeaderCell(context, l10n.businessName, 'business_name'),
         ),
-
-        // Phone
         Container(
           width: columnWidths[2],
-          padding: EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.only(right: 8),
           child: _buildHeaderCell(context, l10n.phone),
         ),
-
-        // Location (responsive)
         if (!context.shouldShowCompactLayout)
           Container(
             width: columnWidths[3],
-            padding: EdgeInsets.only(right: 8),
-            child: _buildHeaderCell(context, l10n.location),
+            padding: const EdgeInsets.only(right: 8),
+            child: _buildHeaderCell(context, "Address"),
           ),
-
-        // Status
         Container(
           width: columnWidths[context.shouldShowCompactLayout ? 3 : 4],
-          padding: EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.only(right: 8),
           child: _buildHeaderCell(context, l10n.status),
         ),
-
-        // Ledger
         Container(
           width: columnWidths[context.shouldShowCompactLayout ? 4 : 5],
-          padding: EdgeInsets.only(right: 8),
-          child: _buildHeaderCell(context, 'Ledger'),
-        ),
-
-        // Created At
-        Container(
-          width: columnWidths[context.shouldShowCompactLayout ? 5 : 6],
-          padding: EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.only(right: 8),
           child: _buildSortableHeaderCell(context, l10n.created, 'created_at'),
         ),
-
-        // Actions
         Container(
-          width: columnWidths[context.shouldShowCompactLayout ? 6 : 7],
+          width: columnWidths[context.shouldShowCompactLayout ? 5 : 6],
           child: _buildHeaderCell(context, l10n.actions),
         ),
       ],
@@ -274,12 +254,10 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
     );
   }
 
-  Widget _buildSortableHeaderCell(
-      BuildContext context, String title, String sortKey) {
+  Widget _buildSortableHeaderCell(BuildContext context, String title, String sortKey) {
     return Consumer<VendorProvider>(
       builder: (context, provider, child) {
         final isCurrentSort = provider.sortBy == sortKey;
-
         return InkWell(
           onTap: () => provider.setSortBy(sortKey),
           borderRadius: BorderRadius.circular(4),
@@ -294,9 +272,7 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
                     style: TextStyle(
                       fontSize: context.bodyFontSize,
                       fontWeight: FontWeight.w600,
-                      color: isCurrentSort
-                          ? AppTheme.primaryMaroon
-                          : AppTheme.charcoalGray,
+                      color: isCurrentSort ? AppTheme.primaryMaroon : AppTheme.charcoalGray,
                       letterSpacing: 0.2,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -305,14 +281,10 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
                 const SizedBox(width: 4),
                 Icon(
                   isCurrentSort
-                      ? (provider.sortAscending
-                      ? Icons.arrow_upward
-                      : Icons.arrow_downward)
+                      ? (provider.sortAscending ? Icons.arrow_upward : Icons.arrow_downward)
                       : Icons.sort,
                   size: 14,
-                  color: isCurrentSort
-                      ? AppTheme.primaryMaroon
-                      : Colors.grey[500],
+                  color: isCurrentSort ? AppTheme.primaryMaroon : Colors.grey[500],
                 ),
               ],
             ),
@@ -327,15 +299,8 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
 
     return Container(
       decoration: BoxDecoration(
-        color: index.isEven
-            ? AppTheme.pureWhite
-            : AppTheme.lightGray.withOpacity(0.2),
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey.shade200,
-            width: 0.5,
-          ),
-        ),
+        color: index.isEven ? AppTheme.pureWhite : AppTheme.lightGray.withOpacity(0.2),
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 0.5)),
       ),
       padding: EdgeInsets.symmetric(
         vertical: context.cardPadding * 1.2,
@@ -343,10 +308,9 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
       ),
       child: Row(
         children: [
-          // Name Column
           Container(
             width: columnWidths[0],
-            padding: EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -360,264 +324,104 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (context.shouldShowCompactLayout) ...[
-                  SizedBox(height: 2),
-                  Text(
-                    vendor.cnic ?? 'N/A',
-                    style: TextStyle(
-                      fontSize: context.captionFontSize,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.grey[600],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
               ],
             ),
           ),
-
-          // Business Name Column
           Container(
             width: columnWidths[1],
-            padding: EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 8),
             child: Text(
               vendor.businessName,
-              style: TextStyle(
-                fontSize: context.subtitleFontSize,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.charcoalGray,
-              ),
+              style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w500, color: AppTheme.charcoalGray),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-
-          // Phone Column
           Container(
             width: columnWidths[2],
-            padding: EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 8),
             child: Text(
               vendor.formattedPhone,
-              style: TextStyle(
-                fontSize: context.subtitleFontSize,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.charcoalGray,
-              ),
+              style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w500, color: AppTheme.charcoalGray),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-
-          // Location (responsive)
           if (!context.shouldShowCompactLayout)
             Container(
               width: columnWidths[3],
-              padding: EdgeInsets.only(right: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    vendor.city,
-                    style: TextStyle(
-                      fontSize: context.subtitleFontSize,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.charcoalGray,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    vendor.area,
-                    style: TextStyle(
-                      fontSize: context.captionFontSize,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.grey[600],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(
+                vendor.fullAddress,
+                style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w500, color: AppTheme.charcoalGray),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-
-          // Status Column
           Container(
             width: columnWidths[context.shouldShowCompactLayout ? 3 : 4],
-            padding: EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 8),
             child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 4,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: helpers
-                    .getStatusColor(vendor.statusDisplayName)
-                    .withOpacity(0.1),
-                borderRadius:
-                BorderRadius.circular(context.borderRadius('small')),
-                border: Border.all(
-                  color: helpers
-                      .getStatusColor(vendor.statusDisplayName)
-                      .withOpacity(0.3),
-                ),
+                color: helpers.getStatusColor(vendor.statusDisplayName).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                border: Border.all(color: helpers.getStatusColor(vendor.statusDisplayName).withOpacity(0.3)),
               ),
               child: Text(
                 vendor.statusDisplayName,
-                style: TextStyle(
-                  fontSize: context.captionFontSize,
-                  fontWeight: FontWeight.w600,
-                  color: helpers.getStatusColor(vendor.statusDisplayName),
-                ),
+                style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w600, color: helpers.getStatusColor(vendor.statusDisplayName)),
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
-
-          // Ledger Button Column
           Container(
             width: columnWidths[context.shouldShowCompactLayout ? 4 : 5],
-            padding: EdgeInsets.only(right: 8),
-            child: Center(
-              child: Tooltip(
-                message: 'View Ledger',
-                child: InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => VendorLedgerScreen(
-                          vendorId: vendor.id,
-                          vendorName: vendor.name,
-                        ),
-                      ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    padding: EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryMaroon.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      Icons.receipt_long_rounded,
-                      color: AppTheme.primaryMaroon,
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ),
+            padding: const EdgeInsets.only(right: 8),
+            child: Text(
+              vendor.formattedCreatedAt,
+              style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-
-          // Created At Column
           Container(
             width: columnWidths[context.shouldShowCompactLayout ? 5 : 6],
-            padding: EdgeInsets.only(right: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  vendor.formattedCreatedAt,
-                  style: TextStyle(
-                    fontSize: context.subtitleFontSize,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.charcoalGray,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  vendor.relativeCreatedAt,
-                  style: TextStyle(
-                    fontSize: context.captionFontSize,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.grey[600],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+            child: helpers.buildActionsRow(
+              context,
+              vendor,
+              canEdit: widget.canEdit,
+              canDelete: widget.canDelete,
             ),
-          ),
-
-          // Actions Column
-          Container(
-            width: columnWidths[context.shouldShowCompactLayout ? 6 : 7],
-            child: helpers.buildActionsRow(context, vendor),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPaginationControls(
-      BuildContext context, VendorProvider provider) {
+  Widget _buildPaginationControls(BuildContext context, VendorProvider provider) {
     final l10n = AppLocalizations.of(context)!;
     final pagination = provider.paginationInfo!;
-
     return Container(
       padding: EdgeInsets.all(context.cardPadding),
       decoration: BoxDecoration(
         color: AppTheme.lightGray.withOpacity(0.3),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(context.borderRadius('large')),
-          bottomRight: Radius.circular(context.borderRadius('large')),
-        ),
+        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(context.borderRadius('large')), bottomRight: Radius.circular(context.borderRadius('large'))),
       ),
       child: Row(
         children: [
           Text(
             '${l10n.showing} ${(pagination.currentPage - 1) * pagination.pageSize + 1}-${(pagination.currentPage * pagination.pageSize > pagination.totalCount ? pagination.totalCount : pagination.currentPage * pagination.pageSize)} ${l10n.outOf} ${pagination.totalCount} ${l10n.vendor}',
-            style: TextStyle(
-              fontSize: context.subtitleFontSize,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: context.subtitleFontSize, color: Colors.grey[600]),
           ),
           const Spacer(),
           Row(
             children: [
-              IconButton(
-                onPressed:
-                pagination.hasPrevious ? provider.loadPreviousPage : null,
-                icon: Icon(
-                  Icons.chevron_left,
-                  color: pagination.hasPrevious
-                      ? AppTheme.primaryMaroon
-                      : Colors.grey[400],
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.cardPadding,
-                  vertical: context.smallPadding,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryMaroon.withOpacity(0.1),
-                  borderRadius:
-                  BorderRadius.circular(context.borderRadius('small')),
-                ),
-                child: Text(
-                  '${pagination.currentPage} ${l10n.outOf} ${pagination.totalPages}',
-                  style: TextStyle(
-                    fontSize: context.subtitleFontSize,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primaryMaroon,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: pagination.hasNext ? provider.loadNextPage : null,
-                icon: Icon(
-                  Icons.chevron_right,
-                  color: pagination.hasNext
-                      ? AppTheme.primaryMaroon
-                      : Colors.grey[400],
-                ),
-              ),
+              IconButton(onPressed: pagination.hasPrevious ? provider.loadPreviousPage : null, icon: Icon(Icons.chevron_left, color: pagination.hasPrevious ? AppTheme.primaryMaroon : Colors.grey[400])),
+              Container(padding: EdgeInsets.symmetric(horizontal: context.cardPadding, vertical: context.smallPadding), decoration: BoxDecoration(color: AppTheme.primaryMaroon.withOpacity(0.1), borderRadius: BorderRadius.circular(context.borderRadius('small'))), child: Text('${pagination.currentPage} ${l10n.outOf} ${pagination.totalPages}', style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: AppTheme.primaryMaroon))),
+              IconButton(onPressed: pagination.hasNext ? provider.loadNextPage : null, icon: Icon(Icons.chevron_right, color: pagination.hasNext ? AppTheme.primaryMaroon : Colors.grey[400])),
             ],
           ),
         ],

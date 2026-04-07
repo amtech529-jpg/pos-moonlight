@@ -49,6 +49,11 @@ class _SidebarState extends State<Sidebar> {
         'title': "Inventory",
       },
       {
+        'icon': Icons.category_outlined,
+        'activeIcon': Icons.category,
+        'title': "Category Management",
+      },
+      {
         'icon': Icons.description_outlined,
         'activeIcon': Icons.description,
         'title': "Quotations",
@@ -62,6 +67,11 @@ class _SidebarState extends State<Sidebar> {
         'icon': Icons.people_outline_rounded,
         'activeIcon': Icons.people,
         'title': "Customers Managements",
+      },
+      {
+        'icon': Icons.store_outlined,
+        'activeIcon': Icons.store,
+        'title': "Vendors Management",
       },
       {
         'icon': Icons.receipt_long_outlined,
@@ -132,9 +142,11 @@ class _SidebarState extends State<Sidebar> {
       "Dashboard": "Dashboard",
       "Purchase": "Purchase",
       "Inventory": "Inventory",
+      "Category Management": "Category Management",
       "Quotations": "Quotations",
       "Orders & Rental": "Orders & Rental",
       "Customers Managements": "Customers Managements",
+      "Vendors Management": "Vendors Management",
       "Invoice & Payments": "Invoice & Payments",
       "Patner & Payable": "Patner & Payable",
       "Return & Tally": "Return & Tally",

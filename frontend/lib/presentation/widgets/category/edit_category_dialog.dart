@@ -25,6 +25,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog>
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
+  final _descriptionFocusNode = FocusNode();
 
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -65,6 +66,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog>
     _animationController.dispose();
     _nameController.dispose();
     _descriptionController.dispose();
+    _descriptionFocusNode.dispose();
     super.dispose();
   }
 
@@ -288,11 +290,14 @@ class _EditCategoryDialogState extends State<EditCategoryDialog>
           children: [
             PremiumTextField(
               label: l10n.categoryName,
+              labelFontSize: 12.sp,
               hint: context.shouldShowCompactLayout
                   ? l10n.enterCategoryName
                   : l10n.enterCategoryNameHint,
               controller: _nameController,
               prefixIcon: Icons.label_outline,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => FocusScope.of(context).requestFocus(_descriptionFocusNode),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return l10n.pleaseEnterCategoryName;
@@ -311,10 +316,12 @@ class _EditCategoryDialogState extends State<EditCategoryDialog>
 
             PremiumTextField(
               label: l10n.description,
+              labelFontSize: 12.sp,
               hint: context.shouldShowCompactLayout
                   ? l10n.enterDescriptionOptional
                   : l10n.enterCategoryDescriptionOptional,
               controller: _descriptionController,
+              focusNode: _descriptionFocusNode,
               prefixIcon: Icons.description_outlined,
               maxLines: ResponsiveBreakpoints.responsive(
                 context,

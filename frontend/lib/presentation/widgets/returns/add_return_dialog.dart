@@ -345,8 +345,10 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
                   children: [
                     _buildHeader(l10n),
                   Flexible(
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
+                    child: ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                      child: SingleChildScrollView(
+                        controller: _scrollController,
                       child: Padding(
                         padding: EdgeInsets.all(context.cardPadding),
                         child: Form(
@@ -364,6 +366,7 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
                               const SizedBox(height: 100), // Added extra space for visibility
                             ],
                           ),
+                        ),
                         ),
                       ),
                     ),

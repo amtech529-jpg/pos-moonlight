@@ -118,6 +118,7 @@ class PurchaseItemModel {
   final String? product;
   final String? productName; // ✅ Added
   final String? categoryName; // ✅ Added
+  final String? categoryId; // ✅ Added
   final ProductModel? productDetail;
   final double quantity;
   final double unitCost;
@@ -129,6 +130,7 @@ class PurchaseItemModel {
     this.product,
     this.productName,
     this.categoryName,
+    this.categoryId,
     this.productDetail,
     required this.quantity,
     required this.unitCost,
@@ -171,6 +173,7 @@ class PurchaseItemModel {
     String? product,
     String? productName,
     String? categoryName,
+    String? categoryId,
     ProductModel? productDetail,
     double? quantity,
     double? unitCost,
@@ -182,6 +185,7 @@ class PurchaseItemModel {
       product: product ?? this.product,
       productName: productName ?? this.productName,
       categoryName: categoryName ?? this.categoryName,
+      categoryId: categoryId ?? this.categoryId,
       productDetail: productDetail ?? this.productDetail,
       quantity: quantity ?? this.quantity,
       unitCost: unitCost ?? this.unitCost,

@@ -401,7 +401,7 @@ class AppLocalizationsUr extends AppLocalizations {
   String get searchProducts => 'مصنوعات تلاش کریں...';
 
   @override
-  String get searchProductsExpanded => 'نام، رنگ، کپڑا سے مصنوعات تلاش کریں...';
+  String get searchProductsExpanded => 'نام سے مصنوعات تلاش کریں...';
 
   @override
   String get filter => 'فلٹر';
@@ -536,7 +536,7 @@ class AppLocalizationsUr extends AppLocalizations {
   String get value => 'مالیت';
 
   @override
-  String get searchProductsHint => 'آئی ڈی، نام، رنگ، فیبرک، یا ٹکڑوں کے ذریعے مصنوعات تلاش کریں...';
+  String get searchProductsHint => 'آئی ڈی یا نام کے ذریعے مصنوعات تلاش کریں...';
 
   @override
   String get customerManagement => 'کسٹمر مینجمنٹ';
@@ -4131,7 +4131,7 @@ class AppLocalizationsUr extends AppLocalizations {
   String get searchProductsShort => 'پروڈکٹس تلاش کریں';
 
   @override
-  String get searchProductsByNameFabricOrColor => 'نام، کپڑے یا رنگ کے ذریعے پروڈکٹس تلاش کریں...';
+  String get searchProductsByNameFabricOrColor => 'نام کے ذریعے پروڈکٹس تلاش کریں...';
 
   @override
   String get availableProducts => 'دستیاب پروڈکٹس';

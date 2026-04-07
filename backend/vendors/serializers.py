@@ -44,6 +44,8 @@ class VendorSerializer(serializers.ModelSerializer):
             'phone',
             'city',
             'area',
+            'address',
+            'note',
             'display_name',
             'initials',
             'is_new_vendor',
@@ -130,6 +132,8 @@ class VendorCreateSerializer(serializers.ModelSerializer):
             'phone',
             'city',
             'area',
+            'address',
+            'note',
             'created_at'
         )
 
@@ -184,7 +188,9 @@ class VendorUpdateSerializer(serializers.ModelSerializer):
             'cnic',
             'phone',
             'city',
-            'area'
+            'area',
+            'address',
+            'note'
         )
 
     def validate_name(self, value):

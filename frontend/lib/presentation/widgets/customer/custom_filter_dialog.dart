@@ -440,6 +440,7 @@ class _CustomerFilterDialogState extends State<CustomerFilterDialog>
               runSpacing: context.smallPadding / 4,
               children: _commonCities.map((city) => _buildQuickSelectChip(
                 label: city,
+                isSelected: _cityController.text == city,
                 onTap: () => setState(() => _cityController.text = city),
               )).toList(),
             ),
@@ -498,6 +499,7 @@ class _CustomerFilterDialogState extends State<CustomerFilterDialog>
               runSpacing: context.smallPadding / 4,
               children: _commonCountries.map((country) => _buildQuickSelectChip(
                 label: country,
+                isSelected: _countryController.text == country,
                 onTap: () => setState(() => _countryController.text = country),
               )).toList(),
             ),
@@ -554,6 +556,7 @@ class _CustomerFilterDialogState extends State<CustomerFilterDialog>
 
   Widget _buildQuickSelectChip({
     required String label,
+    required bool isSelected,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -565,19 +568,19 @@ class _CustomerFilterDialogState extends State<CustomerFilterDialog>
           vertical: context.smallPadding / 2,
         ),
         decoration: BoxDecoration(
-          color: AppTheme.accentGold.withOpacity(0.1),
+          color: isSelected ? AppTheme.accentGold.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(context.borderRadius('small')),
           border: Border.all(
-            color: AppTheme.accentGold.withOpacity(0.3),
-            width: 1,
+            color: isSelected ? AppTheme.accentGold : Colors.grey.shade300,
+            width: isSelected ? 1.5 : 1,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: context.captionFontSize,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.accentGold,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? AppTheme.accentGold : Colors.grey[700],
           ),
         ),
       ),

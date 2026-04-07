@@ -401,7 +401,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchProducts => 'Search products...';
 
   @override
-  String get searchProductsExpanded => 'Search products by name, color, fabric...';
+  String get searchProductsExpanded => 'Search products by name...';
 
   @override
   String get filter => 'Filter';
@@ -536,7 +536,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get value => 'Value';
 
   @override
-  String get searchProductsHint => 'Search products by ID, name, color, fabric, or pieces...';
+  String get searchProductsHint => 'Search products by ID or name...';
 
   @override
   String get customerManagement => 'Customer Management';
@@ -836,7 +836,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get characters => 'characters';
 
   @override
-  String get optional => 'optional';
+  String get optional => 'Optional';
 
   @override
   String get updated => 'Updated';
@@ -4131,7 +4131,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchProductsShort => 'Search products';
 
   @override
-  String get searchProductsByNameFabricOrColor => 'Search products by name, fabric, or color...';
+  String get searchProductsByNameFabricOrColor => 'Search products by name...';
 
   @override
   String get availableProducts => 'Available Products';

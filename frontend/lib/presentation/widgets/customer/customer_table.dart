@@ -189,8 +189,7 @@ class _EnhancedCustomerTableState extends State<EnhancedCustomerTable> {
         SizedBox(width: columnWidths[5], child: _buildHeaderCell(context, l10n.status)),
         SizedBox(width: columnWidths[6], child: _buildHeaderCell(context, l10n.city)),
         SizedBox(width: columnWidths[7], child: _buildSortableHeaderCell(context, l10n.since, 'created_at')),
-        SizedBox(width: columnWidths[8], child: _buildHeaderCell(context, l10n.ledger)),
-        SizedBox(width: columnWidths[9], child: _buildHeaderCell(context, l10n.actions)),
+        SizedBox(width: columnWidths[8], child: _buildHeaderCell(context, l10n.actions)),
       ],
     );
   }
@@ -205,7 +204,6 @@ class _EnhancedCustomerTableState extends State<EnhancedCustomerTable> {
       110.0, // Status
       130.0, // City
       130.0, // Since
-      70.0,  // Ledger
       250.0, // Actions
     ];
   }
@@ -459,48 +457,9 @@ class _EnhancedCustomerTableState extends State<EnhancedCustomerTable> {
             ),
           ),
 
-          // Ledger Button Column
-          SizedBox(
-            width: columnWidths[8],
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
-              child: Center(
-                child: Tooltip(
-                  message: AppLocalizations.of(context)!.viewLedger,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CustomerLedgerScreen(
-                            customerId: customer.id,
-                            customerName: customer.name,
-                          ),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(context.borderRadius('small')),
-                    child: Container(
-                      padding: EdgeInsets.all(context.smallPadding * 0.5),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(context.borderRadius('small')),
-                      ),
-                      child: Icon(
-                        Icons.account_balance_wallet_outlined,
-                        color: Colors.blue,
-                        size: context.iconSize('small'),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
           // Actions
           SizedBox(
-            width: columnWidths[9],
+            width: columnWidths[8],
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
               child: _buildActions(context, customer),

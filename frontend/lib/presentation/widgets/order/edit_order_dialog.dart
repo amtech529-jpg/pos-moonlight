@@ -503,7 +503,7 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
 
   Widget _buildFormContent() {
     return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
       child: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),

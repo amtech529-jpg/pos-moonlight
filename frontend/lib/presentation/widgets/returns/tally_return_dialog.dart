@@ -175,8 +175,10 @@ class _TallyReturnDialogState extends State<TallyReturnDialog> with SingleTicker
                   children: [
                     _buildHeader(l10n),
                     Flexible(
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
+                      child: ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
                         child: Padding(
                           padding: EdgeInsets.all(context.cardPadding),
                           child: Form(
@@ -212,6 +214,7 @@ class _TallyReturnDialogState extends State<TallyReturnDialog> with SingleTicker
                                 const SizedBox(height: 100), // Added extra space for button visibility
                               ],
                             ),
+                          ),
                           ),
                         ),
                       ),

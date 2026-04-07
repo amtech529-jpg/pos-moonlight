@@ -470,6 +470,8 @@ class VendorCreateRequest {
   final String phone;
   final String? city;
   final String? area;
+  final String? fullAddress;
+  final String? note;
   final DateTime? createdAt;
 
   VendorCreateRequest({
@@ -479,6 +481,8 @@ class VendorCreateRequest {
     required this.phone,
     this.city,
     this.area,
+    this.fullAddress,
+    this.note,
     this.createdAt,
   });
 
@@ -490,6 +494,8 @@ class VendorCreateRequest {
       'phone': phone,
       'city': city,
       'area': area,
+      'address': fullAddress,
+      'note': note,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
     };
   }
@@ -500,16 +506,22 @@ class VendorUpdateRequest {
   final String businessName;
   final String? cnic;
   final String phone;
-  final String city;
-  final String area;
+  final String? city;
+  final String? area;
+  final String? fullAddress;
+  final String? note;
+  final DateTime? createdAt;
 
   VendorUpdateRequest({
     required this.name,
     required this.businessName,
     this.cnic,
     required this.phone,
-    required this.city,
-    required this.area,
+    this.city,
+    this.area,
+    this.fullAddress,
+    this.note,
+    this.createdAt,
   });
 
   Map<String, dynamic> toJson() {
@@ -520,6 +532,9 @@ class VendorUpdateRequest {
       'phone': phone,
       'city': city,
       'area': area,
+      'address': fullAddress,
+      'note': note,
+      if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
     };
   }
 }

@@ -138,10 +138,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 ),
               ),
               if (canAdd)
-                ElevatedButton.icon(
+                ElevatedButton(
                   onPressed: () => _showAddUserDialog(context, l10n, userProvider),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text("Add User"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7B61FF),
                     foregroundColor: Colors.white,
@@ -149,6 +147,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.add, size: 20),
+                      SizedBox(width: 8),
+                      Text("Add User", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ],
                   ),
                 ),
             ],
@@ -361,15 +367,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ),
               Row(
                 children: [
-                  ElevatedButton.icon(
+                  ElevatedButton(
                     onPressed: () => _showAddRoleDialog(context, userProvider),
-                    icon: const Icon(Icons.shield_outlined, size: 18),
-                    label: const Text("Add Role"),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFBD0D1D),
+                      backgroundColor: const Color(0xFF7B61FF), // Make it purple to match Add User
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.add, size: 20),
+                        SizedBox(width: 8),
+                        Text("Add Roles", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -573,6 +585,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: nameController,
+              textInputAction: TextInputAction.next,
               style: const TextStyle(color: Colors.black, fontSize: 16),
               decoration: InputDecoration(
                 hintText: "e.g. Accountant",
@@ -589,6 +602,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: descController,
+              textInputAction: TextInputAction.done,
               style: const TextStyle(color: Colors.black, fontSize: 16),
               maxLines: 2,
               decoration: InputDecoration(
@@ -691,6 +705,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       const SizedBox(height: 6),
                       TextField(
                         controller: nameController,
+                        textInputAction: TextInputAction.next,
                         style: const TextStyle(color: Colors.black, fontSize: 15),
                         decoration: InputDecoration(
                           hintText: "Enter full name (e.g. Ali Ahmed)",
@@ -713,6 +728,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       const SizedBox(height: 6),
                       TextField(
                         controller: emailController,
+                        textInputAction: TextInputAction.next,
                         style: const TextStyle(color: Colors.black, fontSize: 15),
                         decoration: InputDecoration(
                           hintText: "Enter email (e.g. user@example.com)",
@@ -736,6 +752,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       TextField(
                         controller: passwordController,
                         obscureText: !isPassVisible,
+                        textInputAction: TextInputAction.done,
                         style: const TextStyle(color: Colors.black, fontSize: 15),
                         decoration: InputDecoration(
                           hintText: "Enter secure password",

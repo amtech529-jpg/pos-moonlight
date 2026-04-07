@@ -20,6 +20,8 @@ class PremiumDropdownField<T> extends StatefulWidget {
   final IconData? prefixIcon;
   final Widget? suffixIcon;
   final bool enabled;
+  final double? fontSize;
+  final double? labelFontSize;
 
   const PremiumDropdownField({
     super.key,
@@ -32,6 +34,8 @@ class PremiumDropdownField<T> extends StatefulWidget {
     this.prefixIcon,
     this.suffixIcon,
     this.enabled = true,
+    this.fontSize,
+    this.labelFontSize,
   });
 
   @override
@@ -116,8 +120,8 @@ class _PremiumDropdownFieldState<T> extends State<PremiumDropdownField<T>>
                   value: item.value,
                   child: Text(
                     item.label,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: TextStyle(
+                      fontSize: widget.fontSize ?? 14,
                       fontWeight: FontWeight.w400,
                       color: Colors.black87,
                     ),
@@ -135,8 +139,8 @@ class _PremiumDropdownFieldState<T> extends State<PremiumDropdownField<T>>
           }
               : null,
           validator: widget.validator != null ? (String? value) => widget.validator!(widget.value) : null,
-          style: const TextStyle(
-            fontSize: 14,
+          style: TextStyle(
+            fontSize: widget.fontSize ?? 14,
             fontWeight: FontWeight.w400,
             color: Colors.black87,
           ),
@@ -185,8 +189,13 @@ class _PremiumDropdownFieldState<T> extends State<PremiumDropdownField<T>>
             contentPadding: EdgeInsets.symmetric(vertical: 2.h, horizontal: 2.w),
             labelStyle: TextStyle(
               color: _isFocused ? AppTheme.primaryMaroon : AppTheme.charcoalGray,
-              fontSize: 10.sp,
+              fontSize: widget.labelFontSize ?? 10.sp,
               fontWeight: FontWeight.w500,
+            ),
+            floatingLabelStyle: TextStyle(
+              color: _isFocused ? AppTheme.primaryMaroon : AppTheme.charcoalGray,
+              fontSize: widget.labelFontSize ?? 10.sp,
+              fontWeight: FontWeight.w600,
             ),
             hintStyle: TextStyle(
               color: AppTheme.charcoalGray.withOpacity(0.6),

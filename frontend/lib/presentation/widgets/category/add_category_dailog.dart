@@ -20,6 +20,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _descriptionFocusNode = FocusNode();
 
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -57,6 +58,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
     _animationController.dispose();
     _nameController.dispose();
     _descriptionController.dispose();
+    _descriptionFocusNode.dispose();
     super.dispose();
   }
 
@@ -289,11 +291,14 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
             // Category Name Field
             PremiumTextField(
               label: '${l10n.category} ${l10n.name}',
+              labelFontSize: 12.sp,
               hint: isCompact
                   ? '${l10n.category} ${l10n.name}'
                   : '${l10n.category} ${l10n.name} ${l10n.enterEmail}',
               controller: _nameController,
               prefixIcon: Icons.label_outline,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => FocusScope.of(context).requestFocus(_descriptionFocusNode),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return '${l10n.category} ${l10n.name}';
@@ -313,10 +318,12 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
             // Description Field with responsive lines
             PremiumTextField(
               label: l10n.notes,
+              labelFontSize: 12.sp,
               hint: isCompact
                   ? '${l10n.notes} (${l10n.optional})'
                   : '${l10n.category} ${l10n.notes} (${l10n.optional})',
               controller: _descriptionController,
+              focusNode: _descriptionFocusNode,
               prefixIcon: Icons.description_outlined,
               maxLines: ResponsiveBreakpoints.responsive(
                 context,

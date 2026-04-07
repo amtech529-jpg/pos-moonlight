@@ -180,18 +180,23 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
         if (canAdd)
           ElevatedButton.icon(
             onPressed: _showAddPurchaseDialog,
-            icon: const Icon(Icons.add, size: 20),
+            icon: const Icon(Icons.add_rounded, size: 20, color: Colors.white),
             label: const Text(
-              "New Purchase",
-              style: TextStyle(fontWeight: FontWeight.w700),
+              "Add Purchase",
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                color: Colors.white,
+              ),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              minimumSize: const Size(160, 50),
             ),
           ),
     ];
@@ -228,8 +233,6 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
               Row(
                 children: [
                    Expanded(child: _buildStatCard(title: "Total Invoices", value: totalInvoices.toString(), icon: Icons.receipt_outlined)),
-                   const SizedBox(width: 16),
-                   Expanded(child: _buildStatCard(title: "Vendors", value: provider.purchases.isNotEmpty ? provider.purchases.map((p) => p.vendor).toSet().length.toString() : "0", icon: Icons.people_outline_rounded)),
                 ],
               ),
             ],
@@ -243,8 +246,6 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
             Expanded(child: _buildStatCard(title: "Total Investment", value: "Rs. ${totalInvestment.toStringAsFixed(0)}", icon: Icons.analytics_outlined)),
             const SizedBox(width: 20),
             Expanded(child: _buildStatCard(title: "Total Invoices", value: totalInvoices.toString(), icon: Icons.receipt_outlined)),
-            const SizedBox(width: 20),
-            Expanded(child: _buildStatCard(title: "Vendors", value: provider.purchases.isNotEmpty ? provider.purchases.map((p) => p.vendor).toSet().length.toString() : "0", icon: Icons.people_outline_rounded)),
           ],
         );
       },

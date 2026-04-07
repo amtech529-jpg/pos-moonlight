@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from .models import Category
 from .serializers import (
@@ -36,7 +37,10 @@ def list_categories(request):
         # Apply search filter if provided
         search = request.GET.get('search', '').strip()
         if search:
-            categories = categories.filter(name__icontains=search)
+            categories = categories.filter(
+                Q(name__icontains=search) | 
+                Q(description__icontains=search)
+            )
         
         # Calculate pagination
         total_count = categories.count()
@@ -329,7 +333,10 @@ class CategoryListCreateAPIView(generics.ListCreateAPIView):
             queryset = Category.active_categories()
         
         if search:
-            queryset = queryset.filter(name__icontains=search)
+            queryset = queryset.filter(
+                Q(name__icontains=search) |
+                Q(description__icontains=search)
+            )
         
         return queryset.order_by('name')
     

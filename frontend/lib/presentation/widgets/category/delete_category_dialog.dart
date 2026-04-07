@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/src/utils/responsive_breakpoints.dart';
+import 'package:frontend/src/providers/product_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
 import '../../../src/providers/category_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../src/utils/responsive_breakpoints.dart';
 import '../globals/text_button.dart';
 
 class DeleteCategoryDialog extends StatefulWidget {
@@ -24,44 +25,37 @@ class _DeleteCategoryDialogState extends State<DeleteCategoryDialog>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
-  late Animation<double> _shakeAnimation;
 
-  bool _isPermanentDelete = true;
+  bool _isPermanentDelete = false; 
   bool _confirmationChecked = false;
+  int _usageCount = 0;
 
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
+        duration: const Duration(milliseconds: 400), vsync: this);
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutBack,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
+        CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack));
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeIn,
-    ));
-
-    _shakeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _animationController, curve: Curves.easeIn));
 
     _animationController.forward();
+
+    // Check usage count
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final productProvider = context.read<ProductProvider>();
+        final count = productProvider.allProducts
+            .where((p) => p.categoryId == widget.category.id)
+            .length;
+        setState(() {
+          _usageCount = count;
+        });
+      }
+    });
   }
 
   @override
@@ -71,13 +65,20 @@ class _DeleteCategoryDialogState extends State<DeleteCategoryDialog>
   }
 
   void _handleDelete() async {
-    final l10n = AppLocalizations.of(context)!;
-
     if (!_confirmationChecked) {
-      _showValidationSnackbar();
+      _showErrorSnackbar("Confirm the checkbox first.");
       return;
     }
 
+    if (_isPermanentDelete && _usageCount > 0) {
+      _showSoftDeleteSuggestion();
+      return;
+    }
+
+    _processDelete();
+  }
+
+  Future<void> _processDelete() async {
     final provider = Provider.of<CategoryProvider>(context, listen: false);
 
     bool success;
@@ -89,524 +90,75 @@ class _DeleteCategoryDialogState extends State<DeleteCategoryDialog>
 
     if (mounted) {
       if (success) {
-        _showSuccessSnackbar();
         Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_isPermanentDelete ? "Deleted Permanently" : "Deactivated Successfully"),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ));
       } else {
-        _showErrorSnackbar(provider.errorMessage ?? l10n.failedToDeleteCategory);
+        final error = provider.errorMessage?.toLowerCase() ?? "";
+        if (error.contains("use") || error.contains("product") || error.contains("foreign")) {
+          _showSoftDeleteSuggestion();
+        } else {
+          _showErrorSnackbar(provider.errorMessage ?? "Action failed");
+        }
       }
     }
   }
 
-  void _showValidationSnackbar() {
-    final l10n = AppLocalizations.of(context)!;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              Icons.warning_outlined,
-              color: AppTheme.pureWhite,
-              size: context.iconSize('medium'),
-            ),
-            SizedBox(width: context.smallPadding),
-            Text(
-              l10n.pleaseConfirmYouUnderstandThisAction,
-              style: TextStyle(
-                fontSize: context.bodyFontSize,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.pureWhite,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.orange,
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(context.borderRadius()),
-        ),
-      ),
-    );
-  }
-
-  void _showSuccessSnackbar() {
-    final l10n = AppLocalizations.of(context)!;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              Icons.check_circle_rounded,
-              color: AppTheme.pureWhite,
-              size: context.iconSize('medium'),
-            ),
-            SizedBox(width: context.smallPadding),
-            Text(
-              _isPermanentDelete
-                  ? l10n.categoryDeletedPermanently
-                  : l10n.categoryDeactivatedSuccessfully,
-              style: TextStyle(
-                fontSize: context.bodyFontSize,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.pureWhite,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(context.borderRadius()),
-        ),
-      ),
-    );
-  }
-
-  void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: AppTheme.pureWhite,
-              size: context.iconSize('medium'),
-            ),
-            SizedBox(width: context.smallPadding),
-            Expanded(
-              child: Text(
-                message,
-                style: TextStyle(
-                  fontSize: context.bodyFontSize,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.pureWhite,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(context.borderRadius()),
-        ),
-      ),
-    );
-  }
-
-  void _handleCancel() {
-    _animationController.reverse().then((_) {
-      Navigator.of(context).pop();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) {
-        return Scaffold(
-          backgroundColor: Colors.black.withOpacity(0.6 * _fadeAnimation.value),
-          body: Center(
-            child: Transform.scale(
-              scale: _scaleAnimation.value,
-              child: Transform.translate(
-                offset: Offset(
-                  _shakeAnimation.value * 2 * (1 - _scaleAnimation.value),
-                  0,
-                ),
-                child: Container(
-                  width: ResponsiveBreakpoints.responsive(
-                    context,
-                    tablet: 85.w,
-                    small: 75.w,
-                    medium: 60.w,
-                    large: 50.w,
-                    ultrawide: 40.w,
-                  ),
-                  constraints: BoxConstraints(
-                    maxWidth: 500,
-                    maxHeight: 85.h,
-                  ),
-                  margin: EdgeInsets.all(context.mainPadding),
-                  decoration: BoxDecoration(
-                    color: AppTheme.pureWhite,
-                    borderRadius: BorderRadius.circular(context.borderRadius('large')),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: context.shadowBlur('heavy'),
-                        offset: Offset(0, context.cardPadding),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeader(),
-                      Expanded(
-                        child: _buildContent(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+  void _showSoftDeleteSuggestion() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 350,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildHeader() {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Container(
-      padding: EdgeInsets.all(context.cardPadding),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: _isPermanentDelete
-              ? [Colors.red, Colors.redAccent]
-              : [Colors.orange, Colors.orangeAccent],
-        ),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(context.borderRadius('large')),
-          topRight: Radius.circular(context.borderRadius('large')),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(context.smallPadding),
-            decoration: BoxDecoration(
-              color: AppTheme.pureWhite.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(context.borderRadius()),
-            ),
-            child: Icon(
-              _isPermanentDelete ? Icons.delete_forever_rounded : Icons.visibility_off_rounded,
-              color: AppTheme.pureWhite,
-              size: context.iconSize('large'),
-            ),
-          ),
-
-          SizedBox(width: context.cardPadding),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isPermanentDelete ? l10n.deletePermanently : l10n.deactivateCategory,
-                  style: TextStyle(
-                    fontSize: context.headerFontSize,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.pureWhite,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                if (!context.isTablet) ...[
-                  SizedBox(height: context.smallPadding / 2),
-                  Text(
-                    _isPermanentDelete
-                        ? l10n.thisActionCannotBeUndone
-                        : l10n.categoryCanBeRestoredLater,
-                    style: TextStyle(
-                      fontSize: context.subtitleFontSize,
-                      fontWeight: FontWeight.w400,
-                      color: AppTheme.pureWhite.withOpacity(0.9),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _handleCancel,
-              borderRadius: BorderRadius.circular(context.borderRadius()),
-              child: Container(
-                padding: EdgeInsets.all(context.smallPadding),
-                child: Icon(
-                  Icons.close_rounded,
-                  color: AppTheme.pureWhite,
-                  size: context.iconSize('medium'),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContent() {
-    final l10n = AppLocalizations.of(context)!;
-
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(context.cardPadding),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: EdgeInsets.all(context.smallPadding),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(context.borderRadius()),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Colors.blue,
-                      size: context.iconSize('small'),
-                    ),
-                    SizedBox(width: context.smallPadding),
-                    Expanded(
-                      child: Text(
-                        l10n.chooseDeletionType,
-                        style: TextStyle(
-                          fontSize: context.subtitleFontSize,
-                          fontWeight: FontWeight.w500,
-                          color: AppTheme.charcoalGray,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              const Icon(Icons.info_outline, color: Colors.orange, size: 40),
+              const SizedBox(height: 16),
+              const Text(
+                "Action Required",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
               ),
-
-              SizedBox(height: context.cardPadding),
-
+              const SizedBox(height: 12),
+              const Text(
+                "This category is in use and cannot be permanently deleted. Would you like to deactivate it instead?",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15, color: Colors.black87),
+              ),
+              const SizedBox(height: 24),
               Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _isPermanentDelete = true;
-                          _confirmationChecked = false;
-                        });
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(context.cardPadding),
-                        decoration: BoxDecoration(
-                          color: _isPermanentDelete
-                              ? Colors.red.withOpacity(0.1)
-                              : Colors.grey.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(context.borderRadius()),
-                          border: Border.all(
-                            color: _isPermanentDelete ? Colors.red : Colors.grey.shade300,
-                            width: _isPermanentDelete ? 2 : 1,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.delete_forever_rounded,
-                              color: _isPermanentDelete ? Colors.red : Colors.grey,
-                              size: context.iconSize('medium'),
-                            ),
-                            SizedBox(height: context.smallPadding),
-                            Text(
-                              l10n.permanentDelete,
-                              style: TextStyle(
-                                fontSize: context.captionFontSize,
-                                fontWeight: FontWeight.w600,
-                                color: _isPermanentDelete ? Colors.red : Colors.grey,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            SizedBox(height: context.smallPadding / 2),
-                            Text(
-                              l10n.completelyRemovesFromDatabase,
-                              style: TextStyle(
-                                fontSize: context.captionFontSize * 0.9,
-                                color: _isPermanentDelete ? Colors.red[600] : Colors.grey[600],
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 14)),
                   ),
-
-                  SizedBox(width: context.cardPadding),
-
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _isPermanentDelete = false;
-                          _confirmationChecked = false;
-                        });
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(context.cardPadding),
-                        decoration: BoxDecoration(
-                          color: !_isPermanentDelete
-                              ? Colors.orange.withOpacity(0.1)
-                              : Colors.grey.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(context.borderRadius()),
-                          border: Border.all(
-                            color: !_isPermanentDelete ? Colors.orange : Colors.grey.shade300,
-                            width: !_isPermanentDelete ? 2 : 1,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.visibility_off_rounded,
-                              color: !_isPermanentDelete ? Colors.orange : Colors.grey,
-                              size: context.iconSize('medium'),
-                            ),
-                            SizedBox(height: context.smallPadding),
-                            Text(
-                              l10n.deactivate,
-                              style: TextStyle(
-                                fontSize: context.captionFontSize,
-                                fontWeight: FontWeight.w600,
-                                color: !_isPermanentDelete ? Colors.orange : Colors.grey,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            SizedBox(height: context.smallPadding / 2),
-                            Text(
-                              l10n.hidesButCanBeRestored,
-                              style: TextStyle(
-                                fontSize: context.captionFontSize * 0.9,
-                                color: !_isPermanentDelete ? Colors.orange[600] : Colors.grey[600],
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      elevation: 0,
                     ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      setState(() => _isPermanentDelete = false);
+                      _processDelete();
+                    },
+                    child: const Text("Yes, Deactivate", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   ),
                 ],
-              ),
-
-              SizedBox(height: context.mainPadding),
-
-              Container(
-                padding: EdgeInsets.all(context.cardPadding),
-                decoration: BoxDecoration(
-                  color: (_isPermanentDelete ? Colors.red : Colors.orange).withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(context.borderRadius()),
-                  border: Border.all(
-                    color: (_isPermanentDelete ? Colors.red : Colors.orange).withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: context.smallPadding,
-                            vertical: context.smallPadding / 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: (_isPermanentDelete ? Colors.red : Colors.orange).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(context.borderRadius('small')),
-                          ),
-                          child: Text(
-                            widget.category.id,
-                            style: TextStyle(
-                              fontSize: context.captionFontSize,
-                              fontWeight: FontWeight.w600,
-                              color: _isPermanentDelete ? Colors.red : Colors.orange,
-                            ),
-                          ),
-                        ),
-
-                        SizedBox(width: context.smallPadding),
-
-                        Expanded(
-                          child: Text(
-                            widget.category.name,
-                            style: TextStyle(
-                              fontSize: context.bodyFontSize,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.charcoalGray,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    if (widget.category.description.isNotEmpty && !context.isTablet) ...[
-                      SizedBox(height: context.smallPadding),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          widget.category.description,
-                          style: TextStyle(
-                            fontSize: context.subtitleFontSize,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.grey[600],
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              SizedBox(height: context.cardPadding),
-
-              Container(
-                padding: EdgeInsets.all(context.smallPadding),
-                decoration: BoxDecoration(
-                  color: (_isPermanentDelete ? Colors.red : Colors.orange).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(context.borderRadius()),
-                ),
-                child: CheckboxListTile(
-                  value: _confirmationChecked,
-                  onChanged: (value) {
-                    setState(() {
-                      _confirmationChecked = value ?? false;
-                    });
-                  },
-                  title: Text(
-                    _isPermanentDelete
-                        ? l10n.iUnderstandPermanentDeleteCategory
-                        : l10n.iUnderstandDeactivateCategory,
-                    style: TextStyle(
-                      fontSize: context.subtitleFontSize,
-                      fontWeight: FontWeight.w500,
-                      color: (_isPermanentDelete ? Colors.red : Colors.orange)[700],
-                    ),
-                  ),
-                  activeColor: _isPermanentDelete ? Colors.red : Colors.orange,
-                  dense: true,
-                  controlAffinity: ListTileControlAffinity.leading,
-                ),
-              ),
-
-              SizedBox(height: context.mainPadding),
-
-              ResponsiveBreakpoints.responsive(
-                context,
-                tablet: _buildCompactButtons(),
-                small: _buildCompactButtons(),
-                medium: _buildDesktopButtons(),
-                large: _buildDesktopButtons(),
-                ultrawide: _buildDesktopButtons(),
               ),
             ],
           ),
@@ -615,72 +167,192 @@ class _DeleteCategoryDialogState extends State<DeleteCategoryDialog>
     );
   }
 
-  Widget _buildCompactButtons() {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        PremiumButton(
-          text: l10n.cancel,
-          onPressed: _handleCancel,
-          height: context.buttonHeight,
-          backgroundColor: Colors.grey[600],
-          textColor: AppTheme.pureWhite,
-        ),
-
-        SizedBox(height: context.cardPadding),
-
-        Consumer<CategoryProvider>(
-          builder: (context, provider, child) {
-            return PremiumButton(
-              text: _isPermanentDelete ? l10n.deletePermanently : l10n.deactivateCategory,
-              onPressed: provider.isLoading ? null : _handleDelete,
-              isLoading: provider.isLoading,
-              height: context.buttonHeight,
-              icon: _isPermanentDelete ? Icons.delete_forever_rounded : Icons.visibility_off_rounded,
-              backgroundColor: _isPermanentDelete ? Colors.red : Colors.orange,
-            );
-          },
-        ),
-      ],
-    );
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.red,
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
-  Widget _buildDesktopButtons() {
-    final l10n = AppLocalizations.of(context)!;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black54,
+      body: Center(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Container(
+              width: 380,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 15, offset: Offset(0, 5))],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icon
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: (_isPermanentDelete ? Colors.red : Colors.orange).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _isPermanentDelete ? Icons.delete_forever : Icons.visibility_off,
+                      color: _isPermanentDelete ? Colors.red : Colors.orange,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Title
+                  Text(
+                    _isPermanentDelete ? "Permanent Delete" : "Deactivate",
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                  ),
+                  const SizedBox(height: 16),
 
-    return Row(
-      children: [
-        Expanded(
-          flex: 2,
-          child: PremiumButton(
-            text: l10n.cancel,
-            onPressed: _handleCancel,
-            height: context.buttonHeight / 1.5,
-            backgroundColor: Colors.grey[600],
-            textColor: AppTheme.pureWhite,
+                  // Category Badge
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      widget.category.name,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryMaroon),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Mode Toggle
+                  Row(
+                    children: [
+                      _ModeBtn(
+                        title: "Soft Delete",
+                        isSelected: !_isPermanentDelete,
+                        color: Colors.orange,
+                        onTap: () => setState(() => _isPermanentDelete = false),
+                      ),
+                      const SizedBox(width: 12),
+                      _ModeBtn(
+                        title: "Permanent",
+                        isSelected: _isPermanentDelete,
+                        color: Colors.red,
+                        onTap: () => setState(() => _isPermanentDelete = true),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Warning Message
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: (_isPermanentDelete ? Colors.red : Colors.orange).withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: (_isPermanentDelete ? Colors.red : Colors.orange).withOpacity(0.1)),
+                    ),
+                    child: Text(
+                      _isPermanentDelete 
+                        ? "Warning: This category and its history will be erased forever."
+                        : "Archive: This will hide the category but keep old data safe.",
+                      style: TextStyle(fontSize: 13, color: (_isPermanentDelete ? Colors.red : Colors.orange[800]), fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Confirmation checkbox
+                  InkWell(
+                    onTap: () => setState(() => _confirmationChecked = !_confirmationChecked),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: _confirmationChecked,
+                          onChanged: (v) => setState(() => _confirmationChecked = v ?? false),
+                          activeColor: _isPermanentDelete ? Colors.red : Colors.orange,
+                        ),
+                        const Text(
+                          "I confirm this action",
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: PremiumButton(
+                          text: "Cancel",
+                          onPressed: () => Navigator.pop(context),
+                          isOutlined: true,
+                          height: 48,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: PremiumButton(
+                          text: _isPermanentDelete ? "Delete" : "Confirm",
+                          onPressed: _handleDelete,
+                          backgroundColor: _isPermanentDelete ? Colors.red : Colors.orange,
+                          height: 48,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
 
-        SizedBox(width: context.cardPadding),
+class _ModeBtn extends StatelessWidget {
+  final String title;
+  final bool isSelected;
+  final Color color;
+  final VoidCallback onTap;
 
-        Expanded(
-          flex: 1,
-          child: Consumer<CategoryProvider>(
-            builder: (context, provider, child) {
-              return PremiumButton(
-                text: _isPermanentDelete ? l10n.delete : l10n.deactivate,
-                onPressed: provider.isLoading ? null : _handleDelete,
-                isLoading: provider.isLoading,
-                height: context.buttonHeight / 1.5,
-                icon: _isPermanentDelete ? Icons.delete_forever_rounded : Icons.visibility_off_rounded,
-                backgroundColor: _isPermanentDelete ? Colors.red : Colors.orange,
-              );
-            },
+  const _ModeBtn({required this.title, required this.isSelected, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: isSelected ? color : Colors.grey[400]!, width: isSelected ? 2 : 1),
+          ),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.bold, 
+              color: isSelected ? color : Colors.grey[600],
+              fontSize: 14,
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 }

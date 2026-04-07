@@ -20,7 +20,7 @@ class VendorTableHelpers {
   });
 
   /// Build the actions row for each vendor in the table
-  Widget buildActionsRow(BuildContext context, VendorModel vendor) {
+  Widget buildActionsRow(BuildContext context, VendorModel vendor, {bool canEdit = true, bool canDelete = true}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -45,71 +45,74 @@ class VendorTableHelpers {
           ),
         ),
 
-        SizedBox(width: context.smallPadding / 2),
-
-        // Edit Button
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => onEdit(vendor),
-            borderRadius: BorderRadius.circular(context.borderRadius('small')),
-            child: Container(
-              padding: EdgeInsets.all(context.smallPadding * 0.5),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(context.borderRadius('small')),
-              ),
-              child: Icon(
-                Icons.edit_outlined,
-                color: Colors.blue,
-                size: context.iconSize('small'),
-              ),
-            ),
-          ),
-        ),
-
-        SizedBox(width: context.smallPadding / 2),
-
-        // Delete Button
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => onDelete(vendor),
-            borderRadius: BorderRadius.circular(context.borderRadius('small')),
-            child: Container(
-              padding: EdgeInsets.all(context.smallPadding * 0.5),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(context.borderRadius('small')),
-              ),
-              child: Icon(
-                Icons.delete_outline,
-                color: Colors.red,
-                size: context.iconSize('small'),
-              ),
-            ),
-          ),
-        ),
-
-        SizedBox(width: context.smallPadding / 2),
-
-        // Quick Actions Dropdown
-        PopupMenuButton<String>(
-          onSelected: (value) => _handleQuickAction(context, vendor, value),
-          itemBuilder: (context) => _buildQuickActionMenuItems(context, vendor),
-          child: Container(
-            padding: EdgeInsets.all(context.smallPadding * 0.5),
-            decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.1),
+        if (canEdit) ...[
+          SizedBox(width: context.smallPadding / 2),
+          // Edit Button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => onEdit(vendor),
               borderRadius: BorderRadius.circular(context.borderRadius('small')),
-            ),
-            child: Icon(
-              Icons.more_vert,
-              color: Colors.grey[600],
-              size: context.iconSize('small'),
+              child: Container(
+                padding: EdgeInsets.all(context.smallPadding * 0.5),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                ),
+                child: Icon(
+                  Icons.edit_outlined,
+                  color: Colors.blue,
+                  size: context.iconSize('small'),
+                ),
+              ),
             ),
           ),
-        ),
+        ],
+
+        if (canDelete) ...[
+          SizedBox(width: context.smallPadding / 2),
+          // Delete Button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => onDelete(vendor),
+              borderRadius: BorderRadius.circular(context.borderRadius('small')),
+              child: Container(
+                padding: EdgeInsets.all(context.smallPadding * 0.5),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                ),
+                child: Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                  size: context.iconSize('small'),
+                ),
+              ),
+            ),
+          ),
+        ],
+
+        if (canEdit || canDelete) ...[
+          SizedBox(width: context.smallPadding / 2),
+          // Quick Actions Dropdown
+          PopupMenuButton<String>(
+            onSelected: (value) => _handleQuickAction(context, vendor, value),
+            itemBuilder: (context) => _buildQuickActionMenuItems(context, vendor),
+            child: Container(
+              padding: EdgeInsets.all(context.smallPadding * 0.5),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(context.borderRadius('small')),
+              ),
+              child: Icon(
+                Icons.more_vert,
+                color: Colors.grey[600],
+                size: context.iconSize('small'),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

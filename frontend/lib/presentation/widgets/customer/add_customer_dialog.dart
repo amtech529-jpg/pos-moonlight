@@ -101,9 +101,13 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
   }
 
   void _handleCustomerTypeChange(String type) {
+    if (_selectedCustomerType == type) return;
+
     setState(() {
       _selectedCustomerType = type;
       _showBusinessFields = type == 'BUSINESS';
+      
+      // Preserve data when switching, only clear business-specific fields if needed
       if (!_showBusinessFields) {
         _businessNameController.clear();
         _taxNumberController.clear();
@@ -819,20 +823,20 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
               ),
               decoration: BoxDecoration(
                 color: isSelected 
-                    ? activeColor.withOpacity(0.2) 
-                    : (isFocused ? activeColor.withOpacity(0.1) : AppTheme.accentGold.withOpacity(0.05)),
+                    ? activeColor.withOpacity(0.15) 
+                    : (isFocused ? Colors.grey.withOpacity(0.05) : Colors.transparent),
                 borderRadius: BorderRadius.circular(context.borderRadius('small')),
                 border: Border.all(
                   color: isSelected 
                       ? activeColor 
-                      : (isFocused ? activeColor : Colors.grey.shade300),
-                  width: (isSelected || isFocused) ? 1.5 : 1,
+                      : (isFocused ? Colors.grey.shade400 : Colors.grey.shade300),
+                  width: isSelected ? 1.5 : 1,
                 ),
-                boxShadow: isFocused ? [
+                boxShadow: (isFocused && !isSelected) ? [
                   BoxShadow(
-                    color: activeColor.withOpacity(0.2),
-                    blurRadius: 4,
-                    spreadRadius: 1,
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 2,
+                    spreadRadius: 0,
                   )
                 ] : [],
               ),
@@ -840,8 +844,8 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
                 label,
                 style: TextStyle(
                   fontSize: context.captionFontSize,
-                  fontWeight: (isSelected || isFocused) ? FontWeight.w700 : FontWeight.w500,
-                  color: (isSelected || isFocused) ? activeColor : Colors.grey[600],
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? activeColor : Colors.grey[700],
                 ),
               ),
             ),

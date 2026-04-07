@@ -584,7 +584,9 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
   Widget _buildStep1CustomerDetails() {
     final l10n = AppLocalizations.of(context)!;
 
-    return SingleChildScrollView(
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: SingleChildScrollView(
       controller: _scrollController,
       padding: EdgeInsets.all(context.cardPadding),
       child: Column(
@@ -808,13 +810,16 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStep2ProductSelection() {
     final l10n = AppLocalizations.of(context)!;
 
-    return SingleChildScrollView(
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: SingleChildScrollView(
       padding: EdgeInsets.all(context.cardPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -967,13 +972,16 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
           ],
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStep3ReviewOrder() {
     final l10n = AppLocalizations.of(context)!;
 
-    return SingleChildScrollView(
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: SingleChildScrollView(
       padding: EdgeInsets.all(context.cardPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1092,8 +1100,9 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStepTitle(String title, IconData icon) {
     return Row(

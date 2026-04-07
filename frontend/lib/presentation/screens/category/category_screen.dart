@@ -105,14 +105,7 @@ class _CategoryPageState extends State<CategoryPage> {
 
             SizedBox(height: context.mainPadding),
 
-            // Responsive Stats Cards
-            Consumer<CategoryProvider>(
-              builder: (context, provider, child) {
-                return context.statsCardColumns == 2
-                    ? _buildMobileStatsGrid(provider)
-                    : _buildDesktopStatsRow(provider);
-              },
-            ),
+            SizedBox(height: context.cardPadding * 0.5),
 
             SizedBox(height: context.cardPadding * 0.5),
 
@@ -190,7 +183,7 @@ class _CategoryPageState extends State<CategoryPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${l10n.category} ${l10n.customerManagement}',
+                '${l10n.category} Management',
                 style: TextStyle(
                   fontSize: context.headingFontSize / 1.5,
                   fontWeight: FontWeight.w700,
@@ -200,7 +193,7 @@ class _CategoryPageState extends State<CategoryPage> {
               ),
               SizedBox(height: context.cardPadding / 4),
               Text(
-                l10n.customerManagementDescription,
+                l10n.manageProductCategories,
                 style: TextStyle(
                   fontSize: context.bodyFontSize,
                   fontWeight: FontWeight.w400,
@@ -225,7 +218,7 @@ class _CategoryPageState extends State<CategoryPage> {
       children: [
         // Page Title
         Text(
-          '${l10n.category} ${l10n.customerManagement}',
+          '${l10n.category} Management',
           style: TextStyle(
             fontSize: context.headingFontSize / 1.5,
             fontWeight: FontWeight.w700,
@@ -352,30 +345,22 @@ class _CategoryPageState extends State<CategoryPage> {
         SizedBox(width: context.cardPadding),
         Expanded(
           child: _buildStatsCard(
+              '${l10n.total} ${l10n.category}',
+              stats['total'].toString(),
+              Icons.category_rounded,
+              Colors.blue
+          ),
+        ),
+        SizedBox(width: context.cardPadding),
+        Expanded(
+          child: _buildStatsCard(
               l10n.recent,
               stats['recentlyAdded'].toString(),
               Icons.new_releases_rounded,
               Colors.green
           ),
         ),
-        SizedBox(width: context.cardPadding),
-        Expanded(
-          child: _buildStatsCard(
-              l10n.popular,
-              stats['mostPopular'],
-              Icons.trending_up_rounded,
-              Colors.purple
-          ),
-        ),
-        SizedBox(width: context.cardPadding),
-        Expanded(
-          child: _buildStatsCard(
-              l10n.updated,
-              stats['recentlyUpdated'].toString(),
-              Icons.update_rounded,
-              Colors.orange
-          ),
-        ),
+        const Spacer(flex: 2),
       ],
     );
   }
@@ -384,50 +369,24 @@ class _CategoryPageState extends State<CategoryPage> {
     final l10n = AppLocalizations.of(context)!;
     final stats = provider.categoryStats;
 
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatsCard(
-                  l10n.total,
-                  stats['total'].toString(),
-                  Icons.category_rounded,
-                  Colors.blue
-              ),
-            ),
-            SizedBox(width: context.cardPadding),
-            Expanded(
-              child: _buildStatsCard(
-                  l10n.recent,
-                  stats['recentlyAdded'].toString(),
-                  Icons.new_releases_rounded,
-                  Colors.green
-              ),
-            ),
-          ],
+        Expanded(
+          child: _buildStatsCard(
+              l10n.total,
+              stats['total'].toString(),
+              Icons.category_rounded,
+              Colors.blue
+          ),
         ),
-        SizedBox(height: context.cardPadding),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatsCard(
-                  l10n.popular,
-                  stats['mostPopular'],
-                  Icons.trending_up_rounded,
-                  Colors.purple
-              ),
-            ),
-            SizedBox(width: context.cardPadding),
-            Expanded(
-              child: _buildStatsCard(
-                  l10n.updated,
-                  stats['recentlyUpdated'].toString(),
-                  Icons.update_rounded,
-                  Colors.orange
-              ),
-            ),
-          ],
+        SizedBox(width: context.cardPadding),
+        Expanded(
+          child: _buildStatsCard(
+              l10n.recent,
+              stats['recentlyAdded'].toString(),
+              Icons.new_releases_rounded,
+              Colors.green
+          ),
         ),
       ],
     );
@@ -474,14 +433,6 @@ class _CategoryPageState extends State<CategoryPage> {
           flex: 1,
           child: _buildFilterButton(),
         ),
-
-        SizedBox(width: context.smallPadding),
-
-        // Export Button
-        Expanded(
-          flex: 1,
-          child: _buildExportButton(),
-        ),
       ],
     );
   }
@@ -491,12 +442,9 @@ class _CategoryPageState extends State<CategoryPage> {
       children: [
         _buildSearchBar(),
         SizedBox(height: context.cardPadding),
-        Row(
-          children: [
-            Expanded(child: _buildFilterButton()),
-            SizedBox(width: context.cardPadding),
-            Expanded(child: _buildExportButton()),
-          ],
+        SizedBox(
+          width: double.infinity,
+          child: _buildFilterButton()
         ),
       ],
     );
@@ -507,12 +455,9 @@ class _CategoryPageState extends State<CategoryPage> {
       children: [
         _buildSearchBar(),
         SizedBox(height: context.smallPadding),
-        Row(
-          children: [
-            Expanded(child: _buildFilterButton()),
-            SizedBox(width: context.smallPadding),
-            Expanded(child: _buildExportButton()),
-          ],
+        SizedBox(
+          width: double.infinity,
+          child: _buildFilterButton()
         ),
       ],
     );

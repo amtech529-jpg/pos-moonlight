@@ -59,7 +59,7 @@ class _VendorPageState extends State<VendorPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => EnhancedDeleteVendorDialog(vendor: vendor),
+      builder: (context) => DeleteVendorDialog(vendor: vendor),
     );
   }
 
@@ -158,10 +158,7 @@ class _VendorPageState extends State<VendorPage> {
 
                   SizedBox(height: context.mainPadding),
 
-                  // Responsive Stats Cards
-                  context.statsCardColumns == 2
-                      ? _buildMobileStatsGrid(provider)
-                      : _buildDesktopStatsRow(provider),
+                  SizedBox(height: context.cardPadding * 0.5),
 
                   SizedBox(height: context.cardPadding * 0.5),
 
@@ -246,7 +243,7 @@ class _VendorPageState extends State<VendorPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${l10n.vendor} ${l10n.customerManagement}',
+                '${l10n.vendor} Management',
                 style: TextStyle(
                   fontSize: context.headingFontSize / 1.5,
                   fontWeight: FontWeight.w700,
@@ -256,7 +253,7 @@ class _VendorPageState extends State<VendorPage> {
               ),
               SizedBox(height: context.cardPadding / 4),
               Text(
-                '${l10n.manageProductCategories} ${l10n.vendor}',
+                'Manage your vendors and supplier relationships',
                 style: TextStyle(
                   fontSize: context.bodyFontSize,
                   fontWeight: FontWeight.w400,
@@ -273,7 +270,7 @@ class _VendorPageState extends State<VendorPage> {
     );
   }
 
-  Widget _buildTabletHeader() {
+  Widget _buildTabletHeader(bool canAdd) {
     final l10n = AppLocalizations.of(context)!;
 
     return Column(
@@ -281,7 +278,7 @@ class _VendorPageState extends State<VendorPage> {
       children: [
         // Page Title
         Text(
-          '${l10n.vendor} ${l10n.customerManagement}',
+          '${l10n.vendor} Management',
           style: TextStyle(
             fontSize: context.headingFontSize / 1.5,
             fontWeight: FontWeight.w700,
@@ -298,13 +295,15 @@ class _VendorPageState extends State<VendorPage> {
             color: Colors.grey[600],
           ),
         ),
-        SizedBox(height: context.cardPadding),
+        if (canAdd) ...[
+          SizedBox(height: context.cardPadding),
 
-        // Add Vendor Button (full width on tablet)
-        SizedBox(
-          width: double.infinity,
-          child: _buildAddButton(),
-        ),
+          // Add Vendor Button (full width on tablet)
+          SizedBox(
+            width: double.infinity,
+            child: _buildAddButton(),
+          ),
+        ],
       ],
     );
   }
@@ -327,7 +326,7 @@ class _VendorPageState extends State<VendorPage> {
         ),
         SizedBox(height: context.cardPadding / 4),
         Text(
-          '${l10n.customerManagementShortDescription} ${l10n.vendor}',
+          'Manage your vendors and supplier relationships',
           style: TextStyle(
             fontSize: context.bodyFontSize,
             fontWeight: FontWeight.w400,
@@ -416,24 +415,7 @@ class _VendorPageState extends State<VendorPage> {
               Colors.green
           ),
         ),
-        SizedBox(width: context.cardPadding),
-        Expanded(
-          child: _buildStatsCard(
-              '${l10n.monthlyPerformance}',
-              '${stats['monthlyGrowthRate']?.toStringAsFixed(1) ?? '0'}%',
-              Icons.trending_up_rounded,
-              Colors.purple
-          ),
-        ),
-        SizedBox(width: context.cardPadding),
-        Expanded(
-          child: _buildStatsCard(
-              l10n.citiesCovered,
-              stats['uniqueCities'].toString(),
-              Icons.location_city_rounded,
-              Colors.orange
-          ),
-        ),
+        const Spacer(flex: 2),
       ],
     );
   }
@@ -442,50 +424,24 @@ class _VendorPageState extends State<VendorPage> {
     final l10n = AppLocalizations.of(context)!;
     final stats = provider.vendorStats;
 
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatsCard(
-                  l10n.total,
-                  stats['total'].toString(),
-                  Icons.store_rounded,
-                  Colors.blue
-              ),
-            ),
-            SizedBox(width: context.cardPadding),
-            Expanded(
-              child: _buildStatsCard(
-                  l10n.active,
-                  stats['active'].toString(),
-                  Icons.check_circle_rounded,
-                  Colors.green
-              ),
-            ),
-          ],
+        Expanded(
+          child: _buildStatsCard(
+              l10n.total,
+              stats['total'].toString(),
+              Icons.store_rounded,
+              Colors.blue
+          ),
         ),
-        SizedBox(height: context.cardPadding),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatsCard(
-                  l10n.growth,
-                  '${stats['monthlyGrowthRate']?.toStringAsFixed(1) ?? '0'}%',
-                  Icons.trending_up_rounded,
-                  Colors.purple
-              ),
-            ),
-            SizedBox(width: context.cardPadding),
-            Expanded(
-              child: _buildStatsCard(
-                  l10n.cities,
-                  stats['uniqueCities'].toString(),
-                  Icons.location_city_rounded,
-                  Colors.orange
-              ),
-            ),
-          ],
+        SizedBox(width: context.cardPadding),
+        Expanded(
+          child: _buildStatsCard(
+              l10n.active,
+              stats['active'].toString(),
+              Icons.check_circle_rounded,
+              Colors.green
+          ),
         ),
       ],
     );

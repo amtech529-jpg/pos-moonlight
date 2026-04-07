@@ -13,13 +13,15 @@ class PremiumTextField extends StatefulWidget {
   final FormFieldValidator<String>? validator;
   final int maxLines;
   final bool enabled;
-  final String? initialValue; // Added initialValue parameter
-  final ValueChanged<String>? onChanged; // Added onChanged parameter
-  final ValueChanged<String>? onSubmitted; // Added onSubmitted parameter
-  final FocusNode? focusNode; // Added focusNode parameter
-  final bool selectAllOnFocus; // Added selectAllOnFocus parameter
-  final TextInputAction? textInputAction; // Added textInputAction parameter
-  final Function(FocusNode, KeyEvent)? onKeyEvent; // Added onKeyEvent parameter
+  final String? initialValue;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final FocusNode? focusNode;
+  final bool selectAllOnFocus;
+  final TextInputAction? textInputAction;
+  final Function(FocusNode, KeyEvent)? onKeyEvent;
+  final double? fontSize;
+  final double? labelFontSize;
 
   const PremiumTextField({
     super.key,
@@ -28,18 +30,20 @@ class PremiumTextField extends StatefulWidget {
     this.controller,
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
-    this.textInputAction, // Added to constructor
+    this.textInputAction,
     this.prefixIcon,
     this.suffixIcon,
     this.validator,
     this.maxLines = 1,
     this.enabled = true,
-    this.initialValue, // Added to constructor
-    this.onChanged, // Added to constructor
-    this.onSubmitted, // Added to constructor
-    this.focusNode, // Added to constructor
-    this.selectAllOnFocus = false, // Added selectAllOnFocus to constructor
-    this.onKeyEvent, // Added onKeyEvent to constructor
+    this.initialValue,
+    this.onChanged,
+    this.onSubmitted,
+    this.focusNode,
+    this.selectAllOnFocus = false,
+    this.onKeyEvent,
+    this.fontSize,
+    this.labelFontSize,
   });
 
   @override
@@ -111,14 +115,14 @@ class _PremiumTextFieldState extends State<PremiumTextField>
           focusNode: _focusNode,
           obscureText: widget.obscureText,
           keyboardType: widget.keyboardType,
-          textInputAction: widget.textInputAction, // Pass textInputAction
+          textInputAction: widget.textInputAction,
           validator: widget.validator,
           maxLines: widget.maxLines,
           enabled: widget.enabled,
-          onChanged: widget.onChanged, // Pass onChanged to TextFormField
-          onFieldSubmitted: widget.onSubmitted, // Pass onSubmitted to TextFormField
-          style: const TextStyle(
-            fontSize: 14,
+          onChanged: widget.onChanged,
+          onFieldSubmitted: widget.onSubmitted,
+          style: TextStyle(
+            fontSize: widget.fontSize ?? 14,
             fontWeight: FontWeight.w400,
             color: Colors.black87,
           ),
@@ -179,16 +183,21 @@ class _PremiumTextFieldState extends State<PremiumTextField>
             ),
             contentPadding: EdgeInsets.symmetric(
               vertical: 2.h,
-              horizontal: widget.suffixIcon != null ? 3.w : 2.w, // More padding when suffix icon exists
+              horizontal: widget.suffixIcon != null ? 3.w : 2.w,
             ),
             labelStyle: TextStyle(
               color: _isFocused ? AppTheme.primaryMaroon : AppTheme.charcoalGray,
-              fontSize: 10.sp,
+              fontSize: widget.labelFontSize ?? 12.sp,
               fontWeight: FontWeight.w500,
+            ),
+            floatingLabelStyle: TextStyle(
+              color: _isFocused ? AppTheme.primaryMaroon : AppTheme.charcoalGray,
+              fontSize: widget.labelFontSize ?? 12.sp,
+              fontWeight: FontWeight.w600,
             ),
             hintStyle: TextStyle(
               color: AppTheme.charcoalGray.withOpacity(0.6),
-              fontSize: 10.sp,
+              fontSize: 12.sp,
               fontWeight: FontWeight.w400,
             ),
           ),

@@ -256,6 +256,8 @@ class VendorProvider extends ChangeNotifier {
     required String phone,
     String? city,
     String? area,
+    String? fullAddress,
+    String? note,
     DateTime? createdAt,
   }) async {
     _isLoading = true;
@@ -271,6 +273,8 @@ class VendorProvider extends ChangeNotifier {
         phone: phone,
         city: city,
         area: area,
+        fullAddress: fullAddress,
+        note: note,
         createdAt: createdAt,
       );
 
@@ -307,8 +311,11 @@ class VendorProvider extends ChangeNotifier {
     required String businessName,
     String? cnic,
     required String phone,
-    required String city,
-    required String area,
+    String? city,
+    String? area,
+    String? fullAddress,
+    String? note,
+    DateTime? createdAt,
   }) async {
     _isLoading = true;
     _hasError = false;
@@ -324,6 +331,9 @@ class VendorProvider extends ChangeNotifier {
         phone: phone,
         city: city,
         area: area,
+        fullAddress: fullAddress,
+        note: note,
+        createdAt: createdAt,
       );
 
       if (response.success && response.data != null) {

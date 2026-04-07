@@ -147,6 +147,7 @@ class _EditQuotationDialogState extends State<EditQuotationDialog> {
       builder: (context) => _ManualItemEntryDialog(
         eventDate: _eventDate,
         returnDate: _returnDate,
+        currentItems: _items,
       ),
     );
 
@@ -164,9 +165,7 @@ class _EditQuotationDialogState extends State<EditQuotationDialog> {
             partner: result['partner'],
             partnerRate: result['partner_rate'],
             availableStock: result['available_stock'],
-            total: result['pricing_type'] == 'PER_DAY' 
-              ? result['quantity'] * result['rate'] * result['days']
-              : result['quantity'] * result['rate'],
+            total: result['quantity'] * result['rate'] * result['days'],
           ));
         }
       });
@@ -872,10 +871,12 @@ class _EditQuotationDialogState extends State<EditQuotationDialog> {
 class _ManualItemEntryDialog extends StatefulWidget {
   final DateTime eventDate;
   final DateTime returnDate;
+  final List<QuotationItemModel> currentItems;
 
   const _ManualItemEntryDialog({
     required this.eventDate,
     required this.returnDate,
+    required this.currentItems,
   });
 
   @override
@@ -885,7 +886,7 @@ class _ManualItemEntryDialog extends StatefulWidget {
 class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _nameFocusNode = FocusNode(); 
+  final _nameFocusNode = FocusNode(); // Required when textEditingController is provided
   late TextEditingController _quantityController;
   final _rateController = TextEditingController();
   late TextEditingController _daysController;
@@ -894,30 +895,33 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
   int? _maxAvailableQuantity;
   String? _selectedProductName;
   String? _stockWarning;
-
-  // Partner fields
   bool _rentedFromPartner = false;
   String? _selectedPartnerId;
   final _partnerRateController = TextEditingController();
+  String? _submitError;
+  
+  // Focus Nodes
+  final _quantityFocusNode = FocusNode();
+  final _rateFocusNode = FocusNode();
+  final _daysFocusNode = FocusNode();
+  final _partnerRateFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _quantityController = TextEditingController(text: "1");
+    // Calculate initial days from the selected dates
     final duration = widget.returnDate.difference(widget.eventDate).inDays;
     _daysController = TextEditingController(text: (duration > 0 ? duration : 1).toString());
 
-    _nameController.addListener(() {
-      if (_selectedProductName != null && _nameController.text != _selectedProductName) {
-        setState(() {
-          _selectedProductId = null;
-          _maxAvailableQuantity = null;
-          _selectedProductName = null;
-          _stockWarning = null;
-        });
-      }
-    });
     _quantityController.addListener(_validateStock);
+  }
+
+  int _calculateAlreadyAllocated(String? productId) {
+    if (productId == null) return 0;
+    return widget.currentItems
+        .where((item) => item.product == productId)
+        .fold(0, (sum, item) => sum + item.quantity);
   }
 
   void _validateStock() {
@@ -947,11 +951,23 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
     _rateController.dispose();
     _daysController.dispose();
     _partnerRateController.dispose();
+    _quantityFocusNode.dispose();
+    _rateFocusNode.dispose();
+    _daysFocusNode.dispose();
+    _partnerRateFocusNode.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
+      if (_selectedProductId == null) {
+        setState(() {
+          _submitError = "Error: Item not found. Please select an existing item from the dropdown list.";
+        });
+        return;
+      }
+      setState(() => _submitError = null);
+
       final quantity = int.parse(_quantityController.text);
       final rate = double.parse(_rateController.text);
       final days = _pricingType == 'PER_DAY' ? int.parse(_daysController.text) : 1;
@@ -990,7 +1006,7 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
           'available_stock': _maxAvailableQuantity,
         });
       } else {
-        // Single item
+        // Single item (either all internal, or all partner if rentedFromPartner is on but stock is 0 or sufficient)
         items.add({
           'product_id': _selectedProductId,
           'name': _nameController.text,
@@ -1015,7 +1031,7 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: 500,
-        constraints: BoxConstraints(maxHeight: 85.h),
+        constraints: BoxConstraints(maxHeight: 80.h),
         padding: const EdgeInsets.all(32),
         child: Form(
           key: _formKey,
@@ -1023,9 +1039,9 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
             behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
             child: SingleChildScrollView(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1033,35 +1049,37 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
                     IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
                   ],
                 ),
-                const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // ── Item Name with Autocomplete ──
               const Text("Item Name *", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87)),
               const SizedBox(height: 8),
-              Consumer<ProductProvider>(
-                builder: (context, productProvider, _) {
-                  return Autocomplete<ProductModel>(
-                    textEditingController: _nameController,
-                    focusNode: _nameFocusNode,
-                    optionsBuilder: (TextEditingValue textEditingValue) async {
-                      if (textEditingValue.text.isEmpty) {
-                        return const Iterable<ProductModel>.empty();
-                      }
-                      
-                      // Trigger a search to ensure we have the most up-to-date availability for these dates
-                      productProvider.searchProducts(textEditingValue.text);
-                      
-                      return productProvider.products.where((product) =>
-                          product.name.toLowerCase().contains(textEditingValue.text.toLowerCase()));
-                    },
+              Autocomplete<ProductModel>(
+                textEditingController: _nameController,
+                focusNode: _nameFocusNode,
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<ProductModel>.empty();
+                  }
+                  
+                  final productProvider = context.read<ProductProvider>();
+                  productProvider.searchProducts(textEditingValue.text);
+                  return productProvider.products.where((product) =>
+                      product.name.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                },
                     displayStringForOption: (ProductModel option) => option.name,
                     onSelected: (ProductModel selection) {
                       setState(() {
                         _selectedProductId = selection.id;
-                        // Use dateAvailableQuantity if available, otherwise quantityAvailable
-                        _maxAvailableQuantity = selection.dateAvailableQuantity ?? selection.quantityAvailable;
+                        _submitError = null; // Automatically hide the error!
+                        // Subtract already added items from the available stock
+                        final rawStock = selection.dateAvailableQuantity ?? selection.quantityAvailable;
+                        final alreadyAllocated = _calculateAlreadyAllocated(selection.id);
+                        _maxAvailableQuantity = (rawStock - alreadyAllocated).clamp(0, 999999);
+                        
                         _selectedProductName = selection.name;
                         _nameController.text = selection.name;
+                        // Auto-fill rate from product price
                         _rateController.text = selection.price.toStringAsFixed(0);
                         _pricingType = selection.pricingType ?? 'PER_DAY';
                         _validateStock();
@@ -1071,6 +1089,16 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
                       return TextFormField(
                         controller: controller,
                         focusNode: focusNode,
+                        onChanged: (val) {
+                          if (_selectedProductName != null && val != _selectedProductName) {
+                            setState(() {
+                              _selectedProductId = null;
+                              _maxAvailableQuantity = null;
+                              _selectedProductName = null;
+                              _stockWarning = null;
+                            });
+                          }
+                        },
                         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87),
                         decoration: InputDecoration(
                           hintText: "e.g., LED Screen 10x10",
@@ -1201,9 +1229,14 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
                         ),
                       );
                     },
-                  );
-                },
-              ),
+
+                  ),
+
+              if (_submitError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(_submitError!, style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+                ),
 
               if (_selectedProductId != null) ...[
                 const SizedBox(height: 12),
@@ -1236,7 +1269,108 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
                 ),
               ],
 
+              // ── Pricing Basis (FIRST — defines how rate is calculated) ──
               const SizedBox(height: 16),
+              const Text("Pricing Basis", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87)),
+              const SizedBox(height: 4),
+              Text(
+                _pricingType == 'PER_DAY'
+                  ? "Per Day: Total = Qty × Rate × Days"
+                  : "Per Event: Total = Qty × Rate (flat, one-time)",
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _pricingType = 'PER_DAY'),
+                      borderRadius: BorderRadius.circular(10),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon.withOpacity(0.1) : Colors.grey.shade50,
+                          border: Border.all(
+                            color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon : Colors.grey.shade300,
+                            width: _pricingType == 'PER_DAY' ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.calendar_today_rounded, size: 15,
+                                    color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon : Colors.grey),
+                                const SizedBox(width: 6),
+                                Text("Per Day",
+                                    style: TextStyle(
+                                      fontSize: 13, fontWeight: FontWeight.w700,
+                                      color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon : Colors.grey.shade700,
+                                    )),
+                                if (_pricingType == 'PER_DAY') ...[
+                                  const Spacer(),
+                                  Icon(Icons.check_circle_rounded, size: 15, color: AppTheme.primaryMaroon),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text("Charged daily × days",
+                                style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _pricingType = 'PER_EVENT'),
+                      borderRadius: BorderRadius.circular(10),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon.withOpacity(0.1) : Colors.grey.shade50,
+                          border: Border.all(
+                            color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon : Colors.grey.shade300,
+                            width: _pricingType == 'PER_EVENT' ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.event_rounded, size: 15,
+                                    color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon : Colors.grey),
+                                const SizedBox(width: 6),
+                                Text("Per Event",
+                                    style: TextStyle(
+                                      fontSize: 13, fontWeight: FontWeight.w700,
+                                      color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon : Colors.grey.shade700,
+                                    )),
+                                if (_pricingType == 'PER_EVENT') ...[
+                                  const Spacer(),
+                                  Icon(Icons.check_circle_rounded, size: 15, color: AppTheme.primaryMaroon),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text("Flat rate, whole event",
+                                style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // ── Quantity + Rate ──
               Row(
                 children: [
                   Expanded(
@@ -1244,18 +1378,18 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildField(
-                          "Quantity *", 
-                          _quantityController, 
-                          "1", 
-                          isNumber: true, 
+                          "Quantity *",
+                          _quantityController,
+                          "1",
+                          isNumber: true,
                           required: true,
+                          focusNode: _quantityFocusNode,
+                          textInputAction: TextInputAction.next,
                           customValidator: (v) {
                             if (v == null || v.isEmpty) return "Required";
                             final qty = int.tryParse(v);
                             if (qty == null) return "Invalid";
                             if (qty <= 0) return "Must be > 0";
-                            
-                            // Enforce hard block for internal stock
                             if (!_rentedFromPartner && _maxAvailableQuantity != null && qty > _maxAvailableQuantity!) {
                               return "Only $_maxAvailableQuantity available";
                             }
@@ -1265,43 +1399,42 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
                         if (_stockWarning != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              _stockWarning!,
-                              style: const TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
+                            child: Text(_stockWarning!,
+                                style: const TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
                           ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildField(_pricingType == 'PER_DAY' ? "Rate (per day) *" : "Rate (per event) *", _rateController, "5000", isNumber: true, required: true)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text("Pricing Basis", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  ChoiceChip(
-                    label: const Text("Per Day"),
-                    selected: _pricingType == 'PER_DAY',
-                    onSelected: (s) => setState(() => _pricingType = 'PER_DAY'),
-                    selectedColor: AppTheme.primaryMaroon.withOpacity(0.2),
-                    checkmarkColor: AppTheme.primaryMaroon,
-                  ),
-                  const SizedBox(width: 12),
-                  ChoiceChip(
-                    label: const Text("Per Event"),
-                    selected: _pricingType == 'PER_EVENT',
-                    onSelected: (s) => setState(() => _pricingType = 'PER_EVENT'),
-                    selectedColor: AppTheme.primaryMaroon.withOpacity(0.2),
-                    checkmarkColor: AppTheme.primaryMaroon,
+                  Expanded(
+                    child: _buildField(
+                      _pricingType == 'PER_DAY' ? "Rate / Day *" : "Rate / Event *",
+                      _rateController,
+                      "5000",
+                      isNumber: true,
+                      required: true,
+                      focusNode: _rateFocusNode,
+                      textInputAction: _pricingType == 'PER_DAY' ? TextInputAction.next : (_rentedFromPartner ? TextInputAction.next : TextInputAction.done),
+                      onSubmitted: () {
+                        if (_pricingType == 'PER_DAY') {
+                          FocusScope.of(context).requestFocus(_daysFocusNode);
+                        } else if (_rentedFromPartner) {
+                          // If partner switch is on but dropdown is used, we might need more logic, 
+                          // but usually next is fine
+                        }
+                      },
+                    ),
                   ),
                 ],
               ),
               if (_pricingType == 'PER_DAY') ...[
                 const SizedBox(height: 16),
-                _buildField("Days *", _daysController, "1", isNumber: true, required: true),
+                _buildField("Number of Days *", _daysController, "1", 
+                  isNumber: true, 
+                  required: true,
+                  focusNode: _daysFocusNode,
+                  textInputAction: _rentedFromPartner ? TextInputAction.next : TextInputAction.done,
+                ),
               ],
               
               // ── Partner Selection ──
@@ -1352,7 +1485,12 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
                   },
                 ),
                 const SizedBox(height: 16),
-                _buildField("Partner Rate (Cost) *", _partnerRateController, "4000", isNumber: true, required: true),
+                _buildField("Partner Rate (Cost) *", _partnerRateController, "4000", 
+                  isNumber: true, 
+                  required: true,
+                  focusNode: _partnerRateFocusNode,
+                  textInputAction: TextInputAction.done,
+                ),
               ],
               const SizedBox(height: 32),
               Row(
@@ -1377,8 +1515,8 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
                   ),
                 ],
               ),
-            ],
-          ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1386,7 +1524,7 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
   );
 }
 
-  Widget _buildField(String label, TextEditingController controller, String hint, {bool isNumber = false, bool required = false, String? Function(String?)? customValidator}) {
+  Widget _buildField(String label, TextEditingController controller, String hint, {bool isNumber = false, bool required = false, String? Function(String?)? customValidator, FocusNode? focusNode, TextInputAction? textInputAction, VoidCallback? onSubmitted}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1395,7 +1533,7 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
         TextFormField(
           controller: controller,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
@@ -1415,6 +1553,9 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
+          focusNode: focusNode,
+          textInputAction: textInputAction,
+          onFieldSubmitted: onSubmitted != null ? (_) => onSubmitted() : null,
           validator: customValidator ?? (v) {
             if (required && (v == null || v.isEmpty)) return "This field is required";
             if (isNumber && v != null && v.isNotEmpty) {

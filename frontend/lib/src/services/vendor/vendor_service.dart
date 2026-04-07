@@ -158,6 +158,8 @@ class VendorService {
     required String phone,
     String? city,
     String? area,
+    String? fullAddress,
+    String? note,
     DateTime? createdAt,
   }) async {
     try {
@@ -168,6 +170,8 @@ class VendorService {
         phone: phone,
         city: city,
         area: area,
+        fullAddress: fullAddress,
+        note: note,
         createdAt: createdAt,
       );
 
@@ -238,8 +242,11 @@ class VendorService {
     required String businessName,
     String? cnic,
     required String phone,
-    required String city,
-    required String area,
+    String? city,
+    String? area,
+    String? fullAddress,
+    String? note,
+    DateTime? createdAt,
   }) async {
     try {
       final request = VendorUpdateRequest(
@@ -249,6 +256,9 @@ class VendorService {
         phone: phone,
         city: city,
         area: area,
+        fullAddress: fullAddress,
+        note: note,
+        createdAt: createdAt,
       );
 
       DebugHelper.printJson('Update Vendor Request', request.toJson());

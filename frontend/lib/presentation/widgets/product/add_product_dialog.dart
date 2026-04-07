@@ -169,33 +169,13 @@ class _AddProductDialogState extends State<AddProductDialog>
         return;
       }
 
-      String finalCategoryId = '';
-
-      // Handle Category Creation if needed
-      if (_selectedCategoryId != null) {
-          finalCategoryId = _selectedCategoryId!;
-      } else {
-          // Check if category exists by name in provider
-          final existing = provider.categories.firstWhere(
-             (c) => c.name.toLowerCase() == _categorySearchText.toLowerCase(), 
-             orElse: () => CategoryModel(id: '', name: '', description: '', isActive: false, createdAt: DateTime.now(), updatedAt: DateTime.now())
-          );
-          
-          if (existing.id.isNotEmpty) {
-             finalCategoryId = existing.id;
-          } else {
-             // Create new category
-             final result = await _categoryService.createCategory(name: _categorySearchText, description: "Auto-created");
-             if (result.success && result.data != null) {
-                finalCategoryId = result.data!.id;
-                // Reload categories to keep provider in sync
-                provider.loadCategories(); 
-             } else {
-                if (mounted) _showErrorSnackbar('Failed to create category: ${result.message}');
-                return;
-             }
-          }
+      // Enforce existing category selection as requested by user
+      if (_selectedCategoryId == null) {
+        _showErrorSnackbar('Category does not exist. Please select from the dropdown.');
+        return;
       }
+
+      final String finalCategoryId = _selectedCategoryId!;
 
       final bool isEditing = widget.product != null;
       

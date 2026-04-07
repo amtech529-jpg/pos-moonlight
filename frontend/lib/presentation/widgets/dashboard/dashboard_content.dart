@@ -8,7 +8,9 @@ import 'package:frontend/src/providers/order_provider.dart';
 import 'package:frontend/src/models/order/order_model.dart';
 import 'package:frontend/src/theme/app_theme.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
+import '../../screens/category/category_screen.dart';
 import '../../screens/customer/customer_screen.dart';
+import '../../screens/vendor/vendor_screen.dart';
 import '../../screens/expenses/expenses_screen.dart';
 import '../../screens/inventory/inventory_screen.dart';
 import '../../screens/invoices/invoice_management_screen.dart';
@@ -44,32 +46,36 @@ class DashboardContent extends StatelessWidget {
       case 2:
         return const InventoryManagementScreen(); // Optimized and Track-wise inventory
       case 3:
-        return const QuotationsScreen();
+        return const CategoryPage();
       case 4:
-        return const OrderPage();
+        return const QuotationsScreen();
       case 5:
-        return const CustomerPage();
+        return const OrderPage();
       case 6:
-        return const InvoiceManagementScreen();
+        return const CustomerPage();
       case 7:
-        return const PayablesPage();
+        return const VendorPage();
       case 8:
-        return const ReturnManagementScreen();
+        return const InvoiceManagementScreen();
       case 9:
-        return const LedgerModuleScreen();
+        return const PayablesPage();
       case 10:
-        return const ExpensesPage();
+        return const ReturnManagementScreen();
       case 11:
-        return const ToolsInventoryScreen();
+        return const LedgerModuleScreen();
       case 12:
-        return const LaborPage(); // HR & Salary -> Labor
+        return const ExpensesPage();
       case 13:
-        return const ReportsAnalyticsScreen();
+        return const ToolsInventoryScreen();
       case 14:
-        return const UserManagementScreen();
+        return const LaborPage(); // HR & Salary -> Labor
       case 15:
-        return const ImportExportScreen();
+        return const ReportsAnalyticsScreen();
       case 16:
+        return const UserManagementScreen();
+      case 17:
+        return const ImportExportScreen();
+      case 18:
         return const BackupSecurityScreen();
       default:
         return _buildDashboard(context);
@@ -209,123 +215,49 @@ class DashboardContent extends StatelessWidget {
     Color? iconColor,
   }) {
     return Container(
-      height: 120,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 14,
-                      color: Color(0xFF999999),
-                      fontWeight: FontWeight.w600,
-                      height: 1.0,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    value,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 30,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                      height: 1.0,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Icon(
-            icon,
-            color: iconColor ?? const Color(0xFFCCCCCC),
-            size: 32,
+        color: AppTheme.pureWhite,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildPlaceholderContent(BuildContext context, String title) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: const Icon(
-                Icons.construction_rounded,
-                size: 60,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              '$title Page',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textBlack,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'This feature is currently under development.\nCheck back soon!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textGray,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () {
-                Provider.of<DashboardProvider>(
-                  context,
-                  listen: false,
-                ).selectMenu(0);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF999999),
                 ),
               ),
-              child: const Text('Back to Dashboard'),
+              Icon(
+                icon,
+                color: iconColor ?? AppTheme.primaryMaroon,
+                size: 20,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Colors.black,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

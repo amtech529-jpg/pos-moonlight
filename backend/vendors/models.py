@@ -108,6 +108,16 @@ class Vendor(models.Model):
         null=True,
         blank=True
     )
+    address = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Full address of the vendor"
+    )
+    note = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Additional notes about the vendor"
+    )
     
     # System fields (following customer module pattern)
     is_active = models.BooleanField(
@@ -184,6 +194,8 @@ class Vendor(models.Model):
     @property
     def full_address(self):
         """Return complete address"""
+        if self.address:
+            return self.address
         parts = []
         if self.area:
             parts.append(self.area)

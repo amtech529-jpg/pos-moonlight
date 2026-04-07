@@ -866,7 +866,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchProductsExpanded.
   ///
   /// In en, this message translates to:
-  /// **'Search products by name, color, fabric...'**
+  /// **'Search products by name...'**
   String get searchProductsExpanded;
 
   /// No description provided for @filter.
@@ -1136,7 +1136,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchProductsHint.
   ///
   /// In en, this message translates to:
-  /// **'Search products by ID, name, color, fabric, or pieces...'**
+  /// **'Search products by ID or name...'**
   String get searchProductsHint;
 
   /// No description provided for @customerManagement.
@@ -1736,7 +1736,7 @@ abstract class AppLocalizations {
   /// No description provided for @optional.
   ///
   /// In en, this message translates to:
-  /// **'optional'**
+  /// **'Optional'**
   String get optional;
 
   /// No description provided for @updated.
@@ -8246,7 +8246,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchProductsByNameFabricOrColor.
   ///
   /// In en, this message translates to:
-  /// **'Search products by name, fabric, or color...'**
+  /// **'Search products by name...'**
   String get searchProductsByNameFabricOrColor;
 
   /// No description provided for @availableProducts.

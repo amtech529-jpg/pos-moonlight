@@ -15,7 +15,6 @@ import '../globals/custom_date_picker.dart'; // SyncfusionDateTimePicker
 import '../globals/text_button.dart'; // PremiumButton
 import '../vendor/add_vendor_dialog.dart';
 import '../product/add_product_dialog.dart';
-import '../product/add_product_dialog.dart';
 import '../../../src/models/product/product_model.dart';
 import '../../../src/models/category/category_model.dart'; // ✅ Added import
 import '../../../src/services/category_service.dart'; // ✅ Added import
@@ -127,14 +126,27 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
                   ),
                   SizedBox(width: context.smallPadding),
                   Expanded(
-                    child: Text(
-                      l10n.add ?? "New Purchase",
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: context.headerFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.charcoalGray,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add Purchase',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: context.headerFontSize,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.charcoalGray,
+                          ),
+                        ),
+                        Text(
+                          'Record a new purchase from vendor',
+                          style: TextStyle(
+                            fontSize: context.subtitleFontSize,
+                            color: Colors.grey[500],
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   IconButton(
@@ -147,15 +159,19 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
 
               // --- Scrollable Body ---
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _buildGeneralInfo(context, l10n),
-                      SizedBox(height: context.mainPadding),
-                      _buildItemsSection(context, l10n),
-                      SizedBox(height: context.mainPadding),
-                      _buildSummarySection(context, l10n),
-                    ],
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Column(
+                      children: [
+                        _buildGeneralInfo(context, l10n),
+                        SizedBox(height: context.mainPadding),
+                        _buildItemsSection(context, l10n),
+                        SizedBox(height: context.mainPadding),
+                        _buildSummarySection(context, l10n),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -182,6 +198,8 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
             Expanded(
               child: PremiumDropdownField<String>(
                 label: l10n.vendor ?? "Vendor",
+                fontSize: 14.sp,
+                labelFontSize: 13.sp,
                 value: _selectedVendorId,
                 items: provider.vendors.map((v) => DropdownItem<String>(
                   value: v.id!,
@@ -232,6 +250,8 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
       child: IgnorePointer(
         child: PremiumTextField(
           label: l10n.date ?? "Purchase Date",
+          labelFontSize: 13.sp,
+          fontSize: 14.sp,
           controller: TextEditingController(
             text: "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.format(context)}",
           ),
@@ -410,8 +430,16 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
         return;
       }
       if ((_items[i].categoryName ?? '').isEmpty) {
-        _showError("Item #${i + 1}: Please enter a category.");
+        _showError("Item #${i + 1}: Please select a category.");
         return;
+      }
+      
+      // Enforce existing category selection check before starting processing
+      if (_items[i].product == null || _items[i].product!.isEmpty) {
+        if (_items[i].categoryId == null || _items[i].categoryId!.isEmpty) {
+          _showError("Item #${i + 1}: Category '${_items[i].categoryName}' not selected. Please select an existing category from the dropdown.");
+          return;
+        }
       }
       if (_items[i].quantity <= 0) {
         _showError("Item #${i + 1}: Quantity must be greater than 0.");
@@ -433,31 +461,8 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
 
         // If product doesn't exist (no ID), create it
         if (productId == null || productId.isEmpty) {
-          
-          // A. Handle Category
-          String categoryId = '';
-          
-          // Check if category exists
-          final existingCategory = productProvider.categories.firstWhere(
-            (c) => c.name.toLowerCase() == (item.categoryName ?? '').toLowerCase(),
-            orElse: () => CategoryModel(id: '', name: '', description: '', isActive: false, createdAt: DateTime.now(), updatedAt: DateTime.now())
-          );
-
-          if (existingCategory.id.isNotEmpty) {
-            categoryId = existingCategory.id;
-          } else {
-            // Create Category
-            final catResult = await categoryService.createCategory(
-              name: item.categoryName!, 
-              description: "Auto-created from Purchase"
-            );
-            if (catResult.success && catResult.data != null) {
-              categoryId = catResult.data!.id;
-               productProvider.loadCategories(); 
-            } else {
-               throw Exception("Failed to create category: ${item.categoryName}");
-            }
-          }
+          // Use the strict categoryId from selection
+          final String categoryId = item.categoryId!;
 
           // B. Create Product
           final newProduct = await productProvider.addProduct(
@@ -489,7 +494,7 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
       // 4. Create Purchase
       final purchase = PurchaseModel(
         vendor: _selectedVendorId,
-        invoiceNumber: "Auto-Generated", // Backend can handle or we just send placeholder if not visible
+        invoiceNumber: "Auto-Generated", 
         purchaseDate: DateTime(
           _selectedDate.year,
           _selectedDate.month,
@@ -499,8 +504,8 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
         ),
         subtotal: _subtotal,
         tax: 0,
-        total: _subtotal, // No tax
-        status: 'posted', // Always posted
+        total: _subtotal, 
+        status: 'posted', 
         items: processedItems,
       );
 
@@ -604,6 +609,7 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
   late FocusNode _qtyFocusNode;
   late FocusNode _costFocusNode;
   late FocusNode _descFocusNode;
+
   @override
   void initState() {
     super.initState();
@@ -618,7 +624,6 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
     _costFocusNode = FocusNode();
     _descFocusNode = FocusNode();
 
-    // Add listeners for backspace navigation
     _setupFocusListeners();
   }
 
@@ -667,13 +672,11 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
   @override
   void didUpdateWidget(_PurchaseItemRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Sync Name controller if item changed
     if (widget.item.productName != oldWidget.item.productName) {
       if (_nameController.text != widget.item.productName) {
          _nameController.text = widget.item.productName ?? '';
       }
     }
-    // Sync Category controller if item changed
     if (widget.item.categoryName != oldWidget.item.categoryName) {
       if (_categoryController.text != widget.item.categoryName) {
          _categoryController.text = widget.item.categoryName ?? '';
@@ -689,7 +692,6 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
     _qtyFocusNode.dispose();
     _costFocusNode.dispose();
     _descFocusNode.dispose();
-    // _internalCatController is managed by Autocomplete, don't dispose it here
     super.dispose();
   }
 
@@ -719,11 +721,9 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
       ),
       child: Column(
         children: [
-          // Row 1: Item Name & Category
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Product Name (Autocomplete)
               Expanded(
                 flex: 4,
                 child: Consumer<ProductProvider>(
@@ -748,6 +748,7 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                                product: selection.id,
                                productName: selection.name,
                                categoryName: selection.categoryName,
+                               categoryId: selection.categoryId,
                                unitCost: selection.costPrice ?? selection.price,
                                description: selection.detail,
                                totalPrice: (selection.costPrice ?? selection.price) * widget.item.quantity
@@ -762,6 +763,8 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                               controller: controller,
                               focusNode: focusNode, 
                               label: "Item Name",
+                              fontSize: 13.sp,
+                              labelFontSize: 13.sp,
                               hint: "Enter item name",
                               prefixIcon: Icons.shopping_bag_outlined,
                               suffixIcon: controller.text.isNotEmpty 
@@ -781,7 +784,7 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                               },
                               onSubmitted: (val) {
                                 if (val.isNotEmpty) {
-                                  onFieldSubmitted(); // Select top option
+                                  onFieldSubmitted();
                                 }
                                 _categoryFocusNode.requestFocus();
                               },
@@ -818,9 +821,9 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                                             ),
                                             child: Text(
                                               option.name,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 color: Colors.black,
-                                                fontSize: 14,
+                                                fontSize: 13.sp,
                                                 fontWeight: FontWeight.w500,
                                               ),
                                             ),
@@ -840,7 +843,6 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
               ),
               const SizedBox(width: 8),
 
-              // Category (Autocomplete)
               Expanded(
                 flex: 3,
                 child: Consumer<ProductProvider>(
@@ -862,6 +864,7 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                            onSelected: (CategoryModel selection) {
                                _categoryController.text = selection.name;
                                widget.onChanged(widget.item.copyWith(
+                                 categoryId: selection.id,
                                  categoryName: selection.name
                                ));
                            },
@@ -870,6 +873,8 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                                 controller: controller,
                                 focusNode: focusNode,
                                 label: "Category",
+                                fontSize: 13.sp,
+                                labelFontSize: 13.sp,
                                 hint: "Category",
                                 suffixIcon: controller.text.isNotEmpty 
                                   ? IconButton(
@@ -881,7 +886,10 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                                     )
                                   : null,
                                 onChanged: (val) {
-                                   widget.onChanged(widget.item.copyWith(categoryName: val));
+                                   widget.onChanged(widget.item.copyWith(
+                                      categoryName: val,
+                                      categoryId: null,
+                                   ));
                                 },
                                 onSubmitted: (val) {
                                   if (val.isNotEmpty) {
@@ -922,9 +930,9 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                                             ),
                                             child: Text(
                                               option.name,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 color: Colors.black,
-                                                fontSize: 14,
+                                                fontSize: 13.sp,
                                                 fontWeight: FontWeight.w500,
                                               ),
                                             ),
@@ -946,9 +954,10 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
           ),
           const SizedBox(height: 8),
           
-          // Row 2: Description (Full Width)
           PremiumTextField(
             label: "Description",
+            fontSize: 13.sp,
+            labelFontSize: 13.sp,
             controller: _descController,
             focusNode: _descFocusNode,
             hint: "Item description",
@@ -959,13 +968,14 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
           ),
           const SizedBox(height: 8),
 
-          // Row 3: Qty, Cost, Total, Delete
           Row(
             children: [
               Expanded(
                 flex: 2,
                 child: PremiumTextField(
                   label: "Qty",
+                  fontSize: 13.sp,
+                  labelFontSize: 13.sp,
                   controller: _qtyController,
                   focusNode: _qtyFocusNode,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -984,6 +994,8 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                 flex: 2,
                 child: PremiumTextField(
                   label: "Purchase Price",
+                  fontSize: 13.sp,
+                  labelFontSize: 13.sp,
                   controller: _costController,
                   focusNode: _costFocusNode,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -1003,7 +1015,7 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
               Expanded(
                 flex: 2,
                 child: Container(
-                  height: 48, // Match input height
+                  height: 48,
                   alignment: Alignment.centerLeft,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
@@ -1015,13 +1027,13 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Total", style: TextStyle(fontSize: 8.sp, color: Colors.grey[700])),
+                      Text("Total", style: TextStyle(fontSize: 10.sp, color: Colors.grey[700])),
                       Text(
                         widget.item.totalPrice.toStringAsFixed(2),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primaryMaroon,
-                          fontSize: 10.sp,
+                          fontSize: 13.sp,
                         ),
                       ),
                     ],

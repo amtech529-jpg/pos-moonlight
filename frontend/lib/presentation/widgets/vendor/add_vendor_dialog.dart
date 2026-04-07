@@ -22,10 +22,16 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
   // Controllers
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _businessNameController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _noteController = TextEditingController();
   
   // Focus Nodes
   final _nameFocusNode = FocusNode();
   final _phoneFocusNode = FocusNode();
+  final _businessNameFocusNode = FocusNode();
+  final _addressFocusNode = FocusNode();
+  final _noteFocusNode = FocusNode();
   
   // Date
   DateTime _selectedDate = DateTime.now();
@@ -59,9 +65,16 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
   @override
   void dispose() {
     _animationController.dispose();
+    _nameController.dispose();
     _phoneController.dispose();
+    _businessNameController.dispose();
+    _addressController.dispose();
+    _noteController.dispose();
     _nameFocusNode.dispose();
     _phoneFocusNode.dispose();
+    _businessNameFocusNode.dispose();
+    _addressFocusNode.dispose();
+    _noteFocusNode.dispose();
     super.dispose();
   }
 
@@ -82,7 +95,6 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
 
   void _handleSubmit() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // Additional validation using provider
       _validateForm();
 
       if (_validationErrors.isNotEmpty) {
@@ -94,11 +106,13 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
 
       final success = await provider.addVendor(
         name: _nameController.text.trim(),
-        businessName: null,
+        businessName: _businessNameController.text.trim().isEmpty ? null : _businessNameController.text.trim(),
         cnic: null,
         phone: _phoneController.text.trim(),
         city: null,
         area: null,
+        fullAddress: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+        note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
         createdAt: _selectedDate,
       );
 
@@ -119,53 +133,21 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.error_outline, color: AppTheme.pureWhite, size: context.iconSize('medium')),
-            SizedBox(width: context.smallPadding),
-            Expanded(
-              child: Text(
-                '${l10n.pleaseFixErrors}:\n$errorMessages',
-                style: TextStyle(
-                  fontSize: context.bodyFontSize,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.pureWhite,
-                ),
-              ),
-            ),
-          ],
-        ),
+        content: Text('${l10n.pleaseFixErrors}:\n$errorMessages', style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 5),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.borderRadius())),
       ),
     );
   }
 
   void _showSuccessSnackbar() {
     final l10n = AppLocalizations.of(context)!;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: AppTheme.pureWhite, size: context.iconSize('medium')),
-            SizedBox(width: context.smallPadding),
-            Text(
-              '${l10n.vendor} ${l10n.success}!',
-              style: TextStyle(
-                fontSize: context.bodyFontSize,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.pureWhite,
-              ),
-            ),
-          ],
-        ),
+        content: Text('${l10n.vendor} ${l10n.success}!'),
         backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.borderRadius())),
       ),
     );
   }
@@ -173,26 +155,9 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.error_outline, color: AppTheme.pureWhite, size: context.iconSize('medium')),
-            SizedBox(width: context.smallPadding),
-            Expanded(
-              child: Text(
-                message,
-                style: TextStyle(
-                  fontSize: context.bodyFontSize,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.pureWhite,
-                ),
-              ),
-            ),
-          ],
-        ),
+        content: Text(message),
         backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.borderRadius())),
       ),
     );
   }
@@ -211,20 +176,23 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
       lastDate: DateTime(2101),
       builder: (context, child) {
         return Theme(
-          data: ThemeData.light().copyWith(
-            primaryColor: AppTheme.primaryMaroon,
+          data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: AppTheme.primaryMaroon,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
+              onPrimary: Colors.white, // Selected day text
+              onSurface: Colors.black, // Day numbers and months
+              secondary: AppTheme.primaryMaroon,
             ),
             dialogBackgroundColor: Colors.white,
             textTheme: const TextTheme(
               bodyMedium: TextStyle(color: Colors.black),
               bodyLarge: TextStyle(color: Colors.black),
               labelSmall: TextStyle(color: Colors.black),
-              titleMedium: TextStyle(color: Colors.black),
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.primaryMaroon,
+              ),
             ),
           ),
           child: child!,
@@ -249,27 +217,26 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
             child: Transform.scale(
               scale: _scaleAnimation.value,
               child: Container(
-                width: context.dialogWidth,
-                constraints: BoxConstraints(
-                  maxWidth: ResponsiveBreakpoints.responsive(
-                    context,
-                    tablet: 80.w,
-                    small: 85.w,
-                    medium: 60.w,
-                    large: 50.w,
-                    ultrawide: 40.w,
-                  ),
-                  maxHeight: 90.h,
+                width: ResponsiveBreakpoints.responsive(
+                  context,
+                  tablet: 85.w,
+                  small: 95.w,
+                  medium: 60.w,
+                  large: 45.w,
+                  ultrawide: 35.w,
                 ),
-                margin: EdgeInsets.all(context.mainPadding),
+                constraints: BoxConstraints(
+                  maxHeight: 92.h,
+                ),
+                margin: EdgeInsets.all(!context.isMinimumSupported ? 12 : 24),
                 decoration: BoxDecoration(
                   color: AppTheme.pureWhite,
-                  borderRadius: BorderRadius.circular(context.borderRadius('large')),
+                  borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: context.shadowBlur('heavy'),
-                      offset: Offset(0, context.cardPadding),
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
@@ -277,7 +244,9 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildHeader(),
-                    Flexible(child: _buildFormContent()),
+                    Flexible(
+                      child: _buildFormContent(),
+                    ),
                   ],
                 ),
               ),
@@ -290,53 +259,28 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
 
   Widget _buildHeader() {
     final l10n = AppLocalizations.of(context)!;
-
     return Container(
       padding: EdgeInsets.all(context.cardPadding),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [AppTheme.primaryMaroon, AppTheme.secondaryMaroon]),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(colors: [AppTheme.primaryMaroon, AppTheme.secondaryMaroon]),
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(context.borderRadius('large')),
-          topRight: Radius.circular(context.borderRadius('large')),
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
         ),
       ),
       child: Row(
         children: [
-          Container(
-            padding: EdgeInsets.all(context.smallPadding),
-            decoration: BoxDecoration(
-              color: AppTheme.pureWhite.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(context.borderRadius()),
-            ),
-            child: Icon(Icons.store_rounded, color: AppTheme.pureWhite, size: context.iconSize('large')),
-          ),
-          SizedBox(width: context.cardPadding),
+          const Icon(Icons.store_rounded, color: AppTheme.pureWhite, size: 28),
+          const SizedBox(width: 16),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${l10n.add} ${l10n.vendor}',
-                  style: TextStyle(
-                    fontSize: context.headerFontSize,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.pureWhite,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
+            child: Text(
+              '${l10n.add} ${l10n.vendor}',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.pureWhite),
             ),
           ),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _handleCancel,
-              borderRadius: BorderRadius.circular(context.borderRadius()),
-              child: Container(
-                padding: EdgeInsets.all(context.smallPadding),
-                child: Icon(Icons.close_rounded, color: AppTheme.pureWhite, size: context.iconSize('medium')),
-              ),
-            ),
+          IconButton(
+            onPressed: _handleCancel,
+            icon: const Icon(Icons.close_rounded, color: AppTheme.pureWhite),
           ),
         ],
       ),
@@ -353,17 +297,8 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildBasicInfoSection(),
-              SizedBox(height: context.cardPadding),
-              
-              // Action Buttons
-              ResponsiveBreakpoints.responsive(
-                context,
-                tablet: _buildCompactButtons(),
-                small: _buildCompactButtons(),
-                medium: _buildDesktopButtons(),
-                large: _buildDesktopButtons(),
-                ultrawide: _buildDesktopButtons(),
-              ),
+              const SizedBox(height: 24),
+              _buildActionButtons(),
             ],
           ),
         ),
@@ -373,53 +308,73 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
 
   Widget _buildBasicInfoSection() {
     final l10n = AppLocalizations.of(context)!;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Vendor Name
         PremiumTextField(
           label: '${l10n.vendor} ${l10n.name} *',
+          labelFontSize: 12.sp,
           hint: l10n.enterVendorName,
           controller: _nameController,
           prefixIcon: Icons.person_outline,
           focusNode: _nameFocusNode,
           textInputAction: TextInputAction.next,
           onSubmitted: (_) => FocusScope.of(context).requestFocus(_phoneFocusNode),
-          validator: (value) {
-            if (value?.isEmpty ?? true) {
-              return '${l10n.pleaseEnter} ${l10n.vendor} ${l10n.name}';
-            }
-            if (value!.length < 2) {
-              return '${l10n.name} ${l10n.mustBeAtLeast} 2 ${l10n.characters}';
-            }
-            return null;
-          },
+          validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
         ),
-        SizedBox(height: context.cardPadding),
-
-        // Phone Number
+        const SizedBox(height: 16),
         PremiumTextField(
           label: '${l10n.phone} *',
-          hint: '${l10n.enterPhoneWithCode} (${l10n.phoneFormat})',
+          labelFontSize: 12.sp,
+          hint: 'Enter Phone Number',
           controller: _phoneController,
           prefixIcon: Icons.phone_outlined,
           keyboardType: TextInputType.phone,
           focusNode: _phoneFocusNode,
-          textInputAction: TextInputAction.done,
-          validator: (value) {
-            if (value?.isEmpty ?? true) {
-              return '${l10n.pleaseEnter} ${l10n.phone}';
-            }
-            if (value!.length < 10) {
-              return '${l10n.pleaseEnterValid} ${l10n.phone}';
-            }
-            return null;
-          },
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_businessNameFocusNode),
+          validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
         ),
-        SizedBox(height: context.cardPadding),
-
-        // Date Picker
+        const SizedBox(height: 16),
+        PremiumTextField(
+          label: '${l10n.businessName} *',
+          labelFontSize: 12.sp,
+          hint: 'Enter Business/Company Name',
+          controller: _businessNameController,
+          prefixIcon: Icons.business_outlined,
+          focusNode: _businessNameFocusNode,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_addressFocusNode),
+          validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
+        ),
+        const SizedBox(height: 16),
+        PremiumTextField(
+          label: 'Address *',
+          labelFontSize: 12.sp,
+          hint: 'Enter Full Address',
+          controller: _addressController,
+          prefixIcon: Icons.location_on_outlined,
+          focusNode: _addressFocusNode,
+          maxLines: 2,
+          keyboardType: TextInputType.multiline,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_noteFocusNode),
+          validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
+        ),
+        const SizedBox(height: 16),
+        PremiumTextField(
+          label: 'Notes (Optional)',
+          labelFontSize: 12.sp,
+          hint: 'Add notes here',
+          controller: _noteController,
+          prefixIcon: Icons.note_outlined,
+          focusNode: _noteFocusNode,
+          maxLines: 2,
+          keyboardType: TextInputType.multiline,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _handleSubmit(),
+        ),
+        const SizedBox(height: 16),
         _buildDatePicker(),
       ],
     );
@@ -428,135 +383,41 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
   Widget _buildDatePicker() {
     return InkWell(
       onTap: () => _selectDate(context),
-      borderRadius: BorderRadius.circular(context.borderRadius()),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: context.cardPadding, vertical: context.cardPadding * 0.8),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.pureWhite,
-          borderRadius: BorderRadius.circular(context.borderRadius()),
-          border: Border.all(color: AppTheme.lightGray),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today, color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
-            SizedBox(width: context.smallPadding),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Date', // Label
-                    style: TextStyle(
-                      fontSize: context.captionFontSize,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    "${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}",
-                    style: TextStyle(
-                      fontSize: context.bodyFontSize,
-                      color: AppTheme.charcoalGray,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.arrow_drop_down, color: Colors.grey),
+            const Icon(Icons.calendar_today, color: AppTheme.primaryMaroon),
+            const SizedBox(width: 12),
+            Text("${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}", style: const TextStyle(fontSize: 14)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
-        SizedBox(width: context.smallPadding),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: context.bodyFontSize,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.charcoalGray,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCompactButtons() {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Builder(
-          builder: (context) {
-            final provider = Provider.of<VendorProvider>(context);
-            return PremiumButton(
-              text: '${l10n.add} ${l10n.vendor}',
-              onPressed: provider.isLoading ? null : _handleSubmit,
-              isLoading: provider.isLoading,
-              height: context.buttonHeight,
-              icon: Icons.add_rounded,
-              backgroundColor: AppTheme.primaryMaroon,
-            );
-          },
-        ),
-        SizedBox(height: context.cardPadding),
-        PremiumButton(
-          text: l10n.cancel,
-          onPressed: _handleCancel,
-          isOutlined: true,
-          height: context.buttonHeight,
-          backgroundColor: Colors.grey[600],
-          textColor: Colors.grey[600],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDesktopButtons() {
-    final l10n = AppLocalizations.of(context)!;
-
+  Widget _buildActionButtons() {
     return Row(
       children: [
         Expanded(
           child: PremiumButton(
-            text: l10n.cancel,
+            text: "Cancel",
             onPressed: _handleCancel,
             isOutlined: true,
-            height: context.buttonHeight / 1.5,
-            backgroundColor: Colors.grey[600],
-            textColor: Colors.grey[600],
+            height: 48,
           ),
         ),
-        SizedBox(width: context.cardPadding),
+        const SizedBox(width: 12),
         Expanded(
-          flex: 2,
-          child: Builder(
-            builder: (context) {
-              final provider = Provider.of<VendorProvider>(context);
-              return PremiumButton(
-                text: '${l10n.add} ${l10n.vendor}',
-                onPressed: provider.isLoading ? null : _handleSubmit,
-                isLoading: provider.isLoading,
-                height: context.buttonHeight / 1.5,
-                icon: Icons.add_rounded,
-                backgroundColor: AppTheme.primaryMaroon,
-              );
-            },
+          child: PremiumButton(
+            text: "Add Vendor",
+            onPressed: _handleSubmit,
+            height: 48,
+            backgroundColor: AppTheme.primaryMaroon,
           ),
         ),
       ],

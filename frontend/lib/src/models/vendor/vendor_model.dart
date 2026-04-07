@@ -11,6 +11,7 @@ class VendorModel {
   final String city;
   final String area;
   final String fullAddress;
+  final String note;
   final bool isNewVendor;
   final int paymentsCount;
   final double totalPaymentsAmount;
@@ -29,6 +30,7 @@ class VendorModel {
     required this.city,
     required this.area,
     required this.fullAddress,
+    required this.note,
     required this.isNewVendor,
     required this.paymentsCount,
     required this.totalPaymentsAmount,
@@ -48,7 +50,8 @@ class VendorModel {
       phone: json['phone'] as String,
       city: json['city'] as String? ?? '',
       area: json['area'] as String? ?? '',
-      fullAddress: json['full_address'] as String? ?? '',
+      fullAddress: (json['address'] ?? json['full_address']) as String? ?? '',
+      note: json['note'] as String? ?? '',
       isNewVendor: json['is_new_vendor'] as bool? ?? false,
       paymentsCount: json['payments_count'] as int? ?? 0,
       totalPaymentsAmount: (json['total_payments_amount'] as num?)?.toDouble() ?? 0.0,
@@ -70,6 +73,8 @@ class VendorModel {
       'city': city,
       'area': area,
       'full_address': fullAddress,
+      'address': fullAddress,
+      'note': note,
       'is_new_vendor': isNewVendor,
       'payments_count': paymentsCount,
       'total_payments_amount': totalPaymentsAmount,
@@ -129,6 +134,7 @@ class VendorModel {
     String? city,
     String? area,
     String? fullAddress,
+    String? note,
     bool? isNewVendor,
     int? paymentsCount,
     double? totalPaymentsAmount,
@@ -147,6 +153,7 @@ class VendorModel {
       city: city ?? this.city,
       area: area ?? this.area,
       fullAddress: fullAddress ?? this.fullAddress,
+      note: note ?? this.note,
       isNewVendor: isNewVendor ?? this.isNewVendor,
       paymentsCount: paymentsCount ?? this.paymentsCount,
       totalPaymentsAmount: totalPaymentsAmount ?? this.totalPaymentsAmount,

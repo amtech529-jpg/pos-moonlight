@@ -105,12 +105,14 @@ class _PurchaseTableState extends State<PurchaseTable> {
              final category = (item.productDetail?.categoryName ?? item.categoryName ?? "").toLowerCase();
              final vendorName = (purchase.vendorName ?? purchase.vendorDetail?.name ?? "").toLowerCase();
              final invoiceNum = (purchase.invoiceNumber ?? "").toLowerCase();
+             final description = (item.description ?? "").toLowerCase();
 
              bool matchesSearch = search.isEmpty || 
                  name.contains(search) || 
                  category.contains(search) ||
                  vendorName.contains(search) ||
-                 invoiceNum.contains(search);
+                 invoiceNum.contains(search) ||
+                 description.contains(search);
 
              if (matchesSearch) {
                 allItems.add({
