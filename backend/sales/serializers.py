@@ -22,6 +22,8 @@ class CartSaleItemSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(required=True, min_value=1)
     item_discount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, default=0)
     customization_notes = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    days = serializers.IntegerField(required=False, default=1)
+    pricing_type = serializers.CharField(required=False, default='PER_DAY')
     
     def validate_product(self, value):
         """Validate product exists"""
@@ -203,7 +205,9 @@ class SalesCreateSerializer(serializers.ModelSerializer):
                                 quantity=quantity,
                                 item_discount=item_discount,
                                 line_total=line_total,
-                                customization_notes=item_data.get('customization_notes', '') or ''
+                                customization_notes=item_data.get('customization_notes', '') or '',
+                                days=item_data.get('days', 1),
+                                pricing_type=item_data.get('pricing_type', 'PER_DAY')
                             )
                             
                             print(f"✅ Sale item {idx+1} created successfully")
@@ -308,7 +312,7 @@ class SaleItemSerializer(serializers.ModelSerializer):
             'id', 'sale', 'order_item', 'product', 'product_id', 'product_name',
             'unit_price', 'quantity', 'item_discount', 'line_total',
             'customization_notes', 'discounted_unit_price', 'total_before_discount',
-            'discount_percentage', 'formatted_line_total',
+            'discount_percentage', 'formatted_line_total', 'days', 'pricing_type',
             'is_active', 'created_at', 'updated_at'
         )
         read_only_fields = (
@@ -617,10 +621,18 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return float(obj.write_off_amount or 0.0)
 
     def get_customer_name(self, obj):
+        # Determine actual customer via relationships
+        cust = obj.customer
+        if not cust and obj.sale and obj.sale.customer:
+            cust = obj.sale.customer
+        if not cust and obj.order and obj.order.customer:
+            cust = obj.order.customer
+            
+        if cust:
+            return cust.business_name if getattr(cust, 'customer_type', None) == 'BUSINESS' and getattr(cust, 'business_name', None) else cust.name
+            
         if obj.sale:
             return obj.sale.customer_name
-        if obj.customer:
-            return obj.customer.name
         if obj.order:
             return obj.order.customer_name
         return "Unknown Customer"
@@ -701,7 +713,7 @@ class InvoiceListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = (
-            'id', 'sale', 'sale_invoice_number', 'invoice_number', 'issue_date', 'due_date',
+            'id', 'sale', 'order', 'customer_id', 'sale_invoice_number', 'invoice_number', 'issue_date', 'due_date',
             'status', 'customer_name', 'customer_phone', 'total_amount', 'amount_paid', 
             'amount_due', 'write_off_amount', 'created_at'
         )
@@ -716,10 +728,18 @@ class InvoiceListSerializer(serializers.ModelSerializer):
         return float(obj.write_off_amount or 0.0)
 
     def get_customer_name(self, obj):
+        # Determine actual customer via relationships
+        cust = obj.customer
+        if not cust and obj.sale and obj.sale.customer:
+            cust = obj.sale.customer
+        if not cust and obj.order and obj.order.customer:
+            cust = obj.order.customer
+            
+        if cust:
+            return cust.business_name if getattr(cust, 'customer_type', None) == 'BUSINESS' and getattr(cust, 'business_name', None) else cust.name
+            
         if obj.sale:
             return obj.sale.customer_name
-        if obj.customer:
-            return obj.customer.name
         if obj.order:
             return obj.order.customer_name
         return "Unknown Customer"

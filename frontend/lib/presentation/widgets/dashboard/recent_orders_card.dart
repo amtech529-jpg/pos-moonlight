@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/src/providers/order_provider.dart';
+import 'package:frontend/src/providers/customer_provider.dart';
 import 'package:frontend/src/core/app_colors.dart';
 
 class RecentOrdersCard extends StatelessWidget {
   const RecentOrdersCard({super.key});
 
+  /// Returns Business Name if customer is BUSINESS type, otherwise personal name
+  String _resolveCustomerDisplayName(String customerId, String fallbackName, CustomerProvider customerProvider) {
+    if (customerId.isEmpty) return fallbackName;
+    final customer = customerProvider.allCustomers.where((c) => c.id == customerId).firstOrNull;
+    if (customer != null) {
+      if (customer.businessName != null && customer.businessName!.trim().isNotEmpty) {
+        return customer.businessName!;
+      }
+      return customer.displayName.isNotEmpty ? customer.displayName : customer.name;
+    }
+    return fallbackName;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer<OrderProvider>(
-      builder: (context, provider, child) {
-        final orders = provider.orders.take(7).toList();
+    return Consumer2<OrderProvider, CustomerProvider>(
+      builder: (context, orderProvider, customerProvider, child) {
+        final orders = orderProvider.orders.take(7).toList();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,7 +55,7 @@ class RecentOrdersCard extends StatelessWidget {
                 color: const Color(0xFFF2F2F2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
+              child: const Row(
                 children: [
                   Expanded(
                     flex: 2,
@@ -81,15 +95,16 @@ class RecentOrdersCard extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Container(
-                          width: 100, // Fixed width to match badges
-                          alignment: Alignment.center,
-                          child: Text(
-                            "Status",
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF888888),
+                        SizedBox(
+                          width: 100,
+                          child: Center(
+                            child: Text(
+                              "Status",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF888888),
+                              ),
                             ),
                           ),
                         ),
@@ -103,7 +118,7 @@ class RecentOrdersCard extends StatelessWidget {
             const SizedBox(height: 8),
             
             // Table Rows List
-            if (provider.isLoading && orders.isEmpty)
+            if (orderProvider.isLoading && orders.isEmpty)
               const Center(child: Padding(
                 padding: EdgeInsets.all(20.0),
                 child: CircularProgressIndicator(),
@@ -114,16 +129,24 @@ class RecentOrdersCard extends StatelessWidget {
                 child: Text("No recent orders found"),
               ))
             else
-              ...orders.map((o) => Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: _buildOrderRow(
-                  o.orderNumber,
+              ...orders.map((o) {
+                // ✅ Business Name Priority: Business customers show business name
+                final displayName = _resolveCustomerDisplayName(
+                  o.customerId,
                   o.customerName,
-                  o.formattedTotalAmount,
-                  o.statusText,
-                  o.statusColor,
-                ),
-              )),
+                  customerProvider,
+                );
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: _buildOrderRow(
+                    o.orderNumber,
+                    displayName,
+                    o.formattedTotalAmount,
+                    o.statusText,
+                    o.statusColor,
+                  ),
+                );
+              }),
           ],
         );
       },
@@ -182,7 +205,7 @@ class RecentOrdersCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Container(
-                  width: 100, // Same fixed width as header
+                  width: 100,
                   height: 35,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
@@ -198,7 +221,7 @@ class RecentOrdersCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 70), // Move slightly back from the edge
+                const SizedBox(width: 70),
               ],
             ),
           ),
@@ -207,6 +230,3 @@ class RecentOrdersCard extends StatelessWidget {
     );
   }
 }
-
-
-

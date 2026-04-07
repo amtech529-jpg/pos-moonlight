@@ -102,7 +102,7 @@ class QuotationViewSet(viewsets.ModelViewSet):
                     days=q_item.days,
                     pricing_type=q_item.pricing_type,
                     line_total=q_item.total,
-                    customization_notes=f"From Quote Item {q_item.id}",
+                    customization_notes=q_item.product_name if not q_item.product else "",
                     # Mapping partner fields
                     rented_from_partner=q_item.rented_from_partner,
                     partner=q_item.partner,

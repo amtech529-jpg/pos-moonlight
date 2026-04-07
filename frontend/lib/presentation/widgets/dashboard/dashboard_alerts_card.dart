@@ -1,11 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/src/models/analytics/reminder_model.dart';
+import 'package:frontend/src/providers/customer_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 class DashboardAlertsCard extends StatelessWidget {
   final List<ReminderModel> reminders;
 
   const DashboardAlertsCard({super.key, required this.reminders});
+
+  /// ✅ Business Name Priority for Notifications
+  /// Backend sends subtitle like "Customer: Mr.Abdul Basit"
+  /// We parse that name, find the customer in the list, and return businessName if BUSINESS type
+  String _resolveSubtitle(ReminderModel reminder, CustomerProvider customerProvider) {
+    final rawSubtitle = reminder.subtitle;
+
+    // Step 1: Try to resolve via customerId (if backend sends it)
+    if (reminder.customerId != null && reminder.customerId!.isNotEmpty) {
+      final customer = customerProvider.allCustomers
+          .where((c) => c.id == reminder.customerId)
+          .firstOrNull;
+      if (customer != null && customer.businessName != null && customer.businessName!.trim().isNotEmpty) {
+        return rawSubtitle.replaceFirst(
+          RegExp(r'Customer:\s*.+', caseSensitive: false),
+          'Customer: ${customer.businessName!}',
+        );
+      }
+    }
+
+    // Step 2: Parse "Customer: {name}" from subtitle and match by name
+    final customerPrefix = RegExp(r'Customer:\s*(.+)', caseSensitive: false);
+    final match = customerPrefix.firstMatch(rawSubtitle);
+    if (match != null) {
+      final extractedName = match.group(1)?.trim() ?? '';
+      if (extractedName.isNotEmpty) {
+        // Try to find customer by name (case-insensitive, partial match)
+        final matchedCustomer = customerProvider.allCustomers.where((c) {
+          final cName = c.name.toLowerCase();
+          final cDisplay = c.displayName.toLowerCase();
+          final search = extractedName.toLowerCase();
+          return cName == search || cDisplay == search ||
+                 cName.contains(search) || search.contains(cName);
+        }).firstOrNull;
+
+        if (matchedCustomer != null &&
+            matchedCustomer.businessName != null &&
+            matchedCustomer.businessName!.trim().isNotEmpty) {
+          return 'Customer: ${matchedCustomer.businessName!}';
+        }
+      }
+    }
+
+    return rawSubtitle;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,74 +60,80 @@ class DashboardAlertsCard extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return Consumer<CustomerProvider>(
+      builder: (context, customerProvider, child) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.notifications_active_outlined, color: Color(0xFFBD0D1D), size: 24),
-                  SizedBox(width: 12),
-                  Text(
-                    "Action Needed & Reminders",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A),
+                  const Row(
+                    children: [
+                      Icon(Icons.notifications_active_outlined, color: Color(0xFFBD0D1D), size: 24),
+                      SizedBox(width: 12),
+                      Text(
+                        "Action Needed & Reminders",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFBD0D1D).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "${reminders.length} Alerts",
+                      style: const TextStyle(
+                        color: Color(0xFFBD0D1D),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFBD0D1D).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  "${reminders.length} Alerts",
-                  style: const TextStyle(
-                    color: Color(0xFFBD0D1D),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              const SizedBox(height: 20),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: reminders.length,
+                separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF0F0F0)),
+                itemBuilder: (context, index) {
+                  final reminder = reminders[index];
+                  // ✅ Parse subtitle and replace personal name with business name
+                  final resolvedSubtitle = _resolveSubtitle(reminder, customerProvider);
+                  return _buildReminderTile(reminder, resolvedSubtitle);
+                },
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: reminders.length,
-            separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF0F0F0)),
-            itemBuilder: (context, index) {
-              final reminder = reminders[index];
-              return _buildReminderTile(reminder);
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildReminderTile(ReminderModel reminder) {
+  Widget _buildReminderTile(ReminderModel reminder, String resolvedSubtitle) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
@@ -92,7 +145,7 @@ class DashboardAlertsCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  reminder.title,
+                  reminder.title, // Event title stays as-is from backend
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -101,7 +154,7 @@ class DashboardAlertsCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  reminder.subtitle,
+                  resolvedSubtitle, // ✅ Business name replaced here
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[600],

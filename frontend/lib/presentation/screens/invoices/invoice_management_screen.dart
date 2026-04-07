@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/src/theme/app_theme.dart';
 import '../../../src/providers/invoice_provider.dart';
+import '../../../src/providers/sales_provider.dart';
 import '../../../src/providers/customer_provider.dart';
 import '../../../src/providers/order_provider.dart';
+import '../../../src/services/invoice_service.dart';
+import '../../../src/services/order_service.dart';
 import '../../../src/models/sales/sale_model.dart';
 import '../../widgets/sales/view_invoice_dialog.dart';
 import '../../widgets/sales/edit_invoice_dialog.dart';
@@ -21,6 +24,8 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
+  final Map<String, bool> _fetchingIds = {};
+
   @override
   void initState() {
     super.initState();
@@ -28,8 +33,31 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
       if (mounted) setState(() {});
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<InvoiceProvider>().loadInvoices();
+      // Load all necessary providers in parallel
+      Future.wait([
+        context.read<InvoiceProvider>().loadInvoices(refresh: true),
+        context.read<CustomerProvider>().loadCustomers(refresh: true),
+        context.read<OrderProvider>().loadOrders(refresh: true),
+        context.read<SalesProvider>().loadSales(refresh: true),
+      ]);
     });
+  }
+
+  Future<void> _lazyFetchInvoiceDetails(String id) async {
+    if (_fetchingIds[id] == true) return;
+    _fetchingIds[id] = true;
+    
+    try {
+       final response = await InvoiceService().getInvoiceById(id);
+       if (response.success && response.data != null) {
+          if (mounted) {
+             // We update the local list in InvoiceProvider to reflect the deep data
+             context.read<InvoiceProvider>().updateInvoiceLocally(response.data!);
+          }
+       }
+    } catch (_) {} finally {
+       _fetchingIds[id] = false;
+    }
   }
 
   @override
@@ -268,12 +296,19 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
   }
 
   Widget _buildInvoiceTable() {
-    return Consumer<InvoiceProvider>(
-      builder: (context, provider, child) {
-        if (provider.isLoading) {
+    return Consumer4<InvoiceProvider, SalesProvider, CustomerProvider, OrderProvider>(
+      builder: (context, provider, salesProvider, customerProvider, orderProvider, child) {
+        // Show loader if ANY of the required providers are still loading their first batch
+        if (provider.isLoading || customerProvider.isLoading || salesProvider.isLoading || orderProvider.isLoading) {
            return const Center(child: Padding(
             padding: EdgeInsets.all(32.0),
-            child: CircularProgressIndicator(),
+            child: Column(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text("Syncing Business & Event details...")
+              ],
+            ),
           ));
         }
 
@@ -316,7 +351,7 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
                     // Table Rows
                      ...provider.filteredInvoices.map((invoice) {
                         final statusColor = invoice.statusColor;
-                        return _buildInvoiceRow(context, invoice, statusColor);
+                        return _buildInvoiceRow(context, invoice, statusColor, salesProvider, customerProvider, orderProvider);
                       }),
                   ],
                 ),
@@ -328,21 +363,47 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
     );
   }
 
-  Widget _buildInvoiceRow(BuildContext context, InvoiceModel invoice, Color statusColor) {
-    final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
+  Widget _buildInvoiceRow(BuildContext context, InvoiceModel invoice, Color statusColor, SalesProvider salesProvider, CustomerProvider customerProvider, OrderProvider orderProvider) {
+    // ATTEMPT RECOVERY: Use the provided providers to resolve accurate data reactively
+    String? resolvedCustomerId = invoice.customerId;
+    String? resolvedOrderId = invoice.orderId;
     
-    // First try using the explicit customerId, else try via orderId.
-    String? customerId = invoice.customerId;
-    if (customerId == null && invoice.orderId != null) {
-      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-      final matchingOrder = orderProvider.allOrders.where((o) => o.id == invoice.orderId).firstOrNull;
-      if (matchingOrder != null) {
-        customerId = matchingOrder.customerId;
-      }
+    // LAZY FETCH: If IDs are missing, trigger a deep fetch in the background
+    if (resolvedCustomerId == null || resolvedCustomerId.isEmpty || resolvedOrderId == null || resolvedOrderId.isEmpty) {
+       _lazyFetchInvoiceDetails(invoice.id);
+       
+       // Try memory lookup as intermediate step
+       final ref = invoice.saleInvoiceNumber;
+       final foundSale = salesProvider.sales.where((s) => s.formattedInvoiceNumber == ref || s.invoiceNumber == ref.replaceAll('#', '')).firstOrNull;
+       if (foundSale != null) {
+          resolvedCustomerId ??= foundSale.customerId;
+          resolvedOrderId ??= foundSale.orderId;
+       }
+    }
+
+    final String finalCustomerId = resolvedCustomerId ?? '';
+    final String finalOrderId = resolvedOrderId ?? '';
+    
+    final customer = customerProvider.allCustomers.where((c) => c.id == finalCustomerId).firstOrNull;
+    final order = orderProvider.allOrders.where((o) => o.id == finalOrderId).firstOrNull;
+    
+    // Priority: 1. Event Location, 2. Associated Sale notes (fallback), 3. Empty
+    final String location = order?.eventLocation ?? '';
+    final String eventTitle = order?.eventName ?? '';
+    
+    final bool isStillResolving = (customerProvider.isLoading || salesProvider.isLoading || (finalCustomerId.isNotEmpty && customer == null));
+    
+    // STRICT PRIORITY: 1. Customer's Business Name (for Business type), 2. System Display Name, 3. Fallback
+    String? businessName;
+    if (customer != null) {
+       if (customer.customerType.toUpperCase() == 'BUSINESS' && customer.businessName != null && customer.businessName!.isNotEmpty) {
+          businessName = customer.businessName;
+       } else {
+          businessName = customer.orderDisplayName;
+       }
     }
     
-    final customer = customerProvider.allCustomers.where((c) => c.id == customerId).firstOrNull;
-    final displayName = customer?.orderDisplayName ?? (invoice.customerName ?? 'Unknown');
+    final String businessNameText = businessName ?? (isStillResolving ? 'Syncing...' : (invoice.customerName ?? 'Walk-in Customer'));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -361,7 +422,31 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
       child: Row(
         children: [
           Expanded(flex: 2, child: Text(invoice.invoiceNumber, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
-          Expanded(flex: 3, child: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Color(0xFF333333)), overflow: TextOverflow.ellipsis)),
+          Expanded(
+            flex: 3, 
+            child: Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                 Tooltip(
+                  message: businessNameText,
+                  child: Text(
+                    businessNameText, 
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Color(0xFF1A1A1A)), 
+                    overflow: TextOverflow.ellipsis
+                  ),
+                ),
+                if (eventTitle.isNotEmpty || location.isNotEmpty) ...[
+                   const SizedBox(height: 2),
+                   Text(
+                     "${eventTitle.isNotEmpty ? eventTitle : ''}${eventTitle.isNotEmpty && location.isNotEmpty ? ' - ' : ''}${location.isNotEmpty ? location : ''}",
+                     style: TextStyle(fontSize: 10, color: Colors.grey[600], fontWeight: FontWeight.w500),
+                     maxLines: 1,
+                     overflow: TextOverflow.ellipsis,
+                   ),
+                ]
+               ],
+            )
+          ),
           Expanded(flex: 2, child: Text("Rs. ${invoice.grandTotal.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12), textAlign: TextAlign.center)),
           Expanded(flex: 2, child: Text("Rs. ${invoice.amountPaid.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Colors.green), textAlign: TextAlign.center)),
           Expanded(

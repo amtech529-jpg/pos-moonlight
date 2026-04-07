@@ -735,6 +735,7 @@ class InvoiceModel {
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? customerPhone;
   final String? createdBy;
 
   // Computed properties
@@ -830,6 +831,7 @@ class InvoiceModel {
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
+    this.customerPhone,
     this.createdBy,
   });
 
@@ -916,9 +918,8 @@ class InvoiceModel {
         createdAt: json['created_at'] != null
             ? DateTime.parse(json['created_at'] as String)
             : DateTime.now(),
-        updatedAt: json['updated_at'] != null
-            ? DateTime.parse(json['updated_at'] as String)
-            : DateTime.now(),
+        updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at'] as String) : DateTime.now(),
+        customerPhone: json['customer_phone'] as String?,
         createdBy: _parseString(json['created_by']),
       );
       

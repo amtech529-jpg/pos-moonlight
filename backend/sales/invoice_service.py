@@ -269,7 +269,7 @@ def get_invoice_ledger(customer_id=None, start_date=None, end_date=None):
                 'due_date': inv.due_date.isoformat() if inv.due_date else None,
                 'is_overdue': inv.is_overdue,
                 'status': inv.status,
-                'customer_name': inv.customer.name if inv.customer else 'N/A',
+                'customer_name': (inv.customer.business_name if getattr(inv.customer, 'customer_type', None) == 'BUSINESS' and getattr(inv.customer, 'business_name', None) else inv.customer.name) if inv.customer else (inv.sale.customer_name if inv.sale else (inv.order.customer_name if inv.order else 'N/A')),
                 'sale_id': str(inv.sale.id) if inv.sale else None,
                 'order_id': str(inv.order.id) if inv.order else None,
             }

@@ -8,6 +8,9 @@ import '../../../src/providers/sales_provider.dart';
 import '../../../src/models/sales/sale_model.dart';
 import '../../../src/services/pdf_invoice_service.dart';
 import '../../../src/theme/app_theme.dart';
+import '../../../src/providers/order_provider.dart';
+import '../../../src/providers/customer_provider.dart';
+import '../../../src/models/order/order_model.dart';
 
 class SalesTable extends StatefulWidget {
   final Function(SaleModel) onEdit;
@@ -220,6 +223,16 @@ class _SalesTableState extends State<SalesTable> {
     final l10n = AppLocalizations.of(context)!;
     final columnWidths = _getColumnWidths(context);
 
+    final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
+    String displayCustomerName = sale.customerName;
+    
+    if (sale.customerId != null && sale.customerId!.isNotEmpty) {
+      final customer = customerProvider.allCustomers.where((c) => c.id == sale.customerId).firstOrNull;
+      if (customer != null && customer.customerType == 'BUSINESS' && customer.businessName != null && customer.businessName!.isNotEmpty) {
+        displayCustomerName = customer.businessName!;
+      }
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: index.isEven ? AppTheme.pureWhite : AppTheme.lightGray.withOpacity(0.2),
@@ -266,7 +279,7 @@ class _SalesTableState extends State<SalesTable> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  sale.customerName,
+                  displayCustomerName,
                   style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -563,7 +576,22 @@ class _SalesTableState extends State<SalesTable> {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => PdfInvoiceService.printInvoice(sale),
+            onTap: () {
+              final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+              final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
+              
+              OrderModel? associatedOrder;
+              if (sale.orderId != null && sale.orderId!.isNotEmpty) {
+                associatedOrder = orderProvider.allOrders.where((o) => o.id == sale.orderId).firstOrNull;
+              }
+              
+              CustomerModel? customer;
+              if (sale.customerId != null && sale.customerId!.isNotEmpty) {
+                customer = customerProvider.allCustomers.where((c) => c.id == sale.customerId).firstOrNull;
+              }
+              
+              PdfInvoiceService.printInvoice(sale, associatedOrder: associatedOrder, customer: customer);
+            },
             borderRadius: BorderRadius.circular(context.borderRadius('small')),
             child: Container(
               padding: EdgeInsets.all(context.smallPadding * 0.5),

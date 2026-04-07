@@ -1639,6 +1639,21 @@ class SaleItem(models.Model):
     quantity = models.PositiveIntegerField(
         help_text="Number of units sold"
     )
+    days = models.PositiveIntegerField(
+        default=1,
+        help_text="Number of days for rental (if applicable)"
+    )
+    PRICING_TYPE_CHOICES = [
+        ('PER_DAY', 'Per Day'),
+        ('PER_EVENT', 'Per Event'),
+        ('FIXED', 'Fixed Price'),
+    ]
+    pricing_type = models.CharField(
+        max_length=20,
+        choices=PRICING_TYPE_CHOICES,
+        default='PER_DAY',
+        help_text="Pricing model for this item"
+    )
     item_discount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -1705,9 +1720,13 @@ class SaleItem(models.Model):
         if self.product and not self.unit_price:
             self.unit_price = self.product.price
 
-        # Calculate line total
+        # Calculate line total based on pricing type
         if self.quantity and self.unit_price:
-            self.line_total = (self.quantity * self.unit_price) - self.item_discount
+            if self.pricing_type in ['PER_EVENT', 'FIXED']:
+                self.line_total = (self.quantity * self.unit_price) - self.item_discount
+            else:
+                days = self.days or 1
+                self.line_total = (self.quantity * self.unit_price * days) - self.item_discount
 
         self.full_clean()
         super().save(*args, **kwargs)

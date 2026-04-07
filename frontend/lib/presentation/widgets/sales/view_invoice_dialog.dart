@@ -3,19 +3,25 @@ import 'package:flutter/foundation.dart';
 import 'package:sizer/sizer.dart';
 import 'package:open_file/open_file.dart';
 import 'package:printing/printing.dart';
+import 'dart:typed_data';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+
 import '../../../l10n/app_localizations.dart';
 import '../../../src/models/sales/sale_model.dart';
 import '../../../src/services/pdf_invoice_service.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
-import '../../widgets/globals/text_button.dart';
+import '../globals/text_button.dart';
 import '../../../src/providers/invoice_provider.dart';
 import '../../../src/providers/sales_provider.dart';
 import '../../../src/services/order_service.dart';
 import '../../../src/services/order_item_service.dart';
-import 'package:provider/provider.dart';
-import '../../../src/providers/customer_provider.dart';
+import '../../../src/services/invoice_service.dart';
 import '../../../src/providers/order_provider.dart';
+import '../../../src/models/order/order_model.dart';
+import '../../../src/models/customer/customer_model.dart' as cm;
+import '../../../src/providers/customer_provider.dart';
 
 class ViewInvoiceDialog extends StatefulWidget {
   final InvoiceModel invoice;
@@ -27,200 +33,318 @@ class ViewInvoiceDialog extends StatefulWidget {
 }
 
 class _ViewInvoiceDialogState extends State<ViewInvoiceDialog> {
-  Future<Uint8List> _generatePdfBytesForPreview() async {
-    final salesProvider = Provider.of<SalesProvider>(context, listen: false);
-    String saleId = widget.invoice.saleId;
-    if (saleId.isEmpty) saleId = widget.invoice.id;
+  InvoiceModel? _detailedInvoice;
+  bool _isSyncing = true;
+  final InvoiceService _invoiceService = InvoiceService();
 
-    SaleModel? sale;
+  @override
+  void initState() {
+    super.initState();
+    _fetchDetailedInvoice();
+  }
+
+  Future<void> _fetchDetailedInvoice() async {
     try {
-      if (saleId.isNotEmpty && saleId != widget.invoice.id) {
-        sale = await salesProvider.getSaleById(saleId);
+      final response = await _invoiceService.getInvoiceById(widget.invoice.id);
+      if (response.success && response.data != null) {
+        if (mounted) {
+           setState(() {
+             _detailedInvoice = response.data;
+           });
+           
+           await _deepSyncAdditionalData();
+        }
+      } else {
+        if (mounted) setState(() => _isSyncing = false);
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) setState(() => _isSyncing = false);
+    }
+  }
 
-    // If sale was found but has no items, OR if sale wasn't found - try to enrich/fetch from Order
-    bool hasItems = sale != null && sale.saleItems.isNotEmpty;
+  Future<void> _deepSyncAdditionalData() async {
+     final invoice = _detailedInvoice ?? widget.invoice;
+     final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
+     final salesProvider = Provider.of<SalesProvider>(context, listen: false);
+     
+     final cId = invoice.customerId;
+     if (cId != null && cId.isNotEmpty) {
+        // fetchCustomerById is async - fetches from API and updates provider
+        await customerProvider.fetchCustomerById(cId);
+     }
+
+     
+     final sId = invoice.saleId;
+     if (sId.isNotEmpty) {
+        await salesProvider.getSaleById(sId);
+     }
+     
+     if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+     }
+  }
+
+  Future<Uint8List> _generatePdfBytesForPreview(BuildContext context) async {
+    final salesProvider = Provider.of<SalesProvider>(context, listen: false);
+    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+    final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
     
-    if (!hasItems) {
-      String? effectiveOrderId = (widget.invoice.orderId != null && widget.invoice.orderId!.isNotEmpty) 
-          ? widget.invoice.orderId 
-          : widget.invoice.id;
+    final effectiveInvoice = _detailedInvoice ?? widget.invoice;
+    final String saleId = effectiveInvoice.saleId;
+    
+    SaleModel? resolvedSale;
+    OrderModel? associatedOrderModel;
+    Customer? resolvedCustomer;
 
-      if (effectiveOrderId != null && effectiveOrderId.isNotEmpty) {
-        try {
-          final orderRes = await OrderService().getOrderById(effectiveOrderId);
-          if (orderRes.success && orderRes.data != null) {
-            final order = orderRes.data!;
-            final itemsRes = await OrderItemService().getOrderItemsByOrder(order.id);
-            
-            List<SaleItemModel> mappedItems = [];
-            if (itemsRes.success && itemsRes.data != null) {
-              mappedItems = itemsRes.data!.orderItems.map((oi) => SaleItemModel(
-                id: oi.id,
-                saleId: widget.invoice.saleId,
-                orderItemId: oi.id,
-                productId: oi.productId,
-                productName: oi.productName,
-                unitPrice: oi.rate,
-                quantity: oi.quantity,
-                days: oi.days,
-                pricingType: 'PER_DAY',
-                itemDiscount: 0.0,
-                lineTotal: oi.lineTotal,
-                customizationNotes: oi.customizationNotes,
-                isActive: oi.isActive,
-                createdAt: oi.createdAt,
-                updatedAt: oi.updatedAt ?? oi.createdAt,
-              )).toList();
-            }
-            
-            if (sale != null) {
-              // Enrich existing sale with order details if items were missing
-              sale = sale.copyWith(
-                saleItems: mappedItems,
-                customerPhone: order.eventLocation ?? sale.customerPhone,
-                notes: order.eventName ?? sale.notes,
-              );
-            } else {
-              // Create new temporary sale from order
-              sale = SaleModel(
-                id: widget.invoice.saleId,
-                invoiceNumber: widget.invoice.invoiceNumber,
-                dateOfSale: widget.invoice.issueDate,
-                customerName: widget.invoice.customerName,
-                customerPhone: order.eventLocation ?? 'Unknown Location',
-                subtotal: widget.invoice.grandTotal,
-                overallDiscount: 0.0,
-                taxConfiguration: TaxConfiguration(),
-                gstPercentage: 0.0,
-                taxAmount: 0.0,
-                grandTotal: widget.invoice.grandTotal,
-                amountPaid: widget.invoice.amountPaid,
-                remainingAmount: widget.invoice.amountDue,
-                isFullyPaid: widget.invoice.status == 'PAID' || widget.invoice.amountDue <= 0,
-                paymentMethod: 'CASH',
-                status: widget.invoice.status,
-                notes: order.eventName ?? 'Unknown Event',
-                isActive: widget.invoice.isActive,
-                createdAt: widget.invoice.createdAt,
-                updatedAt: widget.invoice.updatedAt,
-                createdBy: widget.invoice.createdBy,
-                saleItems: mappedItems,
-              );
-            }
-          }
-        } catch (_) {}
+    // 1. Resolve Sale
+    try {
+      if (saleId.isNotEmpty && saleId != effectiveInvoice.id) {
+        resolvedSale = await salesProvider.getSaleById(saleId);
       }
       
-      if (sale == null) {
-        sale = SaleModel(
-          id: widget.invoice.saleId,
-          invoiceNumber: widget.invoice.invoiceNumber,
-          dateOfSale: widget.invoice.issueDate,
-          customerName: widget.invoice.customerName,
-          customerPhone: 'SUMMARY',
-          subtotal: widget.invoice.grandTotal,
-          overallDiscount: 0.0,
-          taxConfiguration: TaxConfiguration(),
-          gstPercentage: 0.0,
-          taxAmount: 0.0,
-          grandTotal: widget.invoice.grandTotal,
-          amountPaid: widget.invoice.amountPaid,
-          remainingAmount: widget.invoice.amountDue,
-          isFullyPaid: widget.invoice.status == 'PAID' || widget.invoice.amountDue <= 0,
-          paymentMethod: 'CASH',
-          status: widget.invoice.status,
-          notes: widget.invoice.notes ?? "",
-          isActive: widget.invoice.isActive,
-          createdAt: widget.invoice.createdAt,
-          updatedAt: widget.invoice.updatedAt,
-          createdBy: widget.invoice.createdBy,
-          saleItems: [],
-        );
+      if (resolvedSale == null || resolvedSale.saleItems.isEmpty) {
+         final invoiceNumToFind = effectiveInvoice.invoiceNumber.replaceAll('#', '');
+         final matchingSales = salesProvider.sales.where((s) => s.invoiceNumber == invoiceNumToFind).toList();
+         if (matchingSales.isNotEmpty) {
+            resolvedSale = await salesProvider.getSaleById(matchingSales.first.id);
+         }
       }
+    } catch (e) {
+      debugPrint('Error resolving sale: $e');
     }
 
-    final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
-    String? customerId = sale.customerId ?? widget.invoice.customerId;
-    if (customerId == null && widget.invoice.orderId != null) {
-      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-      final matchingOrder = orderProvider.allOrders.where((o) => o.id == widget.invoice.orderId).firstOrNull;
-      if (matchingOrder != null) {
-        customerId = matchingOrder.customerId;
-      }
+    // 2. Resolve Order
+    String finalOrderId = (effectiveInvoice.orderId?.isEmpty ?? true)
+          ? effectiveInvoice.id 
+          : (resolvedSale?.orderId ?? effectiveInvoice.id);
+      
+    if (finalOrderId == effectiveInvoice.id) {
+       final matchingOrder = orderProvider.allOrders.where((o) => o.id == effectiveInvoice.orderId).firstOrNull;
+       if (matchingOrder != null) finalOrderId = matchingOrder.id;
     }
-    final customer = customerProvider.allCustomers.where((c) => c.id == customerId).firstOrNull;
-    final displayName = customer?.orderDisplayName ?? sale.customerName;
+
+    if (finalOrderId.isNotEmpty && finalOrderId != effectiveInvoice.id) {
+        associatedOrderModel = await orderProvider.getOrderById(finalOrderId);
+    }
+
+    // 3. Resolve Customer
+    String? finalCustomerId = (effectiveInvoice.customerId?.isEmpty ?? true)
+          ? (resolvedSale?.customerId ?? '')
+          : effectiveInvoice.customerId;
+
+    if (finalCustomerId != null && finalCustomerId.isNotEmpty) {
+      resolvedCustomer = await customerProvider.getCustomerById(finalCustomerId);
+    }
     
-    final patchedSale = sale.copyWith(customerName: displayName);
-    return await PdfInvoiceService.generatePdfBytes(patchedSale);
+    // 4. Resolve Display Name
+    String displayName = (resolvedCustomer != null && resolvedCustomer!.name.isNotEmpty) 
+          ? (resolvedCustomer!.businessName ?? resolvedCustomer!.name) 
+          : (effectiveInvoice.customerName ?? 'Walk-in Customer');
+
+    // Use business name if available (priority)
+    if (resolvedCustomer != null) {
+       if (resolvedCustomer!.businessName != null && resolvedCustomer!.businessName!.trim().isNotEmpty) {
+          displayName = resolvedCustomer!.businessName!;
+       } else {
+          displayName = resolvedCustomer!.name;
+       }
+    } else if (resolvedSale?.customerName != null && resolvedSale!.customerName.isNotEmpty) {
+       displayName = resolvedSale!.customerName;
+    }
+
+    // 5. Items Recovery (CRITICAL FIX FOR EMPTY COLUMNS)
+    List<SaleItemModel> finalItems = [];
+    
+    // Attempt 1: Get from resolvedSale
+    if (resolvedSale != null && (resolvedSale!.saleItems.isNotEmpty)) {
+       finalItems = List.from(resolvedSale!.saleItems);
+       debugPrint('✅ Found ${finalItems.length} items in resolvedSale');
+    }
+    
+    // Attempt 2: Recover from Search by invoice number if still empty
+    if (finalItems.isEmpty) {
+       final invNum = effectiveInvoice.invoiceNumber.replaceAll('#', '').trim();
+       final match = salesProvider.sales.where((s) => s.invoiceNumber == invNum).firstOrNull;
+       if (match != null && match.saleItems.isNotEmpty) {
+         finalItems = List.from(match.saleItems);
+         debugPrint('✅ Recovered ${finalItems.length} items from sales list match');
+       }
+    }
+
+    // Attempt 3: Recover from Order Items (LAST RESORT)
+    if (finalItems.isEmpty && (associatedOrderModel != null || effectiveInvoice.orderId != null)) {
+       final oId = associatedOrderModel?.id ?? effectiveInvoice.orderId ?? '';
+       if (oId.isNotEmpty) {
+         debugPrint('🔍 Attempting recovery from Order ID: $oId');
+         try {
+           final orderItemsRes = await OrderItemService().getOrderItemsByOrder(oId);
+           if (orderItemsRes.success && orderItemsRes.data != null && orderItemsRes.data!.orderItems.isNotEmpty) {
+              finalItems = orderItemsRes.data!.orderItems.map((oi) => SaleItemModel(
+                  id: oi.id,
+                  saleId: saleId.isEmpty ? effectiveInvoice.id : saleId,
+                  orderItemId: oi.id,
+                  productId: oi.productId,
+                  productName: oi.productName,
+                  unitPrice: oi.rate,
+                  quantity: oi.quantity,
+                  days: oi.days,
+                  pricingType: 'PER_DAY',
+                  itemDiscount: 0.0,
+                  lineTotal: oi.lineTotal,
+                  customizationNotes: oi.customizationNotes,
+                  isActive: oi.isActive,
+                  createdAt: oi.createdAt,
+                  updatedAt: oi.updatedAt ?? oi.createdAt,
+              )).toList();
+              debugPrint('✅ Recovered ${finalItems.length} items from Order Items API');
+           }
+         } catch(e) {
+           debugPrint('❌ Items recovery from order failed: $e');
+         }
+       }
+    }
+    
+    debugPrint('📊 Final items count for PDF: ${finalItems.length}');
+    if (finalItems.isNotEmpty) {
+      debugPrint('📦 First item: ${finalItems.first.productName} x ${finalItems.first.quantity}');
+    }
+
+    // 6. Build Final Sale Object for PDF
+    final saleForPdf = SaleModel(
+      id: (resolvedSale?.id ?? saleId).isNotEmpty ? (resolvedSale?.id ?? saleId) : effectiveInvoice.id,
+      invoiceNumber: effectiveInvoice.invoiceNumber.replaceAll('#', ''),
+      orderId: associatedOrderModel?.id ?? effectiveInvoice.orderId,
+      customerId: finalCustomerId,
+      customerName: displayName,
+      customerPhone: resolvedCustomer?.phone ?? effectiveInvoice.customerPhone ?? '',
+      customerEmail: resolvedCustomer?.email ?? '',
+      subtotal: effectiveInvoice.totalAmount,
+      overallDiscount: effectiveInvoice.totalAmount - effectiveInvoice.grandTotal,
+      taxConfiguration: TaxConfiguration(),
+      gstPercentage: 0,
+      taxAmount: 0,
+      grandTotal: effectiveInvoice.grandTotal,
+      amountPaid: effectiveInvoice.amountPaid,
+      remainingAmount: effectiveInvoice.amountDue,
+      isFullyPaid: effectiveInvoice.status.toUpperCase() == 'PAID',
+      paymentMethod: resolvedSale?.paymentMethod ?? 'CASH',
+      dateOfSale: effectiveInvoice.issueDate,
+      status: effectiveInvoice.status,
+      notes: effectiveInvoice.notes,
+      isActive: true,
+      createdAt: effectiveInvoice.createdAt,
+      updatedAt: effectiveInvoice.updatedAt,
+      saleItems: finalItems, 
+    );
+
+    try {
+      return await PdfInvoiceService.generatePdfBytes(
+        saleForPdf,
+        associatedOrder: associatedOrderModel,
+        customer: resolvedCustomer,
+      );
+    } catch (e) {
+      debugPrint('❌ Fatal PDf Generation Error: $e');
+      // Final fallback to avoid non-nullable return error
+      return Uint8List(0);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width >= 1024;
+
     return Dialog(
+      insetPadding: EdgeInsets.all(isDesktop ? 50 : 10),
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(20),
       child: Container(
-        width: 850,
-        height: MediaQuery.of(context).size.height * 0.9,
+        width: isDesktop ? 75.w : 95.w,
+        height: 90.h,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+              blurRadius: 20,
+              spreadRadius: 5,
             ),
           ],
         ),
         child: Column(
           children: [
-            // Header
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                color: theme.primaryColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.inventory_2_outlined, color: AppTheme.primaryMaroon),
-                      const SizedBox(width: 10),
-                      Text(
-                        "Invoice Preview", 
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primaryMaroon)
-                      ),
-                    ],
+                  Text(
+                    'Invoice Preview',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.grey),
                     onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Colors.white),
                   ),
                 ],
               ),
             ),
-            
-            // PDF Preview
+
             Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                child: PdfPreview(
-                  build: (format) => _generatePdfBytesForPreview(),
-                  canChangePageFormat: false,
-                  canChangeOrientation: false,
-                  canDebug: false,
-                  allowPrinting: true,
-                  allowSharing: true,
-                  padding: const EdgeInsets.all(10),
-                  pdfFileName: 'Invoice_${widget.invoice.invoiceNumber}.pdf',
-                ),
+              child: _isSyncing
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Resolving Data...',
+                            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    )
+                  : PdfPreview(
+                      build: (format) => _generatePdfBytesForPreview(context),
+                      useActions: true,
+                      canChangePageFormat: false,
+                      canChangeOrientation: false,
+                      canDebug: false,
+                      allowPrinting: true,
+                      allowSharing: true,
+                      padding: const EdgeInsets.all(10),
+                      pdfFileName: 'Invoice_${widget.invoice.invoiceNumber}.pdf',
+                      loadingWidget: const Center(child: CircularProgressIndicator()),
+                    ),
+            ),
+            
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  PremiumButton(
+                    onPressed: () => Navigator.pop(context),
+                    text: 'Close',
+                    width: 100,
+                  ),
+                ],
               ),
             ),
           ],

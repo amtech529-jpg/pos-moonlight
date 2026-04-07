@@ -371,7 +371,12 @@ class CustomerProvider extends ChangeNotifier {
     String? verified,
     bool showInactive = false,
     bool showLoadingIndicator = true,
+    bool refresh = false,
   }) async {
+    if (refresh) {
+      _currentPage = 1;
+      _customers.clear();
+    }
     if (showLoadingIndicator) {
       _isLoading = true;
       _hasError = false;

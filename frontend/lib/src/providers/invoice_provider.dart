@@ -125,6 +125,15 @@ class InvoiceProvider extends ChangeNotifier {
     }
   }
 
+  /// Update an invoice in the local list (useful for background syncing)
+  void updateInvoiceLocally(InvoiceModel updatedInvoice) {
+    final index = _invoices.indexWhere((inv) => inv.id == updatedInvoice.id);
+    if (index != -1) {
+      _invoices[index] = updatedInvoice;
+      notifyListeners();
+    }
+  }
+
   Future<void> refresh() async {
     await loadInvoices(refresh: true);
   }

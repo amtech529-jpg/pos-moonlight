@@ -166,8 +166,8 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES' : {
-        'user': '1000/hour',
-        'dashboard': '60/minute',
+        'user': '100000/hour',
+        'dashboard': '1000/minute',
     },
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination', # ADD THIS LINE
     'PAGE_SIZE': 100,

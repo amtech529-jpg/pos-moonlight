@@ -7,6 +7,10 @@ import '../../../src/models/sales/sale_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../../../src/services/pdf_invoice_service.dart';
+import 'package:provider/provider.dart';
+import '../../../src/providers/order_provider.dart';
+import '../../../src/models/order/order_model.dart';
+import '../../../src/providers/customer_provider.dart';
 
 class ViewSaleDialog extends StatefulWidget {
   final SaleModel sale;
@@ -46,7 +50,20 @@ class _ViewSaleDialogState extends State<ViewSaleDialog> with SingleTickerProvid
   }
 
   void _handlePrint() {
-    PdfInvoiceService.printInvoice(widget.sale);
+    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+    final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
+    
+    OrderModel? associatedOrder;
+    if (widget.sale.orderId != null && widget.sale.orderId!.isNotEmpty) {
+      associatedOrder = orderProvider.allOrders.where((o) => o.id == widget.sale.orderId).firstOrNull;
+    }
+    
+    CustomerModel? customer;
+    if (widget.sale.customerId != null && widget.sale.customerId!.isNotEmpty) {
+      customer = customerProvider.allCustomers.where((c) => c.id == widget.sale.customerId).firstOrNull;
+    }
+    
+    PdfInvoiceService.printInvoice(widget.sale, associatedOrder: associatedOrder, customer: customer);
   }
 
   @override

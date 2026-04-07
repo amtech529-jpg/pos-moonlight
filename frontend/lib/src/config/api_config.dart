@@ -1,8 +1,8 @@
 class ApiConfig {
-//   static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
-  static const String baseUrl = 'https://pos-moonlight-production.up.railway.app/api/v1';
-  // static const String baseUrl =
-  //     'https://django-flutter-pos-production.up.railway.app/api/v1';
+  static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
+//   static const String baseUrl = 'https://pos-moonlight-production.up.railway.app/api/v1';
+//   static const String baseUrl =
+//       'https://django-flutter-pos-production.up.railway.app/api/v1';
   static const String dashboardAnalytics = '/analytics/dashboard/';
   static const String register = '/auth/register/';
   static const String login = '/auth/login/';

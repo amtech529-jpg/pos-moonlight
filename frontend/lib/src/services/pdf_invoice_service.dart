@@ -6,6 +6,8 @@ import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import '../models/sales/sale_model.dart';
+import '../models/order/order_model.dart';
+import '../providers/customer_provider.dart';
 
 class PdfInvoiceService {
   static const String companyName = 'MOON LIGHT EVENTS';
@@ -14,7 +16,7 @@ class PdfInvoiceService {
   static const String whatsappNo = '0324-4580401, 0324-4580402';
   static const String emailAddress = 'moonlightevents707@gmail.com';
 
-  static Future<Uint8List> generatePdfBytes(SaleModel sale) async {
+  static Future<Uint8List> generatePdfBytes(SaleModel sale, {OrderModel? associatedOrder, Customer? customer}) async {
     final pdf = pw.Document();
     
     // Load Logo if available
@@ -99,7 +101,7 @@ class PdfInvoiceService {
                             child: _buildInfoRow("Date:", DateFormat('dd-MM-yyyy').format(sale.dateOfSale)),
                           ),
                           pw.Expanded(
-                            child: _buildInfoRow("Event:", sale.notes?.isNotEmpty == true ? (sale.notes!.contains('\n') ? sale.notes!.split('\n').first : sale.notes!) : "Unknown Event"),
+                            child: _buildInfoRow("Event:", associatedOrder?.eventName ?? (sale.notes?.isNotEmpty == true ? (sale.notes!.contains('\n') ? sale.notes!.split('\n').first : sale.notes!) : "N/A")),
                           ),
                         ],
                       ),
@@ -107,10 +109,10 @@ class PdfInvoiceService {
                       pw.Row(
                         children: [
                           pw.Expanded(
-                            child: _buildInfoRow("Bill To:", sale.customerName),
+                            child: _buildInfoRow("Bill To:", customer?.businessName ?? customer?.name ?? sale.customerName),
                           ),
                           pw.Expanded(
-                            child: _buildInfoRow("Location:", sale.customerPhone.isNotEmpty ? sale.customerPhone : "N/A"),
+                            child: _buildInfoRow("Location:", associatedOrder?.eventLocation ?? "N/A"),
                           ),
                         ],
                       ),
@@ -136,10 +138,14 @@ class PdfInvoiceService {
                       ),
                       pw.Column(
                         children: [
-                          // Custom Header
+                          // Persistent Table Header
                           pw.Container(
                             decoration: const pw.BoxDecoration(
-                              border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 2)),
+                              color: PdfColors.grey100,
+                              border: pw.Border(
+                                top: pw.BorderSide(color: PdfColors.black, width: 1),
+                                bottom: pw.BorderSide(color: PdfColors.black, width: 1),
+                              ),
                             ),
                             padding: const pw.EdgeInsets.symmetric(vertical: 4),
                             child: pw.Row(
@@ -158,23 +164,55 @@ class PdfInvoiceService {
                             decoration: const pw.BoxDecoration(
                               border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
                             ),
-                            padding: const pw.EdgeInsets.symmetric(vertical: 8),
+                            padding: const pw.EdgeInsets.symmetric(vertical: 6),
                             child: pw.Row(
                               children: [
+                                // Qty
                                 pw.Container(width: 40, child: pw.Text("${item.quantity}", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                                
+                                // Description (Product Name + Notes)
                                 pw.Expanded(child: pw.Padding(
                                   padding: const pw.EdgeInsets.only(left: 8),
-                                  child: pw.Text(item.productName, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                                  child: pw.Column(
+                                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                    children: [
+                                      pw.Text(item.productName.isNotEmpty ? item.productName : "Item Details", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                                      if (item.customizationNotes != null && 
+                                          item.customizationNotes!.isNotEmpty && 
+                                          !item.customizationNotes!.contains('From Quote Item'))
+                                        pw.Padding(
+                                          padding: const pw.EdgeInsets.only(top: 2),
+                                          child: pw.Text(item.customizationNotes!, style: pw.TextStyle(fontSize: 8, fontStyle: pw.FontStyle.italic, color: PdfColors.grey700)),
+                                        )
+                                    ]
+                                  ),
                                 )),
-                                // We check if this is a rental item logic or just generic sale
-                                // Since SaleModel might not have pricingType, we default to showing quantity or 1
-                                pw.Container(width: 40, child: pw.Text("${item.days}", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-                                pw.Container(width: 50, child: pw.Text(item.pricingType == 'PER_EVENT' ? "Yes" : "No", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-                                pw.Container(width: 70, child: pw.Text(NumberFormat("#,##0").format(item.unitPrice), textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                                
+                                // Days
+                                pw.Container(width: 40, child: pw.Text("${item.days > 0 ? item.days : 1}", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9))),
+                                
+                                // Event Pricing? (Converted from pricingType)
+                                pw.Container(width: 50, child: pw.Text(
+                                  (item.pricingType == 'PER_EVENT' || item.pricingType == 'FIXED') ? "Yes" : "No", 
+                                  textAlign: pw.TextAlign.center, 
+                                  style: pw.TextStyle(fontSize: 9)
+                                )),
+                                
+                                // Rate
+                                pw.Container(width: 70, child: pw.Text(NumberFormat("#,##0").format(item.unitPrice), textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9))),
+                                
+                                // Amount
                                 pw.Container(width: 80, padding: const pw.EdgeInsets.only(right: 8), child: pw.Text(NumberFormat("#,##0").format(item.lineTotal), textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
                               ],
                             ),
                           )).toList(),
+                          
+                          // If no items, show a placeholder row to avoid empty table lookup
+                          if (sale.saleItems.isEmpty)
+                            pw.Container(
+                              padding: const pw.EdgeInsets.all(20),
+                              child: pw.Center(child: pw.Text("No item details available", style: pw.TextStyle(color: PdfColors.grey500, fontStyle: pw.FontStyle.italic))),
+                            ),
                         ],
                       ),
                     ],
@@ -287,8 +325,8 @@ class PdfInvoiceService {
     return await pdf.save();
   }
 
-  static Future<void> printInvoice(SaleModel sale) async {
-    final Uint8List pdfBytes = await generatePdfBytes(sale);
+  static Future<void> printInvoice(SaleModel sale, {OrderModel? associatedOrder, Customer? customer}) async {
+    final Uint8List pdfBytes = await generatePdfBytes(sale, associatedOrder: associatedOrder, customer: customer);
 
     // Sanitize filename for Windows compatibility (X-STRICT: Only Letters and Underline)
     String safeName = 'Invoice_${sale.invoiceNumber.isEmpty ? "Order" : sale.invoiceNumber}';

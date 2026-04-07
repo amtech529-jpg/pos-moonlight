@@ -5,6 +5,8 @@ class ReminderModel {
   final String subtitle;
   final String date;
   final String priority; // CRITICAL, HIGH, MEDIUM, LOW
+  final String? customerId;   // ✅ for Business Name resolution
+  final String? customerName; // ✅ raw name from backend
 
   ReminderModel({
     required this.id,
@@ -13,6 +15,8 @@ class ReminderModel {
     required this.subtitle,
     required this.date,
     required this.priority,
+    this.customerId,
+    this.customerName,
   });
 
   factory ReminderModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,8 @@ class ReminderModel {
       subtitle: json['subtitle'] ?? '',
       date: json['date'] ?? '',
       priority: json['priority'] ?? 'MEDIUM',
+      customerId: json['customer_id'] as String?,
+      customerName: json['customer_name'] as String?,
     );
   }
 
@@ -34,6 +40,8 @@ class ReminderModel {
       'subtitle': subtitle,
       'date': date,
       'priority': priority,
+      'customer_id': customerId,
+      'customer_name': customerName,
     };
   }
 }

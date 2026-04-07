@@ -545,10 +545,13 @@ def create_from_order(request):
                                         sale=sale,
                                         order_item=order_item.id, # This field is UUIDField in SaleItem
                                         product=order_item.product,
-                                        unit_price=order_item.rate * order_item.days, # SaleItem unit_price is total per item for the rental period
+                                        product_name=order_item.product_name,
+                                        unit_price=order_item.rate, # Pass base rate, models.py save() calculates line_total with days
                                         quantity=quantity_to_sell,
+                                        days=order_item.days,
+                                        pricing_type=order_item.pricing_type,
                                         customization_notes=order_item.customization_notes
-                                    )
+                                     )
                         except OrderItem.DoesNotExist:
                             continue
                 else:
@@ -558,8 +561,11 @@ def create_from_order(request):
                             sale=sale,
                             order_item=order_item.id,
                             product=order_item.product,
-                            unit_price=order_item.rate * order_item.days,
+                            product_name=order_item.product_name,
+                            unit_price=order_item.rate,
                             quantity=order_item.quantity,
+                            days=order_item.days,
+                            pricing_type=order_item.pricing_type,
                             customization_notes=order_item.customization_notes
                         )
 
