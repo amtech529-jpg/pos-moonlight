@@ -96,7 +96,7 @@ class ProductModel {
       pricingType: json['pricing_type'] as String? ?? 'PER_DAY',
       isRental: json['is_rental'] as bool? ?? true,
       isConsumable: json['is_consumable'] as bool? ?? false,
-      categoryId: json['category_id'] as String?,
+      categoryId: json['category_id'] as String? ?? json['category']?.toString(),
       categoryName: json['category_name'] as String?,
       stockStatus: json['stock_status'] as String? ?? 'UNKNOWN',
       stockStatusDisplay: json['stock_status_display'] as String? ?? 'Unknown',

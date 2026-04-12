@@ -22,6 +22,11 @@ class _EditAdvancePaymentDialogState extends State<EditAdvancePaymentDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _amountController;
   late TextEditingController _descriptionController;
+  final _amountFocusNode = FocusNode();
+  final _descriptionFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
+  final _dateFocusNode = FocusNode();
+  final _timeFocusNode = FocusNode();
 
   late LaborModel _selectedLabor;
   late DateTime _selectedDate;
@@ -79,6 +84,11 @@ class _EditAdvancePaymentDialogState extends State<EditAdvancePaymentDialog> {
   void dispose() {
     _amountController.dispose();
     _descriptionController.dispose();
+    _amountFocusNode.dispose();
+    _descriptionFocusNode.dispose();
+    _saveFocusNode.dispose();
+    _dateFocusNode.dispose();
+    _timeFocusNode.dispose();
     super.dispose();
   }
 
@@ -289,6 +299,9 @@ class _EditAdvancePaymentDialogState extends State<EditAdvancePaymentDialog> {
               controller: _amountController,
               prefixIcon: Icons.attach_money_rounded,
               keyboardType: TextInputType.number,
+              focusNode: _amountFocusNode,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _descriptionFocusNode.requestFocus(),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return l10n.pleaseEnterAmount;
@@ -307,6 +320,9 @@ class _EditAdvancePaymentDialogState extends State<EditAdvancePaymentDialog> {
               hint: l10n.enterDescription,
               controller: _descriptionController,
               prefixIcon: Icons.description_outlined,
+              focusNode: _descriptionFocusNode,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _dateFocusNode.requestFocus(),
               maxLines: 3,
               validator: (value) {
                 if (value?.isEmpty ?? true) {
@@ -323,92 +339,123 @@ class _EditAdvancePaymentDialogState extends State<EditAdvancePaymentDialog> {
             Row(
               children: [
                 Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () async {
-                        await context.showSyncfusionDateTimePicker(
-                          initialDate: _selectedDate,
-                          initialTime: _selectedTime,
-                          title: l10n.selectDate,
-                          minDate: DateTime(2000),
-                          maxDate: DateTime.now().add(const Duration(days: 365)),
-                          onDateTimeSelected: (date, time) {
-                            setState(() {
-                              _selectedDate = date;
-                              _selectedTime = time;
-                            });
-                          },
+                  child: Focus(
+                    focusNode: _dateFocusNode,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                        // Open date picker
+                        return KeyEventResult.ignored; // Let click handle it but focus is there
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: Builder(
+                      builder: (context) {
+                        final isFocused = Focus.of(context).hasFocus;
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              await context.showSyncfusionDateTimePicker(
+                                initialDate: _selectedDate,
+                                initialTime: _selectedTime,
+                                title: l10n.selectDate,
+                                minDate: DateTime(2000),
+                                maxDate: DateTime.now().add(const Duration(days: 365)),
+                                onDateTimeSelected: (date, time) {
+                                  setState(() {
+                                    _selectedDate = date;
+                                    _selectedTime = time;
+                                  });
+                                  FocusScope.of(context).requestFocus(_timeFocusNode);
+                                },
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(context.borderRadius()),
+                            child: Container(
+                              padding: EdgeInsets.all(context.cardPadding),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: isFocused ? AppTheme.accentGold : Colors.grey.shade300, width: isFocused ? 2 : 1),
+                                borderRadius: BorderRadius.circular(context.borderRadius()),
+                                boxShadow: isFocused ? [
+                                  BoxShadow(color: AppTheme.accentGold.withOpacity(0.3), blurRadius: 8, spreadRadius: 2)
+                                ] : [],
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(Icons.calendar_today, color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
+                                  SizedBox(height: context.smallPadding),
+                                  Text(
+                                    l10n.date,
+                                    style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
+                                  ),
+                                  SizedBox(height: context.smallPadding / 2),
+                                  Text(
+                                    '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                                    style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         );
-                      },
-                      borderRadius: BorderRadius.circular(context.borderRadius()),
-                      child: Container(
-                        padding: EdgeInsets.all(context.cardPadding),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(context.borderRadius()),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(Icons.calendar_today, color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
-                            SizedBox(height: context.smallPadding),
-                            Text(
-                              l10n.date,
-                              style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
-                            ),
-                            SizedBox(height: context.smallPadding / 2),
-                            Text(
-                              '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                              style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ),
+                      }
                     ),
                   ),
                 ),
                 SizedBox(width: context.cardPadding),
                 Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () async {
-                        await context.showSyncfusionDateTimePicker(
-                          initialDate: DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _selectedTime.hour, _selectedTime.minute),
-                          initialTime: _selectedTime,
-                          title: l10n.selectTime,
-                          minDate: DateTime(2000),
-                          maxDate: DateTime.now().add(const Duration(days: 365)),
-                          onDateTimeSelected: (date, time) {
-                            setState(() {
-                              _selectedTime = time;
-                            });
-                          },
+                  child: Focus(
+                    focusNode: _timeFocusNode,
+                    child: Builder(
+                      builder: (context) {
+                        final isFocused = Focus.of(context).hasFocus;
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              await context.showSyncfusionDateTimePicker(
+                                initialDate: DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _selectedTime.hour, _selectedTime.minute),
+                                initialTime: _selectedTime,
+                                title: l10n.selectTime,
+                                minDate: DateTime(2000),
+                                maxDate: DateTime.now().add(const Duration(days: 365)),
+                                onDateTimeSelected: (date, time) {
+                                  setState(() {
+                                    _selectedTime = time;
+                                  });
+                                  _saveFocusNode.requestFocus();
+                                },
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(context.borderRadius()),
+                            child: Container(
+                              padding: EdgeInsets.all(context.cardPadding),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: isFocused ? AppTheme.accentGold : Colors.grey.shade300, width: isFocused ? 2 : 1),
+                                borderRadius: BorderRadius.circular(context.borderRadius()),
+                                boxShadow: isFocused ? [
+                                  BoxShadow(color: AppTheme.accentGold.withOpacity(0.3), blurRadius: 8, spreadRadius: 2)
+                                ] : [],
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(Icons.access_time, color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
+                                  SizedBox(height: context.smallPadding),
+                                  Text(
+                                    l10n.time,
+                                    style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
+                                  ),
+                                  SizedBox(height: context.smallPadding / 2),
+                                  Text(
+                                    _selectedTime.format(context),
+                                    style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         );
-                      },
-                      borderRadius: BorderRadius.circular(context.borderRadius()),
-                      child: Container(
-                        padding: EdgeInsets.all(context.cardPadding),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(context.borderRadius()),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(Icons.access_time, color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
-                            SizedBox(height: context.smallPadding),
-                            Text(
-                              l10n.time,
-                              style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
-                            ),
-                            SizedBox(height: context.smallPadding / 2),
-                            Text(
-                              _selectedTime.format(context),
-                              style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ),
+                      }
                     ),
                   ),
                 ),
@@ -443,10 +490,11 @@ class _EditAdvancePaymentDialogState extends State<EditAdvancePaymentDialog> {
                     textColor: Colors.grey[600],
                   ),
                 ),
-                SizedBox(width: context.cardPadding),
+                const SizedBox(width: 20),
                 Expanded(
                   child: PremiumButton(
                     text: l10n.updatePayment,
+                    focusNode: _saveFocusNode,
                     onPressed: _isUpdating ? null : _handleUpdate,
                     isLoading: _isUpdating,
                     height: context.buttonHeight,

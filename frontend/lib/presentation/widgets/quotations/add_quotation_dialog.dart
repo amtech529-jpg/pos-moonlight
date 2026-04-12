@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 
 import '../../../src/models/quotation/quotation_model.dart';
 import '../../../src/models/customer/customer_model.dart';
@@ -38,6 +39,16 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
   final _eventNameFocusNode = FocusNode();
   final _locationFocusNode = FocusNode();
   final _notesFocusNode = FocusNode();
+  final _customerFocusNode = FocusNode();
+  final _eventDateFocusNode = FocusNode();
+  final _returnDateFocusNode = FocusNode();
+  final _validUntilFocusNode = FocusNode();
+  final _addItemFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
+  final _discountFocusNode = FocusNode();
+
+  // Scroll Controller
+  final ScrollController _scrollController = ScrollController();
 
   DateTime _eventDate = DateTime.now();
   DateTime _returnDate = DateTime.now().add(const Duration(days: 2));
@@ -61,6 +72,47 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
       });
       context.read<CustomerProvider>().initialize();
       context.read<VendorProvider>().initialize();
+    });
+
+    // Handle auto-scrolling and focus updates
+    _eventDateFocusNode.addListener(_handleFocusChange);
+    _returnDateFocusNode.addListener(_handleFocusChange);
+    _validUntilFocusNode.addListener(_handleFocusChange);
+    _notesFocusNode.addListener(_handleFocusChange);
+    _addItemFocusNode.addListener(_handleFocusChange);
+    _customerFocusNode.addListener(_handleFocusChange);
+  }
+
+  void _handleFocusChange() {
+    if (mounted) {
+      setState(() {}); // Force rebuild when focus changes to update borders
+      if (_addItemFocusNode.hasFocus) {
+        _scrollToBottom();
+      }
+    }
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        // More robust scroll: ensure the Add Item button is visible
+        final context = _addItemFocusNode.context;
+        if (context != null) {
+          Scrollable.ensureVisible(
+            context,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+            alignment: 1.0, // Scroll to bottom
+          );
+        } else {
+          // Fallback if context is null
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
     });
   }
 
@@ -106,6 +158,14 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
     _eventNameFocusNode.dispose();
     _locationFocusNode.dispose();
     _notesFocusNode.dispose();
+    _customerFocusNode.dispose();
+    _eventDateFocusNode.dispose();
+    _returnDateFocusNode.dispose();
+    _validUntilFocusNode.dispose();
+    _addItemFocusNode.dispose();
+    _saveFocusNode.dispose();
+    _discountFocusNode.dispose();
+    _scrollController.dispose();
     
     // Clear filters and search from provider when closing the dialog
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -254,59 +314,64 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
                 child: Divider(height: 16, thickness: 1.5),
               ),
               Expanded(
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(bottom: 24),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Left Side: Details
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.grey[200]!),
+                child: Scrollbar(
+                  controller: _scrollController,
+                  thumbVisibility: true,
+                  trackVisibility: true,
+                  thickness: 8,
+                  radius: const Radius.circular(8),
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0).copyWith(bottom: 24),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Left Side: Details
+                          Expanded(
+                            flex: 2,
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.grey[200]!),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildSectionTitle("Customer Information"),
+                                  const SizedBox(height: 12),
+                                  _buildCustomerSelection(),
+                                  const SizedBox(height: 16),
+                                  _buildSectionTitle("Event Details"),
+                                  const SizedBox(height: 12),
+                                  _buildEventFields(),
+                                ],
+                              ),
                             ),
+                          ),
+                          const SizedBox(width: 32),
+                          // Right Side: Items
+                          Expanded(
+                            flex: 3,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildSectionTitle("Customer Information"),
-                                const SizedBox(height: 12),
-                                _buildCustomerSelection(),
-                                const SizedBox(height: 16),
-                                _buildSectionTitle("Event Details"),
-                                const SizedBox(height: 12),
-                                _buildEventFields(),
+                                _buildSectionTitle("Quotation Items"),
+                                const SizedBox(height: 8),
+                                _buildItemsTable(),
+                                const SizedBox(height: 8),
+                                _buildSummary(),
                               ],
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 32),
-                        // Right Side: Items
-                        Expanded(
-                          flex: 3,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildSectionTitle("Quotation Items"),
-                              const SizedBox(height: 8),
-                              _buildItemsTable(),
-                              const SizedBox(height: 8),
-                              _buildSummary(),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-               ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -360,6 +425,7 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
                     ))
                     .toList(),
                 value: _selectedCustomer,
+                focusNode: _customerFocusNode,
                 onChanged: (customer) {
                   setState(() {
                     _selectedCustomer = customer;
@@ -368,6 +434,7 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
                       _customerPhoneController.text = customer.phone;
                     }
                   });
+                  _eventNameFocusNode.requestFocus();
                 },
                 prefixIcon: Icons.person_search_rounded,
               ),
@@ -422,53 +489,53 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
   Widget _buildEventFields() {
     return Column(
       children: [
-        _buildTextField("Event Name (e.g. Ali's Wedding)", _eventNameController, required: true, focusNode: _eventNameFocusNode, textInputAction: TextInputAction.next),
+        _buildTextField("Event Name (e.g. Ali's Wedding)", _eventNameController, required: true, focusNode: _eventNameFocusNode, textInputAction: TextInputAction.next, onSubmitted: () => _locationFocusNode.requestFocus()),
         const SizedBox(height: 16),
-        _buildTextField("Location", _eventLocationController, focusNode: _locationFocusNode, textInputAction: TextInputAction.next),
+        _buildTextField("Location", _eventLocationController, focusNode: _locationFocusNode, textInputAction: TextInputAction.next, onSubmitted: () => _eventDateFocusNode.requestFocus()),
         const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
-              child: InkWell(
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: _eventDate,
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                    builder: (context, child) => _buildDatePickerTheme(child!),
-                  );
-                  if (date != null) {
-                    setState(() {
-                      _eventDate = date;
-                      // Ensure Return Date is not before Event Date
-                      if (_returnDate.isBefore(_eventDate)) {
-                        _returnDate = _eventDate.add(const Duration(days: 1));
-                      }
-                    });
-                    _reloadProducts();
+              child: Focus(
+                focusNode: _eventDateFocusNode,
+                onKey: (node, event) {
+                  if (event is RawKeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                    _selectEventDate();
+                    return KeyEventResult.handled;
                   }
+                  return KeyEventResult.ignored;
                 },
-                child: _buildTextField("Event Date", TextEditingController(text: DateFormat('dd/MM/yyyy').format(_eventDate)), enabled: false),
+                child: InkWell(
+                  onTap: _selectEventDate,
+                  child: _buildTextField(
+                    "Event Date", 
+                    TextEditingController(text: DateFormat('dd/MM/yyyy').format(_eventDate)), 
+                    enabled: false, 
+                    isExternalFocus: _eventDateFocusNode.hasFocus
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: InkWell(
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: _returnDate,
-                    firstDate: _eventDate,
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                    builder: (context, child) => _buildDatePickerTheme(child!),
-                  );
-                  if (date != null) {
-                    setState(() => _returnDate = date);
-                    _reloadProducts();
+              child: Focus(
+                focusNode: _returnDateFocusNode,
+                onKey: (node, event) {
+                  if (event is RawKeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                    _selectReturnDate();
+                    return KeyEventResult.handled;
                   }
+                  return KeyEventResult.ignored;
                 },
-                child: _buildTextField("Return Date", TextEditingController(text: DateFormat('dd/MM/yyyy').format(_returnDate)), enabled: false),
+                child: InkWell(
+                  onTap: _selectReturnDate,
+                  child: _buildTextField(
+                    "Return Date", 
+                    TextEditingController(text: DateFormat('dd/MM/yyyy').format(_returnDate)), 
+                    enabled: false, 
+                    isExternalFocus: _returnDateFocusNode.hasFocus
+                  ),
+                ),
               ),
             ),
           ],
@@ -477,68 +544,166 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
         Row(
           children: [
             Expanded(
-              child: InkWell(
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: _validUntil,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 90)),
-                    builder: (context, child) => _buildDatePickerTheme(child!),
-                  );
-                  if (date != null) setState(() => _validUntil = date);
+              child: Focus(
+                focusNode: _validUntilFocusNode,
+                onKey: (node, event) {
+                  if (event is RawKeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                    _selectValidUntilDate();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
                 },
-                child: _buildTextField("Valid Until", TextEditingController(text: DateFormat('dd/MM/yyyy').format(_validUntil)), enabled: false),
+                child: InkWell(
+                  onTap: _selectValidUntilDate,
+                  child: _buildTextField(
+                    "Valid Until", 
+                    TextEditingController(text: DateFormat('dd/MM/yyyy').format(_validUntil)), 
+                    enabled: false, 
+                    isExternalFocus: _validUntilFocusNode.hasFocus
+                  ),
+                ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 16),
-        _buildTextField("Internal / Special Notes", _notesController, maxLines: 3, focusNode: _notesFocusNode),
+        Focus(
+          onKey: (node, event) {
+            if (event is RawKeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+              _addItemFocusNode.requestFocus();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: _buildTextField(
+            "Internal / Special Notes", 
+            _notesController, 
+            maxLines: 3, 
+            focusNode: _notesFocusNode, 
+            textInputAction: TextInputAction.next,
+            onSubmitted: () => _addItemFocusNode.requestFocus(),
+            isExternalFocus: _notesFocusNode.hasFocus
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool required = false, bool enabled = true, int maxLines = 1, FocusNode? focusNode, TextInputAction? textInputAction}) {
+  Future<void> _selectEventDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _eventDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) => _buildDatePickerTheme(child!),
+    );
+    if (date != null) {
+      setState(() {
+        _eventDate = date;
+        if (_returnDate.isBefore(_eventDate)) {
+          _returnDate = _eventDate.add(const Duration(days: 1));
+        }
+      });
+      _reloadProducts();
+    }
+    _returnDateFocusNode.requestFocus();
+  }
+
+  Future<void> _selectReturnDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _returnDate,
+      firstDate: _eventDate,
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) => _buildDatePickerTheme(child!),
+    );
+    if (date != null) {
+      setState(() => _returnDate = date);
+      _reloadProducts();
+    }
+    _validUntilFocusNode.requestFocus();
+  }
+
+  Future<void> _selectValidUntilDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _validUntil,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+      builder: (context, child) => _buildDatePickerTheme(child!),
+    );
+    if (date != null) setState(() => _validUntil = date);
+    _notesFocusNode.requestFocus();
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller, {bool required = false, bool enabled = true, int maxLines = 1, FocusNode? focusNode, TextInputAction? textInputAction, VoidCallback? onSubmitted, bool isExternalFocus = false}) {
+    // Dramatically enhanced focus colors
+    final fillColor = isExternalFocus 
+        ? AppTheme.primaryMaroon.withOpacity(0.12) // Brighter highlight
+        : (enabled ? Colors.white : Colors.grey[50]);
+    
+    final borderColor = isExternalFocus ? AppTheme.primaryMaroon : const Color(0xFFD1D1D1);
+    final borderWidth = isExternalFocus ? 2.5 : 1.5; // Thicker border for focus
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label + (required ? " *" : ""),
+        AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 200),
           style: TextStyle(
             fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: Colors.grey[800],
+            fontWeight: FontWeight.w800,
+            color: isExternalFocus ? AppTheme.primaryMaroon : Colors.grey[800],
           ),
+          child: Text(label + (required ? " *" : "")),
         ),
         const SizedBox(height: 6),
-        TextFormField(
-          controller: controller,
-          enabled: enabled,
-          maxLines: maxLines,
-          focusNode: focusNode,
-          style: const TextStyle(fontSize: 15, color: Colors.black, fontWeight: FontWeight.w600),
-          decoration: InputDecoration(
-            hintText: "Enter $label...",
-            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13, fontWeight: FontWeight.w400),
-            filled: true,
-            fillColor: enabled ? Colors.white : Colors.grey[100],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFCCCCCC), width: 1.5),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFCCCCCC), width: 1.5),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppTheme.primaryMaroon, width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: isExternalFocus ? [
+              BoxShadow(
+                color: AppTheme.primaryMaroon.withOpacity(0.2),
+                blurRadius: 8,
+                spreadRadius: 1,
+              )
+            ] : [],
           ),
-          validator: required ? (v) => v!.isEmpty ? "This field is required" : null : null,
-          textInputAction: textInputAction,
+          child: TextFormField(
+            controller: controller,
+            enabled: enabled,
+            maxLines: maxLines,
+            focusNode: focusNode,
+            style: const TextStyle(fontSize: 15, color: Colors.black, fontWeight: FontWeight.w600),
+            decoration: InputDecoration(
+              hintText: "Enter $label...",
+              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13, fontWeight: FontWeight.w400),
+              filled: true,
+              fillColor: fillColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: borderColor, width: borderWidth),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: borderColor, width: borderWidth),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: borderColor, width: borderWidth),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppTheme.primaryMaroon, width: 2.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              prefixIcon: isExternalFocus ? Icon(Icons.edit_calendar_rounded, color: AppTheme.primaryMaroon, size: 20) : null,
+            ),
+            validator: required ? (v) => v!.isEmpty ? "This field is required" : null : null,
+            textInputAction: textInputAction,
+            onFieldSubmitted: onSubmitted != null ? (_) => onSubmitted() : null,
+          ),
         ),
       ],
     );
@@ -651,6 +816,7 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextButton.icon(
+              focusNode: _addItemFocusNode,
               onPressed: _addItem, 
               icon: const Icon(Icons.add_circle_outline_rounded, color: AppTheme.primaryMaroon), 
               label: const Text("Add Product / Service", style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.primaryMaroon)),
@@ -823,7 +989,6 @@ class _ManualItemEntryDialog extends StatefulWidget {
 class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _nameFocusNode = FocusNode(); // Required when textEditingController is provided
   late TextEditingController _quantityController;
   final _rateController = TextEditingController();
   late TextEditingController _daysController;
@@ -838,10 +1003,17 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
   String? _submitError;
   
   // Focus Nodes
+  final _nameFocusNode = FocusNode();
+  final _perDayFocusNode = FocusNode();
+  final _perEventFocusNode = FocusNode();
   final _quantityFocusNode = FocusNode();
   final _rateFocusNode = FocusNode();
   final _daysFocusNode = FocusNode();
   final _partnerRateFocusNode = FocusNode();
+  final _submitFocusNode = FocusNode();
+
+  // Scroll Controller
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -852,6 +1024,28 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
     _daysController = TextEditingController(text: (duration > 0 ? duration : 1).toString());
 
     _quantityController.addListener(_validateStock);
+
+    // Listeners for focus visualization and auto-scroll
+    for (var node in [_nameFocusNode, _perDayFocusNode, _perEventFocusNode, _quantityFocusNode, _rateFocusNode, _daysFocusNode, _partnerRateFocusNode, _submitFocusNode]) {
+      node.addListener(() {
+        if (mounted) setState(() {});
+        if (node == _submitFocusNode && node.hasFocus) {
+          _scrollToBottom();
+        }
+      });
+    }
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   int _calculateAlreadyAllocated(String? productId) {
@@ -888,10 +1082,15 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
     _rateController.dispose();
     _daysController.dispose();
     _partnerRateController.dispose();
+    
+    _perDayFocusNode.dispose();
+    _perEventFocusNode.dispose();
     _quantityFocusNode.dispose();
     _rateFocusNode.dispose();
     _daysFocusNode.dispose();
     _partnerRateFocusNode.dispose();
+    _submitFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -969,503 +1168,534 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
       child: Container(
         width: 500,
         constraints: BoxConstraints(maxHeight: 80.h),
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.symmetric(vertical: 32),
         child: Form(
           key: _formKey,
-          child: ScrollConfiguration(
-            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-            child: SingleChildScrollView(
-              child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Scrollbar(
+            controller: _scrollController,
+            thumbVisibility: true,
+            trackVisibility: true,
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Add Item / Service", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
-                  ],
-                ),
-              const SizedBox(height: 24),
-
-              // ── Item Name with Autocomplete ──
-              const Text("Item Name *", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87)),
-              const SizedBox(height: 8),
-              Autocomplete<ProductModel>(
-                textEditingController: _nameController,
-                focusNode: _nameFocusNode,
-                optionsBuilder: (TextEditingValue textEditingValue) {
-                  if (textEditingValue.text.isEmpty) {
-                    return const Iterable<ProductModel>.empty();
-                  }
-                  
-                  final productProvider = context.read<ProductProvider>();
-                  productProvider.searchProducts(textEditingValue.text);
-                  return productProvider.products.where((product) =>
-                      product.name.toLowerCase().contains(textEditingValue.text.toLowerCase()));
-                },
-                    displayStringForOption: (ProductModel option) => option.name,
-                    onSelected: (ProductModel selection) {
-                      setState(() {
-                        _selectedProductId = selection.id;
-                        _submitError = null; // Automatically hide the error!
-                        // Subtract already added items from the available stock
-                        final rawStock = selection.dateAvailableQuantity ?? selection.quantityAvailable;
-                        final alreadyAllocated = _calculateAlreadyAllocated(selection.id);
-                        _maxAvailableQuantity = (rawStock - alreadyAllocated).clamp(0, 999999);
-                        
-                        _selectedProductName = selection.name;
-                        _nameController.text = selection.name;
-                        // Auto-fill rate from product price
-                        _rateController.text = selection.price.toStringAsFixed(0);
-                        _pricingType = selection.pricingType ?? 'PER_DAY';
-                        _validateStock();
-                      });
-                    },
-                    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                      return TextFormField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        onChanged: (val) {
-                          if (_selectedProductName != null && val != _selectedProductName) {
-                            setState(() {
-                              _selectedProductId = null;
-                              _maxAvailableQuantity = null;
-                              _selectedProductName = null;
-                              _stockWarning = null;
-                            });
-                          }
-                        },
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87),
-                        decoration: InputDecoration(
-                          hintText: "e.g., LED Screen 10x10",
-                          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                          filled: true,
-                          fillColor: Colors.grey[50],
-                          prefixIcon: const Icon(Icons.inventory_2_outlined, color: Colors.grey),
-                          suffixIcon: const Tooltip(
-                            message: "Type to search existing products",
-                            child: Icon(Icons.search, color: Colors.grey, size: 18),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppTheme.primaryMaroon, width: 2),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return "Item name is required";
-                          return null;
-                        },
-                      );
-                    },
-                    optionsViewBuilder: (context, onSelected, options) {
-                      return Align(
-                        alignment: Alignment.topLeft,
-                        child: Theme(
-                          data: ThemeData(
-                            brightness: Brightness.light,
-                            textTheme: const TextTheme(
-                              bodyLarge: TextStyle(color: Colors.black87),
-                              bodyMedium: TextStyle(color: Colors.black87),
-                              titleMedium: TextStyle(color: Colors.black87),
-                            ),
-                          ),
-                          child: Material(
-                            elevation: 8.0,
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(
-                                maxWidth: 436,
-                                maxHeight: 220,
-                              ),
-                              child: ListView.builder(
-                                padding: EdgeInsets.zero,
-                                shrinkWrap: true,
-                                itemCount: options.length,
-                                itemBuilder: (context, index) {
-                                  final option = options.elementAt(index);
-                                  return InkWell(
-                                    borderRadius: index == 0
-                                        ? const BorderRadius.vertical(top: Radius.circular(10))
-                                        : index == options.length - 1
-                                            ? const BorderRadius.vertical(bottom: Radius.circular(10))
-                                            : BorderRadius.zero,
-                                    onTap: () => onSelected(option),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                      decoration: BoxDecoration(
-                                        border: index != options.length - 1
-                                            ? Border(bottom: BorderSide(color: Colors.grey.shade100))
-                                            : null,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(6),
-                                            decoration: BoxDecoration(
-                                              color: AppTheme.primaryMaroon.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                            child: const Icon(Icons.inventory_2_outlined,
-                                                size: 16, color: AppTheme.primaryMaroon),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  option.name,
-                                                  style: const TextStyle(
-                                                    color: Colors.black87,
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                                if (option.categoryName != null && option.categoryName!.isNotEmpty)
-                                                  Text(
-                                                    option.categoryName!,
-                                                    style: const TextStyle(color: Colors.grey, fontSize: 11),
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              "Rs ${option.price.toStringAsFixed(0)}",
-                                              style: const TextStyle(
-                                                color: Colors.green,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-
-                  ),
-
-              if (_submitError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(_submitError!, style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
-                ),
-
-              if (_selectedProductId != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: (_maxAvailableQuantity ?? 0) > 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: (_maxAvailableQuantity ?? 0) > 0 ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        (_maxAvailableQuantity ?? 0) > 0 ? Icons.check_circle_outline : Icons.error_outline,
-                        size: 16,
-                        color: (_maxAvailableQuantity ?? 0) > 0 ? Colors.green : Colors.red,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Available in Stock: ${_maxAvailableQuantity ?? 0}",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: (_maxAvailableQuantity ?? 0) > 0 ? Colors.green[700] : Colors.red[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              // ── Pricing Basis (FIRST — defines how rate is calculated) ──
-              const SizedBox(height: 16),
-              const Text("Pricing Basis", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87)),
-              const SizedBox(height: 4),
-              Text(
-                _pricingType == 'PER_DAY'
-                  ? "Per Day: Total = Qty × Rate × Days"
-                  : "Per Event: Total = Qty × Rate (flat, one-time)",
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => setState(() => _pricingType = 'PER_DAY'),
-                      borderRadius: BorderRadius.circular(10),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon.withOpacity(0.1) : Colors.grey.shade50,
-                          border: Border.all(
-                            color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon : Colors.grey.shade300,
-                            width: _pricingType == 'PER_DAY' ? 2 : 1,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.calendar_today_rounded, size: 15,
-                                    color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon : Colors.grey),
-                                const SizedBox(width: 6),
-                                Text("Per Day",
-                                    style: TextStyle(
-                                      fontSize: 13, fontWeight: FontWeight.w700,
-                                      color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon : Colors.grey.shade700,
-                                    )),
-                                if (_pricingType == 'PER_DAY') ...[
-                                  const Spacer(),
-                                  Icon(Icons.check_circle_rounded, size: 15, color: AppTheme.primaryMaroon),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text("Charged daily × days",
-                                style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => setState(() => _pricingType = 'PER_EVENT'),
-                      borderRadius: BorderRadius.circular(10),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon.withOpacity(0.1) : Colors.grey.shade50,
-                          border: Border.all(
-                            color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon : Colors.grey.shade300,
-                            width: _pricingType == 'PER_EVENT' ? 2 : 1,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.event_rounded, size: 15,
-                                    color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon : Colors.grey),
-                                const SizedBox(width: 6),
-                                Text("Per Event",
-                                    style: TextStyle(
-                                      fontSize: 13, fontWeight: FontWeight.w700,
-                                      color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon : Colors.grey.shade700,
-                                    )),
-                                if (_pricingType == 'PER_EVENT') ...[
-                                  const Spacer(),
-                                  Icon(Icons.check_circle_rounded, size: 15, color: AppTheme.primaryMaroon),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text("Flat rate, whole event",
-                                style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // ── Quantity + Rate ──
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildField(
-                          "Quantity *",
-                          _quantityController,
-                          "1",
-                          isNumber: true,
-                          required: true,
-                          focusNode: _quantityFocusNode,
-                          textInputAction: TextInputAction.next,
-                          customValidator: (v) {
-                            if (v == null || v.isEmpty) return "Required";
-                            final qty = int.tryParse(v);
-                            if (qty == null) return "Invalid";
-                            if (qty <= 0) return "Must be > 0";
-                            if (!_rentedFromPartner && _maxAvailableQuantity != null && qty > _maxAvailableQuantity!) {
-                              return "Only $_maxAvailableQuantity available";
-                            }
-                            return null;
-                          },
-                        ),
-                        if (_stockWarning != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(_stockWarning!,
-                                style: const TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
-                          ),
+                        const Text("Add Item / Service",
+                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                        IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildField(
-                      _pricingType == 'PER_DAY' ? "Rate / Day *" : "Rate / Event *",
-                      _rateController,
-                      "5000",
-                      isNumber: true,
-                      required: true,
-                      focusNode: _rateFocusNode,
-                      textInputAction: _pricingType == 'PER_DAY' ? TextInputAction.next : (_rentedFromPartner ? TextInputAction.next : TextInputAction.done),
-                      onSubmitted: () {
-                        if (_pricingType == 'PER_DAY') {
-                          FocusScope.of(context).requestFocus(_daysFocusNode);
-                        } else if (_rentedFromPartner) {
-                          // If partner switch is on but dropdown is used, we might need more logic, 
-                          // but usually next is fine
+                    const SizedBox(height: 24),
+
+                    // ── Item Name with Autocomplete ──
+                    Autocomplete<ProductModel>(
+                      textEditingController: _nameController,
+                      focusNode: _nameFocusNode,
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text.isEmpty) {
+                          return const Iterable<ProductModel>.empty();
                         }
+
+                        final productProvider = context.read<ProductProvider>();
+                        productProvider.searchProducts(textEditingValue.text);
+                        return productProvider.products.where((product) =>
+                            product.name.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                      },
+                      displayStringForOption: (ProductModel option) => option.name,
+                      onSelected: (ProductModel selection) {
+                        setState(() {
+                          _selectedProductId = selection.id;
+                          _submitError = null;
+                          final rawStock = selection.dateAvailableQuantity ?? selection.quantityAvailable;
+                          final alreadyAllocated = _calculateAlreadyAllocated(selection.id);
+                          _maxAvailableQuantity = (rawStock - alreadyAllocated).clamp(0, 999999);
+
+                          _selectedProductName = selection.name;
+                          _nameController.text = selection.name;
+                          _rateController.text = selection.price.toStringAsFixed(0);
+                          _pricingType = selection.pricingType ?? 'PER_DAY';
+                          _validateStock();
+                        });
+                      },
+                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                        return _buildField(
+                          "Item Name *", 
+                          controller, 
+                          "e.g., LED Screen 10x10", 
+                          required: true, 
+                          focusNode: focusNode, 
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: () => _perDayFocusNode.requestFocus(),
+                          isExternalFocus: focusNode.hasFocus
+                        );
+                      },
+                      optionsViewBuilder: (context, onSelected, options) {
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: Theme(
+                            data: ThemeData(
+                              brightness: Brightness.light,
+                              textTheme: const TextTheme(
+                                bodyLarge: TextStyle(color: Colors.black87),
+                                bodyMedium: TextStyle(color: Colors.black87),
+                                titleMedium: TextStyle(color: Colors.black87),
+                              ),
+                            ),
+                            child: Material(
+                              elevation: 8.0,
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 436,
+                                  maxHeight: 220,
+                                ),
+                                child: ListView.builder(
+                                  padding: EdgeInsets.zero,
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  itemBuilder: (context, index) {
+                                    final option = options.elementAt(index);
+                                    return InkWell(
+                                      borderRadius: index == 0
+                                          ? const BorderRadius.vertical(top: Radius.circular(10))
+                                          : index == options.length - 1
+                                              ? const BorderRadius.vertical(bottom: Radius.circular(10))
+                                              : BorderRadius.zero,
+                                      onTap: () => onSelected(option),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                        decoration: BoxDecoration(
+                                          border: index != options.length - 1
+                                              ? Border(bottom: BorderSide(color: Colors.grey.shade100))
+                                              : null,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.primaryMaroon.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: const Icon(Icons.inventory_2_outlined,
+                                                  size: 16, color: AppTheme.primaryMaroon),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    option.name,
+                                                    style: const TextStyle(
+                                                      color: Colors.black87,
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  if (option.categoryName != null && option.categoryName!.isNotEmpty)
+                                                    Text(
+                                                      option.categoryName!,
+                                                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.green.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                "Rs ${option.price.toStringAsFixed(0)}",
+                                                style: const TextStyle(
+                                                  color: Colors.green,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
                       },
                     ),
-                  ),
-                ],
-              ),
-              if (_pricingType == 'PER_DAY') ...[
-                const SizedBox(height: 16),
-                _buildField("Number of Days *", _daysController, "1", 
-                  isNumber: true, 
-                  required: true,
-                  focusNode: _daysFocusNode,
-                  textInputAction: _rentedFromPartner ? TextInputAction.next : TextInputAction.done,
-                ),
-              ],
-              
-              // ── Partner Selection ──
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 16),
-              
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                   Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Rented from Partner?", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                      Text("Mark this if item is a sub-rental", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+
+                    if (_submitError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(_submitError!,
+                            style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+                      ),
+
+                    if (_selectedProductId != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: (_maxAvailableQuantity ?? 0) > 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: (_maxAvailableQuantity ?? 0) > 0
+                                  ? Colors.green.withOpacity(0.3)
+                                  : Colors.red.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              (_maxAvailableQuantity ?? 0) > 0 ? Icons.check_circle_outline : Icons.error_outline,
+                              size: 16,
+                              color: (_maxAvailableQuantity ?? 0) > 0 ? Colors.green : Colors.red,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Available in Stock: ${_maxAvailableQuantity ?? 0}",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: (_maxAvailableQuantity ?? 0) > 0 ? Colors.green[700] : Colors.red[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
-                  Switch(
-                    value: _rentedFromPartner,
-                    activeColor: AppTheme.primaryMaroon,
-                    onChanged: (v) {
-                      setState(() {
-                        _rentedFromPartner = v;
-                        _validateStock();
-                      });
-                    },
-                  ),
-                ],
-              ),
-              
-              if (_rentedFromPartner) ...[
-                const SizedBox(height: 16),
-                Consumer<VendorProvider>(
-                  builder: (context, vendorProvider, _) {
-                    return PremiumDropdownField<String>(
-                      label: 'Select Partner Vendor *',
-                      hint: 'Choose a vendor',
-                      items: vendorProvider.vendors
-                          .map((v) => DropdownItem<String>(
-                              value: v.id,
-                              label: v.name
-                          ))
-                          .toList(),
-                      value: _selectedPartnerId,
-                      onChanged: (id) => setState(() => _selectedPartnerId = id),
-                      prefixIcon: Icons.handshake_outlined,
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildField("Partner Rate (Cost) *", _partnerRateController, "4000", 
-                  isNumber: true, 
-                  required: true,
-                  focusNode: _partnerRateFocusNode,
-                  textInputAction: TextInputAction.done,
-                ),
-              ],
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("CANCEL", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
-                  ),
-                  const SizedBox(width: 16),
-                  ElevatedButton.icon(
-                    onPressed: _submit,
-                    icon: const Icon(Icons.add_circle_outline, size: 20),
-                    label: const Text("ADD ITEM", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7B61FF),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      elevation: 2,
+
+                    // ── Pricing Basis (FIRST — defines how rate is calculated) ──
+                    const SizedBox(height: 16),
+                    const Text("Pricing Basis",
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87)),
+                    const SizedBox(height: 4),
+                    Text(
+                      _pricingType == 'PER_DAY'
+                          ? "Per Day: Total = Qty × Rate × Days"
+                          : "Per Event: Total = Qty × Rate (flat, one-time)",
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Focus(
+                            focusNode: _perDayFocusNode,
+                            onKey: (node, event) {
+                              if (event is RawKeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                                setState(() => _pricingType = 'PER_DAY');
+                                _quantityFocusNode.requestFocus();
+                                return KeyEventResult.handled;
+                              }
+                              return KeyEventResult.ignored;
+                            },
+                            child: InkWell(
+                              onTap: () {
+                                setState(() => _pricingType = 'PER_DAY');
+                                _quantityFocusNode.requestFocus();
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon.withOpacity(0.1) : Colors.grey.shade50,
+                                  border: Border.all(
+                                    color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon : (_perDayFocusNode.hasFocus ? AppTheme.primaryMaroon : Colors.grey.shade300),
+                                    width: (_pricingType == 'PER_DAY' || _perDayFocusNode.hasFocus) ? 2.5 : 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: _perDayFocusNode.hasFocus ? [
+                                    BoxShadow(color: AppTheme.primaryMaroon.withOpacity(0.2), blurRadius: 8, spreadRadius: 1)
+                                  ] : [],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.calendar_today_rounded,
+                                            size: 15, color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon : Colors.grey),
+                                        const SizedBox(width: 6),
+                                        Text("Per Day",
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: _pricingType == 'PER_DAY' ? AppTheme.primaryMaroon : Colors.grey.shade700,
+                                            )),
+                                        if (_pricingType == 'PER_DAY') ...[
+                                          const Spacer(),
+                                          Icon(Icons.check_circle_rounded, size: 15, color: AppTheme.primaryMaroon),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text("Charged daily × days", style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Focus(
+                            focusNode: _perEventFocusNode,
+                            onKey: (node, event) {
+                              if (event is RawKeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                                setState(() => _pricingType = 'PER_EVENT');
+                                _quantityFocusNode.requestFocus();
+                                return KeyEventResult.handled;
+                              }
+                              return KeyEventResult.ignored;
+                            },
+                            child: InkWell(
+                              onTap: () {
+                                setState(() => _pricingType = 'PER_EVENT');
+                                _quantityFocusNode.requestFocus();
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon.withOpacity(0.1) : Colors.grey.shade50,
+                                  border: Border.all(
+                                    color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon : (_perEventFocusNode.hasFocus ? AppTheme.primaryMaroon : Colors.grey.shade300),
+                                    width: (_pricingType == 'PER_EVENT' || _perEventFocusNode.hasFocus) ? 2.5 : 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: _perEventFocusNode.hasFocus ? [
+                                    BoxShadow(color: AppTheme.primaryMaroon.withOpacity(0.2), blurRadius: 8, spreadRadius: 1)
+                                  ] : [],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.event_rounded,
+                                            size: 15, color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon : Colors.grey),
+                                        const SizedBox(width: 6),
+                                        Text("Per Event",
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: _pricingType == 'PER_EVENT' ? AppTheme.primaryMaroon : Colors.grey.shade700,
+                                            )),
+                                        if (_pricingType == 'PER_EVENT') ...[
+                                          const Spacer(),
+                                          Icon(Icons.check_circle_rounded, size: 15, color: AppTheme.primaryMaroon),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text("Flat rate, whole event", style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildField(
+                                "Quantity *",
+                                _quantityController,
+                                "1",
+                                isNumber: true,
+                                required: true,
+                                focusNode: _quantityFocusNode,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: () => _rateFocusNode.requestFocus(),
+                                isExternalFocus: _quantityFocusNode.hasFocus,
+                                customValidator: (v) {
+                                  if (v == null || v.isEmpty) return "Required";
+                                  final qty = int.tryParse(v);
+                                  if (qty == null) return "Invalid";
+                                  if (qty <= 0) return "Must be > 0";
+                                  if (!_rentedFromPartner && _maxAvailableQuantity != null && qty > _maxAvailableQuantity!) {
+                                    return "Only $_maxAvailableQuantity available";
+                                  }
+                                  return null;
+                                },
+                              ),
+                              if (_stockWarning != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(_stockWarning!,
+                                      style:
+                                          const TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildField(
+                            _pricingType == 'PER_DAY' ? "Rate / Day *" : "Rate / Event *",
+                            _rateController,
+                            "5000",
+                            isNumber: true,
+                            required: true,
+                            focusNode: _rateFocusNode,
+                            textInputAction: _pricingType == 'PER_DAY' ? TextInputAction.next : TextInputAction.done,
+                            isExternalFocus: _rateFocusNode.hasFocus,
+                            onSubmitted: () {
+                              if (_pricingType == 'PER_DAY') {
+                                _daysFocusNode.requestFocus();
+                              } else {
+                                _submitFocusNode.requestFocus();
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_pricingType == 'PER_DAY') ...[
+                      const SizedBox(height: 16),
+                      _buildField(
+                        "Number of Days *",
+                        _daysController,
+                        "1",
+                        isNumber: true,
+                        required: true,
+                        focusNode: _daysFocusNode,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: () => _submitFocusNode.requestFocus(),
+                        isExternalFocus: _daysFocusNode.hasFocus,
+                      ),
+                    ],
+
+                    // ── Partner Selection ──
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Rented from Partner?", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                            Text("Mark this if item is a sub-rental",
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                          ],
+                        ),
+                        Switch(
+                          value: _rentedFromPartner,
+                          activeColor: AppTheme.primaryMaroon,
+                          onChanged: (v) {
+                            setState(() {
+                              _rentedFromPartner = v;
+                              _validateStock();
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+
+                    if (_rentedFromPartner) ...[
+                      const SizedBox(height: 16),
+                      Consumer<VendorProvider>(
+                        builder: (context, vendorProvider, _) {
+                          return PremiumDropdownField<String>(
+                            label: 'Select Partner Vendor *',
+                            hint: 'Choose a vendor',
+                            items: vendorProvider.vendors
+                                .map((v) => DropdownItem<String>(value: v.id, label: v.name))
+                                .toList(),
+                            value: _selectedPartnerId,
+                            onChanged: (id) => setState(() => _selectedPartnerId = id),
+                            prefixIcon: Icons.handshake_outlined,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildField(
+                        "Partner Rate (Cost) *",
+                        _partnerRateController,
+                        "4000",
+                        isNumber: true,
+                        required: true,
+                        focusNode: _partnerRateFocusNode,
+                        textInputAction: TextInputAction.done,
+                      ),
+                    ],
+                    const SizedBox(height: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("CANCEL",
+                              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton.icon(
+                          focusNode: _submitFocusNode,
+                          onPressed: _submit,
+                          icon: const Icon(Icons.add_circle_outline, size: 20),
+                          label: const Text("ADD ITEM",
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF7B61FF),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: _submitFocusNode.hasFocus ? BorderSide(color: Colors.white, width: 2) : BorderSide.none,
+                            ),
+                            elevation: _submitFocusNode.hasFocus ? 8 : 2,
+                            shadowColor: _submitFocusNode.hasFocus ? AppTheme.primaryMaroon : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-  Widget _buildField(String label, TextEditingController controller, String hint, {bool isNumber = false, bool required = false, String? Function(String?)? customValidator, FocusNode? focusNode, TextInputAction? textInputAction, VoidCallback? onSubmitted}) {
+  Widget _buildField(String label, TextEditingController controller, String hint, {bool isNumber = false, bool required = false, String? Function(String?)? customValidator, FocusNode? focusNode, TextInputAction? textInputAction, VoidCallback? onSubmitted, bool isExternalFocus = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: isExternalFocus ? AppTheme.primaryMaroon : Colors.black87,
+          ),
+        ),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
@@ -1482,7 +1712,7 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(color: isExternalFocus ? AppTheme.primaryMaroon : Colors.grey[300]!, width: isExternalFocus ? 2 : 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),

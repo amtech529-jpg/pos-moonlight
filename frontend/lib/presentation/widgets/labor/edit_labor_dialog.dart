@@ -35,6 +35,7 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
   late TextEditingController _ageController;
   late String _selectedGender;
   late DateTime _selectedJoiningDate;
+  final ScrollController _scrollController = ScrollController();
 
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -50,6 +51,12 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
   final _salaryFocusNode = FocusNode();
   final _incentiveFocusNode = FocusNode();
   final _ageFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
+  final _nameFocusNode = FocusNode();
+  final _cnicFocusNode = FocusNode();
+  final _phoneFocusNode = FocusNode();
+  final _dateFocusNode = FocusNode();
+  final _genderFocusNode = FocusNode();
 
   final List<String> _commonCities = [
     'Karachi',
@@ -100,6 +107,17 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
     ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeIn));
 
     _animationController.forward();
+
+    // Add scroll auto-visibility listeners
+    _nameFocusNode.addListener(() => _scrollToFocus(_nameFocusNode));
+    _cnicFocusNode.addListener(() => _scrollToFocus(_cnicFocusNode));
+    _phoneFocusNode.addListener(() => _scrollToFocus(_phoneFocusNode));
+    _designationFocusNode.addListener(() => _scrollToFocus(_designationFocusNode));
+    _salaryFocusNode.addListener(() => _scrollToFocus(_salaryFocusNode));
+    _incentiveFocusNode.addListener(() => _scrollToFocus(_incentiveFocusNode));
+    _genderFocusNode.addListener(() => _scrollToFocus(_genderFocusNode));
+    _ageFocusNode.addListener(() => _scrollToFocus(_ageFocusNode));
+    _saveFocusNode.addListener(() => _scrollToFocus(_saveFocusNode));
   }
 
   @override
@@ -122,7 +140,30 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
     _salaryFocusNode.dispose();
     _incentiveFocusNode.dispose();
     _ageFocusNode.dispose();
+    _saveFocusNode.dispose();
+    _nameFocusNode.dispose();
+    _cnicFocusNode.dispose();
+    _phoneFocusNode.dispose();
+    _dateFocusNode.dispose();
+    _genderFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToFocus(FocusNode node) {
+    if (node.hasFocus) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (!mounted) return;
+        if (node.context != null) {
+          Scrollable.ensureVisible(
+            node.context!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            alignment: 0.5, // Center the focused widget
+          );
+        }
+      });
+    }
   }
 
   void _handleUpdate() async {
@@ -251,6 +292,7 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
         setState(() {
           _selectedJoiningDate = date;
         });
+        FocusScope.of(context).requestFocus(_salaryFocusNode);
       },
     );
   }
@@ -468,6 +510,7 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
 
   Widget _buildFormContent() {
     return SingleChildScrollView(
+      controller: _scrollController,
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Form(
@@ -511,6 +554,9 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           hint: context.shouldShowCompactLayout ? l10n.enterName : l10n.enterWorkerFullName,
           controller: _nameController,
           prefixIcon: Icons.person_outline,
+          focusNode: _nameFocusNode,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _cnicFocusNode.requestFocus(),
           enabled: !_isUpdating,
           validator: (value) {
             if (value?.isEmpty ?? true) {
@@ -531,6 +577,9 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           hint: context.shouldShowCompactLayout ? l10n.enterCNIC : l10n.enterCNICFormat,
           controller: _cnicController,
           prefixIcon: Icons.credit_card,
+          focusNode: _cnicFocusNode,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _phoneFocusNode.requestFocus(),
           enabled: !_isUpdating,
           validator: (value) {
             if (value?.isEmpty ?? true) {
@@ -561,6 +610,7 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           controller: _phoneController,
           prefixIcon: Icons.phone_outlined,
           keyboardType: TextInputType.phone,
+          focusNode: _phoneFocusNode,
           enabled: !_isUpdating,
           textInputAction: TextInputAction.next,
           onSubmitted: (_) => FocusScope.of(context).requestFocus(_cityFocusNode),
@@ -622,22 +672,49 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
             return null;
           },
           textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_salaryFocusNode),
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_dateFocusNode),
         ),
         SizedBox(height: context.cardPadding),
-        GestureDetector(
-          onTap: _isUpdating ? null : () => _selectDate(context),
-          child: AbsorbPointer(
-            child: PremiumTextField(
-              label: '${l10n.joiningDate} *',
-              hint: l10n.selectJoiningDate,
-              controller: TextEditingController(
-                text:
-                '${_selectedJoiningDate.day}/${_selectedJoiningDate.month}/${_selectedJoiningDate.year}',
-              ),
-              prefixIcon: Icons.calendar_today,
-              enabled: !_isUpdating,
-            ),
+        Focus(
+          focusNode: _dateFocusNode,
+          onKeyEvent: (node, event) {
+            if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+              _selectDate(context);
+              _salaryFocusNode.requestFocus();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: Builder(
+            builder: (context) {
+              final isFocused = Focus.of(context).hasFocus;
+              return GestureDetector(
+                onTap: _isUpdating ? null : () => _selectDate(context),
+                child: AbsorbPointer(
+                  child: PremiumTextField(
+                    label: '${l10n.joiningDate} *',
+                    hint: l10n.selectJoiningDate,
+                    controller: TextEditingController(
+                      text:
+                      '${_selectedJoiningDate.day}/${_selectedJoiningDate.month}/${_selectedJoiningDate.year}',
+                    ),
+                    prefixIcon: Icons.calendar_today,
+                    enabled: !_isUpdating,
+                    containerDecoration: isFocused ? BoxDecoration(
+                      borderRadius: BorderRadius.circular(context.borderRadius()),
+                      border: Border.all(color: AppTheme.accentGold, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.accentGold.withOpacity(0.3),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ) : null,
+                  ),
+                ),
+              );
+            }
           ),
         ),
         SizedBox(height: context.cardPadding),
@@ -671,7 +748,7 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           keyboardType: TextInputType.number,
           enabled: !_isUpdating,
           textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_ageFocusNode),
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_genderFocusNode),
           validator: (value) {
             if (value != null && value.isNotEmpty) {
               if (double.tryParse(value) == null) {
@@ -686,6 +763,8 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           label: '${l10n.gender} *',
           hint: context.shouldShowCompactLayout ? l10n.selectGender : l10n.selectGender,
           prefixIcon: Icons.person_pin_rounded,
+          focusNode: _genderFocusNode,
+          focusColor: AppTheme.accentGold,
           items: [
             DropdownItem<String>(value: 'M', label: l10n.male),
             DropdownItem<String>(value: 'F', label: l10n.female),
@@ -698,6 +777,7 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
             setState(() {
               _selectedGender = value!;
             });
+            FocusScope.of(context).requestFocus(_ageFocusNode);
           },
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -715,6 +795,8 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           focusNode: _ageFocusNode,
           keyboardType: TextInputType.number,
           enabled: !_isUpdating,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _saveFocusNode.requestFocus(),
           validator: (value) {
             if (value?.isEmpty ?? true) {
               return l10n.pleaseEnterAge;
@@ -844,15 +926,16 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
           builder: (context, provider, child) {
             return PremiumButton(
               text: l10n.updateLabor,
-              onPressed: (_isUpdating || provider.isLoading) ? null : _handleUpdate,
-              isLoading: _isUpdating || provider.isLoading,
+              focusNode: _saveFocusNode,
+              onPressed: provider.isLoading ? null : _handleUpdate,
+              isLoading: provider.isLoading,
               height: context.buttonHeight,
               icon: Icons.save_rounded,
-              backgroundColor: AppTheme.primaryMaroon,
+              backgroundColor: Colors.blue,
             );
           },
         ),
-        SizedBox(height: context.cardPadding),
+        const SizedBox(height: 20),
         PremiumButton(
           text: l10n.cancel,
           onPressed: _isUpdating ? null : _handleCancel,
@@ -880,18 +963,19 @@ class _EnhancedEditLaborDialogState extends State<EnhancedEditLaborDialog>
             textColor: Colors.grey[600],
           ),
         ),
-        SizedBox(width: context.cardPadding),
+        const SizedBox(width: 20),
         Expanded(
           flex: 2,
           child: Consumer<LaborProvider>(
             builder: (context, provider, child) {
               return PremiumButton(
                 text: l10n.updateLabor,
-                onPressed: (_isUpdating || provider.isLoading) ? null : _handleUpdate,
-                isLoading: _isUpdating || provider.isLoading,
+                focusNode: _saveFocusNode,
+                onPressed: provider.isLoading ? null : _handleUpdate,
+                isLoading: provider.isLoading,
                 height: context.buttonHeight / 1.5,
                 icon: Icons.save_rounded,
-                backgroundColor: AppTheme.primaryMaroon,
+                backgroundColor: Colors.blue,
               );
             },
           ),

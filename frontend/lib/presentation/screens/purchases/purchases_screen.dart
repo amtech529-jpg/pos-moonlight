@@ -110,24 +110,39 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
               // Search and Filter Row
               _buildSearchAndFilterRow(context, l10n),
   
-              if (_activeFilter.vendorId != null || _activeFilter.status != null || _activeFilter.startDate != null) ...[
+              if (_activeFilter.vendorId != null || _activeFilter.startDate != null) ...[
                 const SizedBox(height: 16),
                 Wrap(
-                  spacing: 8,
+                  spacing: 12,
+                  runSpacing: 8,
                   children: [
                     if (_activeFilter.vendorId != null)
                       Chip(
-                        label: const Text("Vendor Filter active"),
+                        backgroundColor: Colors.white,
+                        side: BorderSide(color: Colors.grey.shade400),
+                        label: const Text("Vendor Filter active", style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)),
+                        deleteIconColor: Colors.black87,
                         onDeleted: () => setState(() => _activeFilter.vendorId = null),
                       ),
-                    if (_activeFilter.status != null)
+                    if (_activeFilter.startDate != null)
                       Chip(
-                        label: Text("Status: ${_activeFilter.status}"),
-                        onDeleted: () => setState(() => _activeFilter.status = null),
+                        backgroundColor: Colors.white,
+                        side: BorderSide(color: Colors.grey.shade400),
+                        label: Text(
+                          "Date: ${_activeFilter.startDate!.day}/${_activeFilter.startDate!.month} - ${_activeFilter.endDate != null ? '${_activeFilter.endDate!.day}/${_activeFilter.endDate!.month}' : ''}",
+                          style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                        deleteIconColor: Colors.black87,
+                        onDeleted: () => setState(() {
+                            _activeFilter.startDate = null;
+                            _activeFilter.endDate = null;
+                        }),
                       ),
                     ActionChip(
-                      label: const Text("Reset All Filters"),
-                      avatar: const Icon(Icons.refresh_rounded, size: 16),
+                      backgroundColor: Colors.white,
+                      side: BorderSide(color: AppTheme.primaryMaroon),
+                      label: const Text("Reset All Filters", style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)),
+                      avatar: Icon(Icons.refresh_rounded, size: 18, color: AppTheme.primaryMaroon),
                       onPressed: () => setState(() => _activeFilter = PurchaseFilter()),
                     ),
                   ],

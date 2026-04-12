@@ -20,6 +20,8 @@ class UserProvider extends ChangeNotifier {
     'Dashboard',
     'Purchase',
     'Inventory',
+    'Category Management',
+    'Vendors Management',
     'Quotations',
     'Orders & Rental',
     'Customers Managements',

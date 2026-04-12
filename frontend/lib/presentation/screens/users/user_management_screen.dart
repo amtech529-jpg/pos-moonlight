@@ -6,6 +6,7 @@ import '../../../src/providers/auth_provider.dart';
 import '../../../src/providers/user_provider.dart';
 import '../../../src/models/user_model.dart';
 import '../../../src/models/role_model.dart';
+import '../../widgets/globals/drop_down.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -803,12 +804,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           // Set initial value if not set
                           selectedRoleId ??= userProvider.roles.first.id;
 
-                          return DropdownButtonFormField<int>(
+                          return PremiumDropdownField<int>(
+                            hint: 'User Role',
                             value: selectedRoleId,
                             items: userProvider.roles.map((role) {
-                              return DropdownMenuItem<int>(
+                              return DropdownItem<int>(
                                 value: role.id,
-                                child: Text(role.name, style: const TextStyle(color: Colors.black)),
+                                label: role.name,
                               );
                             }).toList(),
                             onChanged: (val) {
@@ -816,21 +818,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 selectedRoleId = val;
                               });
                             },
-                            decoration: InputDecoration(
-                              prefixIcon: const Icon(Icons.admin_panel_settings_outlined, color: Color(0xFF7B61FF), size: 20),
-                              filled: true,
-                              fillColor: Colors.grey[50],
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.grey[300]!),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: Color(0xFF7B61FF), width: 1.5),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            ),
-                            dropdownColor: Colors.white,
+                            prefixIcon: Icons.admin_panel_settings_outlined,
+                            focusColor: const Color(0xFF7B61FF),
                           );
                         },
                       ),
@@ -957,12 +946,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       const SizedBox(height: 16),
                       const Text("Select User Role", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 4),
-                      DropdownButtonFormField<int>(
+                      PremiumDropdownField<int>(
+                        hint: 'User Role',
                         value: selectedRoleId,
                         items: provider.roles.map((role) {
-                          return DropdownMenuItem<int>(
+                          return DropdownItem<int>(
                             value: role.id,
-                            child: Text(role.name, style: const TextStyle(color: Colors.black)),
+                            label: role.name,
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -970,13 +960,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             selectedRoleId = val;
                           });
                         },
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.grey[100],
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        ),
-                        dropdownColor: Colors.white,
+                        prefixIcon: Icons.admin_panel_settings_outlined,
+                        focusColor: const Color(0xFF7B61FF),
                       ),
                       const SizedBox(height: 20),
                       // Password Section

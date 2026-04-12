@@ -122,6 +122,7 @@ class PurchaseItemModel {
   final ProductModel? productDetail;
   final double quantity;
   final double unitCost;
+  final double retailPrice; // ✅ Added to track intended rent/sale price
   final double totalPrice;
   final String? description; // ✅ Added field
 
@@ -134,6 +135,7 @@ class PurchaseItemModel {
     this.productDetail,
     required this.quantity,
     required this.unitCost,
+    this.retailPrice = 0.0, // ✅ Added
     required this.totalPrice,
     this.description, // ✅ Added to constructor
   });
@@ -143,12 +145,14 @@ class PurchaseItemModel {
       id: json['id']?.toString(),
       product: json['product']?.toString(),
       productName: json['product_name']?.toString(),
+      categoryId: json['category_id']?.toString() ?? json['category']?.toString(),
       categoryName: json['category_name']?.toString(),
       productDetail: json['product_detail'] != null
           ? ProductModel.fromJson(json['product_detail'])
           : null,
       quantity: double.tryParse(json['quantity']?.toString() ?? '0.0') ?? 0.0,
       unitCost: double.tryParse(json['unit_cost']?.toString() ?? '0.0') ?? 0.0,
+      retailPrice: double.tryParse(json['retail_price']?.toString() ?? '0.0') ?? 0.0, // ✅ Added
       // Check 'total_cost' (API standard) first, fallback to 'total_price'
       totalPrice: double.tryParse(json['total_cost']?.toString() ?? json['total_price']?.toString() ?? '0.0') ?? 0.0,
       description: json['description']?.toString(), // ✅ Added fromJson
@@ -162,6 +166,7 @@ class PurchaseItemModel {
       // Send as String for DecimalField safety
       'quantity': quantity.toStringAsFixed(2),
       'unit_cost': unitCost.toStringAsFixed(2),
+      'retail_price': retailPrice.toStringAsFixed(2), // ✅ Added
       // ✅ REQUIRED KEY matches Backend Serializer
       'total_cost': totalPrice.toStringAsFixed(2),
       'description': description, // ✅ Added toJson
@@ -177,6 +182,7 @@ class PurchaseItemModel {
     ProductModel? productDetail,
     double? quantity,
     double? unitCost,
+    double? retailPrice, // ✅ Added retailPrice
     double? totalPrice,
     String? description, // ✅ Added description
   }) {
@@ -189,6 +195,7 @@ class PurchaseItemModel {
       productDetail: productDetail ?? this.productDetail,
       quantity: quantity ?? this.quantity,
       unitCost: unitCost ?? this.unitCost,
+      retailPrice: retailPrice ?? this.retailPrice, // ✅ Added retailPrice
       totalPrice: totalPrice ?? this.totalPrice,
       description: description ?? this.description, // ✅ Added description
     );

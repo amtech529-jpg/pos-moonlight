@@ -89,6 +89,11 @@ class DashboardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void resetMenu() {
+    _selectedMenuIndex = 0;
+    notifyListeners();
+  }
+
   Future<void> initialize() async {
     await loadDashboardAnalytics();
     await loadReminders();

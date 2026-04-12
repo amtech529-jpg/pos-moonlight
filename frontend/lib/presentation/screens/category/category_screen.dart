@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
+import '../../../src/providers/auth_provider.dart';
 import '../../../src/providers/category_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
@@ -86,6 +87,17 @@ class _CategoryPageState extends State<CategoryPage> {
       return _buildUnsupportedScreen();
     }
 
+    final authProvider = Provider.of<AuthProvider>(context);
+    final currentUser = authProvider.currentUser;
+
+    if (currentUser != null && !currentUser.hasPermission('Category Management')) {
+      return const Center(child: Text("You do not have permission to view this module"));
+    }
+
+    final bool canAdd = currentUser?.canPerform('Category Management', 'add') ?? true;
+    final bool canEdit = currentUser?.canPerform('Category Management', 'edit') ?? true;
+    final bool canDelete = currentUser?.canPerform('Category Management', 'delete') ?? true;
+
     return Scaffold(
       backgroundColor: AppTheme.creamWhite,
       body: Padding(
@@ -96,11 +108,11 @@ class _CategoryPageState extends State<CategoryPage> {
             // Responsive Header Section
             ResponsiveBreakpoints.responsive(
               context,
-              tablet: _buildTabletHeader(),
-              small: _buildMobileHeader(),
-              medium: _buildDesktopHeader(),
-              large: _buildDesktopHeader(),
-              ultrawide: _buildDesktopHeader(),
+              tablet: _buildTabletHeader(canAdd),
+              small: _buildMobileHeader(canAdd),
+              medium: _buildDesktopHeader(canAdd),
+              large: _buildDesktopHeader(canAdd),
+              ultrawide: _buildDesktopHeader(canAdd),
             ),
 
             SizedBox(height: context.mainPadding),
@@ -121,6 +133,8 @@ class _CategoryPageState extends State<CategoryPage> {
                 onEdit: _showEditCategoryDialog,
                 onDelete: _showDeleteCategoryDialog,
                 onView: _showViewCategoryDialog,
+                canEdit: canEdit,
+                canDelete: canDelete,
               ),
             ),
           ],
@@ -172,12 +186,11 @@ class _CategoryPageState extends State<CategoryPage> {
     );
   }
 
-  Widget _buildDesktopHeader() {
+  Widget _buildDesktopHeader(bool canAdd) {
     final l10n = AppLocalizations.of(context)!;
 
     return Row(
       children: [
-        // Page Title
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,20 +216,17 @@ class _CategoryPageState extends State<CategoryPage> {
             ],
           ),
         ),
-
-        // Add Category Button
-        _buildAddButton(),
+        if (canAdd) _buildAddButton(),
       ],
     );
   }
 
-  Widget _buildTabletHeader() {
+  Widget _buildTabletHeader(bool canAdd) {
     final l10n = AppLocalizations.of(context)!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Page Title
         Text(
           '${l10n.category} Management',
           style: TextStyle(
@@ -235,24 +245,23 @@ class _CategoryPageState extends State<CategoryPage> {
             color: Colors.grey[600],
           ),
         ),
-        SizedBox(height: context.cardPadding),
-
-        // Add Category Button (full width on tablet)
-        SizedBox(
-          width: double.infinity,
-          child: _buildAddButton(),
-        ),
+        if (canAdd) ...[
+          SizedBox(height: context.cardPadding),
+          SizedBox(
+            width: double.infinity,
+            child: _buildAddButton(),
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildMobileHeader() {
+  Widget _buildMobileHeader(bool canAdd) {
     final l10n = AppLocalizations.of(context)!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Compact Page Title
         Text(
           l10n.category,
           style: TextStyle(
@@ -262,22 +271,13 @@ class _CategoryPageState extends State<CategoryPage> {
             letterSpacing: -0.5,
           ),
         ),
-        SizedBox(height: context.cardPadding / 4),
-        Text(
-          l10n.manageProductCategories,
-          style: TextStyle(
-            fontSize: context.bodyFontSize,
-            fontWeight: FontWeight.w400,
-            color: Colors.grey[600],
+        if (canAdd) ...[
+          SizedBox(height: context.cardPadding),
+          SizedBox(
+            width: double.infinity,
+            child: _buildAddButton(),
           ),
-        ),
-        SizedBox(height: context.cardPadding),
-
-        // Add Category Button (full width)
-        SizedBox(
-          width: double.infinity,
-          child: _buildAddButton(),
-        ),
+        ],
       ],
     );
   }
@@ -466,48 +466,68 @@ class _CategoryPageState extends State<CategoryPage> {
   Widget _buildSearchBar() {
     final l10n = AppLocalizations.of(context)!;
 
-    return SizedBox(
-      height: context.buttonHeight / 1.5,
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Consumer<CategoryProvider>(
         builder: (context, provider, child) {
           return TextField(
             controller: _searchController,
-            onChanged: provider.searchCategories,
-            style: TextStyle(
-              fontSize: context.bodyFontSize,
-              color: AppTheme.charcoalGray,
+            onChanged: (value) {
+              provider.searchCategories(value);
+            },
+            cursorColor: Colors.black,
+            textAlignVertical: TextAlignVertical.center,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Colors.black,
+              fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
-              hintText: context.isTablet
-                  ? '${l10n.search} ${l10n.category}...'
-                  : l10n.searchCategoriesHint,
-              hintStyle: TextStyle(
-                fontSize: context.bodyFontSize * 0.9,
-                color: Colors.grey[500],
-              ),
-              prefixIcon: Icon(
-                Icons.search_rounded,
-                color: Colors.grey[500],
-                size: context.iconSize('medium'),
-              ),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                onPressed: () {
-                  _searchController.clear();
-                  provider.searchCategories('');
-                },
-                icon: Icon(
-                  Icons.clear_rounded,
-                  color: Colors.grey[500],
-                  size: context.iconSize('small'),
+                filled: true,
+                fillColor: const Color(0xFFE8E8E8),
+                hintText: context.isTablet
+                    ? '${l10n.search} ${l10n.category}...'
+                    : l10n.searchCategoriesHint,
+                hintStyle: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF8E8E8E),
                 ),
-              )
-                  : null,
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: context.cardPadding / 2,
-                vertical: context.cardPadding / 2,
-              ),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: Color(0xFF8E8E8E),
+                  size: 22,
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          provider.searchCategories('');
+                          setState(() {});
+                        },
+                        icon: const Icon(
+                          Icons.clear_rounded,
+                          color: Color(0xFF8E8E8E),
+                          size: 20,
+                        ),
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                isCollapsed: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             ),
           );
         },

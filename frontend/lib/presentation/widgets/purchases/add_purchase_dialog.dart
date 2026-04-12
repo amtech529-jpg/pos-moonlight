@@ -16,8 +16,10 @@ import '../globals/text_button.dart'; // PremiumButton
 import '../vendor/add_vendor_dialog.dart';
 import '../product/add_product_dialog.dart';
 import '../../../src/models/product/product_model.dart';
+import '../../../src/models/vendor/vendor_model.dart';
 import '../../../src/models/category/category_model.dart'; // ✅ Added import
 import '../../../src/services/category_service.dart'; // ✅ Added import
+import '../../../src/providers/category_provider.dart'; // ✅ Added import
 
 class AddPurchaseDialog extends StatefulWidget {
   const AddPurchaseDialog({super.key});
@@ -31,6 +33,7 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
 
   final TextEditingController _invoiceController = TextEditingController();
   final TextEditingController _taxController = TextEditingController(text: '0');
+  final TextEditingController _vendorController = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
@@ -39,6 +42,13 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
 
   List<PurchaseItemModel> _items = [];
   bool _isLocalLoading = false;
+
+  // Focus nodes for keyboard navigation
+  final FocusNode _vendorFocusNode = FocusNode();
+  final FocusNode _dateFocusNode = FocusNode();
+  final FocusNode _invoiceFocusNode = FocusNode();
+  final FocusNode _saveFocusNode = FocusNode();
+  final FocusNode _addRowFocusNode = FocusNode(skipTraversal: true);
 
   @override
   void initState() {
@@ -56,6 +66,12 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
   void dispose() {
     _invoiceController.dispose();
     _taxController.dispose();
+    _vendorFocusNode.dispose();
+    _dateFocusNode.dispose();
+    _invoiceFocusNode.dispose();
+    _saveFocusNode.dispose();
+    _vendorController.dispose();
+    _addRowFocusNode.dispose();
     super.dispose();
   }
 
@@ -101,52 +117,40 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
         width: context.dialogWidth, // Use responsive width helper
         constraints: BoxConstraints(
           maxHeight: 90.h,
-          maxWidth: 1000, // Reasonable max width for desktop
+          maxWidth: 1000,
         ),
-        padding: EdgeInsets.all(context.mainPadding),
         child: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // --- Header ---
-              Row(
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, left: 16.0, right: 16.0, bottom: 4.0),
+                child: Row(
                 children: [
                   Container(
-                    padding: EdgeInsets.all(context.smallPadding),
+                    padding: const EdgeInsets.all(6.0),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryMaroon.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.add_shopping_cart_rounded,
                       color: AppTheme.primaryMaroon,
-                      size: 24, // Fixed size for header icon
+                      size: 20,
                     ),
                   ),
-                  SizedBox(width: context.smallPadding),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Add Purchase',
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: context.headerFontSize,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.charcoalGray,
-                          ),
-                        ),
-                        Text(
-                          'Record a new purchase from vendor',
-                          style: TextStyle(
-                            fontSize: context.subtitleFontSize,
-                            color: Colors.grey[500],
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      'Add Purchase',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: context.headerFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.charcoalGray,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -155,22 +159,26 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
                   ),
                 ],
               ),
+              ),
               const Divider(height: 32),
 
               // --- Scrollable Body ---
               Expanded(
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Column(
-                      children: [
-                        _buildGeneralInfo(context, l10n),
-                        SizedBox(height: context.mainPadding),
-                        _buildItemsSection(context, l10n),
-                        SizedBox(height: context.mainPadding),
-                        _buildSummarySection(context, l10n),
-                      ],
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.only(top: 10, left: context.mainPadding, right: context.mainPadding, bottom: 10),
+                      child: Column(
+                        children: [
+                          _buildGeneralInfo(context, l10n),
+                          SizedBox(height: context.mainPadding),
+                          _buildItemsSection(context, l10n),
+                          SizedBox(height: context.mainPadding),
+                          _buildSummarySection(context, l10n),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -179,7 +187,10 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
               const Divider(height: 32),
 
               // --- Footer Actions ---
-              _buildActions(context, l10n),
+              Padding(
+                padding: EdgeInsets.only(bottom: context.mainPadding, left: context.mainPadding, right: context.mainPadding),
+                child: _buildActions(context, l10n),
+              ),
             ],
           ),
         ),
@@ -196,17 +207,127 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
-              child: PremiumDropdownField<String>(
-                label: l10n.vendor ?? "Vendor",
-                fontSize: 14.sp,
-                labelFontSize: 13.sp,
-                value: _selectedVendorId,
-                items: provider.vendors.map((v) => DropdownItem<String>(
-                  value: v.id!,
-                  label: v.name,
-                )).toList(),
-                onChanged: (val) => setState(() => _selectedVendorId = val),
-                hint: "Select Vendor",
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Autocomplete<VendorModel>(
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      final vendors = provider.vendors;
+                      final query = textEditingValue.text.toLowerCase();
+                      
+                      if (query.isEmpty) {
+                        return vendors;
+                      }
+
+                      String? selectedName;
+                      if (_selectedVendorId != null) {
+                        final match = vendors.where((v) => v.id == _selectedVendorId);
+                        if (match.isNotEmpty) {
+                          final v = match.first;
+                          selectedName = (v.businessName.isNotEmpty ? v.businessName : v.name).toLowerCase();
+                        }
+                      }
+
+                      if (selectedName != null && query == selectedName) {
+                        final selected = vendors.where((v) => v.id == _selectedVendorId).toList();
+                        final rest = vendors.where((v) => v.id != _selectedVendorId).toList();
+                        return [...selected, ...rest];
+                      }
+
+                      final matches = vendors.where((v) => 
+                        v.name.toString().toLowerCase().contains(query) ||
+                        v.businessName.toString().toLowerCase().contains(query)
+                      ).toList();
+                      
+                      final nonMatches = vendors.where((v) => 
+                        !v.name.toString().toLowerCase().contains(query) &&
+                        !v.businessName.toString().toLowerCase().contains(query)
+                      ).toList();
+                      
+                      return [...matches, ...nonMatches];
+                    },
+                    displayStringForOption: (option) => option.businessName.isNotEmpty ? option.businessName : option.name,
+                    onSelected: (selection) {
+                      setState(() => _selectedVendorId = selection.id);
+                    },
+                    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                      if (_selectedVendorId != null && controller.text.isEmpty) {
+                        final existing = provider.vendors.where((v) => v.id == _selectedVendorId).toList();
+                        if (existing.isNotEmpty) {
+                          final v = existing.first;
+                          controller.text = v.businessName.isNotEmpty ? v.businessName : v.name;
+                        }
+                      }
+                      
+                      // Auto-open logic on focus
+                      focusNode.addListener(() {
+                        if (focusNode.hasFocus && controller.text.isEmpty) {
+                          // This triggers optionsBuilder
+                          // ignore: invalid_use_of_protected_member
+                          controller.notifyListeners();
+                        }
+                      });
+
+                      return PremiumTextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        label: l10n.vendor ?? "Company Name",
+                        hint: "Select Company...",
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) {
+                          _dateFocusNode.requestFocus();
+                        },
+                        suffixIcon: InkWell(
+                          onTap: () => focusNode.requestFocus(),
+                          child: const Icon(Icons.arrow_drop_down_rounded, color: Colors.grey, size: 24)
+                        ),
+                        onChanged: (val) {
+                          if (_selectedVendorId != null) setState(() => _selectedVendorId = null);
+                        },
+                      );
+                    },
+                    optionsViewBuilder: (context, onSelected, options) {
+                      return Align(
+                        alignment: Alignment.topLeft,
+                        child: Material(
+                          elevation: 8.0,
+                          borderRadius: BorderRadius.circular(8),
+                          color: AppTheme.pureWhite,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxHeight: 250, maxWidth: constraints.maxWidth),
+                            child: ListView.builder(
+                              padding: EdgeInsets.zero,
+                              shrinkWrap: true,
+                              itemCount: options.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                final option = options.elementAt(index);
+                                return InkWell(
+                                  onTap: () => onSelected(option),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          option.businessName.isNotEmpty ? option.businessName : option.name,
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)
+                                        ),
+                                        if (option.businessName.isNotEmpty)
+                                          Text(
+                                            option.name,
+                                            style: TextStyle(fontSize: 12, color: Colors.grey[600])
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }
               ),
             ),
             const SizedBox(width: 8),
@@ -235,6 +356,7 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
     );
 
     final dateField = InkWell(
+      focusNode: _dateFocusNode,
       onTap: () {
         context.showSyncfusionDateTimePicker(
           initialDate: _selectedDate,
@@ -247,11 +369,11 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
           },
         );
       },
+      borderRadius: BorderRadius.circular(context.borderRadius('small')),
       child: IgnorePointer(
         child: PremiumTextField(
-          label: l10n.date ?? "Purchase Date",
-          labelFontSize: 13.sp,
-          fontSize: 14.sp,
+          label: l10n.date ?? "Date",
+          enabled: false,
           controller: TextEditingController(
             text: "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.format(context)}",
           ),
@@ -293,6 +415,7 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
               text: "Add Product Row",
               onPressed: _addItem,
               icon: Icons.add_rounded,
+              focusNode: _addRowFocusNode,
               width: 180,
               height: 40,
               backgroundColor: AppTheme.secondaryMaroon,
@@ -325,6 +448,7 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
             itemCount: _items.length,
             itemBuilder: (context, index) => _PurchaseItemRow(
               index: index,
@@ -395,6 +519,7 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
           builder: (context, provider, child) {
             return PremiumButton(
               text: "Save Purchase",
+              focusNode: _saveFocusNode,
               isLoading: provider.isLoading || _isLocalLoading,
               onPressed: _handleSave,
               width: 200,
@@ -414,11 +539,25 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
     }
 
     if (_selectedVendorId == null) {
-      _showError("Please select a Vendor.");
+      _showError("Please select a Vendor strictly from the dropdown list.");
       return;
     }
 
-    // 2. Validate Items
+    // 2. Smart Sync Categories: If ID is missing but name exists, try to find a match
+    final categories = context.read<CategoryProvider>().categories;
+    for (int i = 0; i < _items.length; i++) {
+      if ((_items[i].categoryId == null || _items[i].categoryId!.isEmpty) && 
+          (_items[i].categoryName ?? '').isNotEmpty) {
+        for (var cat in categories) {
+          if (cat.name.toLowerCase().trim() == _items[i].categoryName!.toLowerCase().trim()) {
+            _items[i] = _items[i].copyWith(categoryId: cat.id, categoryName: cat.name);
+            break;
+          }
+        }
+      }
+    }
+
+    // 3. Validate Items
     if (_items.isEmpty) {
       _showError("Please add at least one product to the purchase.");
       return;
@@ -429,17 +568,10 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
         _showError("Item #${i + 1}: Please enter an item name.");
         return;
       }
-      if ((_items[i].categoryName ?? '').isEmpty) {
-        _showError("Item #${i + 1}: Please select a category.");
-        return;
-      }
       
-      // Enforce existing category selection check before starting processing
-      if (_items[i].product == null || _items[i].product!.isEmpty) {
-        if (_items[i].categoryId == null || _items[i].categoryId!.isEmpty) {
-          _showError("Item #${i + 1}: Category '${_items[i].categoryName}' not selected. Please select an existing category from the dropdown.");
-          return;
-        }
+      if (_items[i].categoryId == null || _items[i].categoryId!.isEmpty) {
+        _showError("Item #${i + 1}: Please select a Category strictly from the dropdown list. Current: ${_items[i].categoryName}");
+        return;
       }
       if (_items[i].quantity <= 0) {
         _showError("Item #${i + 1}: Quantity must be greater than 0.");
@@ -451,47 +583,37 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
 
     try {
       final productProvider = context.read<ProductProvider>();
-      final categoryService = CategoryService();
-
-      // 3. Process Items (Create Products if needed)
-      List<PurchaseItemModel> processedItems = [];
-
-      for (var item in _items) {
-        String? productId = item.product;
-
-        // If product doesn't exist (no ID), create it
-        if (productId == null || productId.isEmpty) {
-          // Use the strict categoryId from selection
-          final String categoryId = item.categoryId!;
-
-          // B. Create Product
+      
+      // Auto-create products that were manually typed
+      for (int i = 0; i < _items.length; i++) {
+        if (_items[i].product == null || _items[i].product!.isEmpty) {
           final newProduct = await productProvider.addProduct(
-            name: item.productName!,
-            detail: item.description ?? "Purchased Item",
-            // ✅ Round to 2 decimal places to avoid precision errors
-            price: double.parse(item.unitCost.toStringAsFixed(2)), 
-            costPrice: double.parse(item.unitCost.toStringAsFixed(2)),
-            quantity: 0, 
-            categoryId: categoryId,
-            color: '',
-            fabric: '',
-            pieces: [],
-            isRental: true, 
-            isConsumable: false,
+            name: _items[i].productName!,
+            detail: _items[i].description ?? 'Auto-created during purchase',
+            price: _items[i].retailPrice > 0 ? _items[i].retailPrice : _items[i].unitCost,
+            costPrice: _items[i].unitCost,
+            quantity: 0, // Backend purchase view will increase the stock
+            categoryId: _items[i].categoryId!,
           );
 
-          if (newProduct != null) {
-            productId = newProduct.id;
+          if (newProduct != null && newProduct.id.isNotEmpty) {
+            _items[i] = _items[i].copyWith(product: newProduct.id);
           } else {
-            final error = productProvider.errorMessage ?? "Failed to create product: ${item.productName}";
-            throw Exception(error);
+            final err = productProvider.errorMessage ?? "Product creation failed";
+            if (mounted) setState(() => _isLocalLoading = false);
+            _showError("Item #${i + 1}: Failed to create product. $err");
+            return;
           }
+        } else if (_items[i].retailPrice > 0) {
+           await productProvider.updateProduct(
+            id: _items[i].product!,
+            price: _items[i].retailPrice,
+            costPrice: _items[i].unitCost,
+          );
         }
-
-        processedItems.add(item.copyWith(product: productId));
       }
 
-      // 4. Create Purchase
+      // 3. Create Purchase
       final purchase = PurchaseModel(
         vendor: _selectedVendorId,
         invoiceNumber: "Auto-Generated", 
@@ -506,7 +628,7 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
         tax: 0,
         total: _subtotal, 
         status: 'posted', 
-        items: processedItems,
+        items: _items,
       );
 
       final success = await context.read<PurchaseProvider>().addPurchase(purchase);
@@ -604,11 +726,14 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
   late TextEditingController _descController; 
   late TextEditingController _nameController;
   late TextEditingController _categoryController;
+  late TextEditingController _retailController;
   late FocusNode _nameFocusNode;
   late FocusNode _categoryFocusNode;
   late FocusNode _qtyFocusNode;
   late FocusNode _costFocusNode;
+  late FocusNode _retailFocusNode;
   late FocusNode _descFocusNode;
+  bool _isInternalChange = false;
 
   @override
   void initState() {
@@ -618,12 +743,14 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
     _descController = TextEditingController(text: widget.item.description ?? '');
     _nameController = TextEditingController(text: widget.item.productName ?? '');
     _categoryController = TextEditingController(text: widget.item.categoryName ?? '');
+    _retailController = TextEditingController(text: _formatNumber(widget.item.retailPrice));
     _nameFocusNode = FocusNode();
     _categoryFocusNode = FocusNode();
     _qtyFocusNode = FocusNode();
     _costFocusNode = FocusNode();
+    _retailFocusNode = FocusNode();
     _descFocusNode = FocusNode();
-
+    _isInternalChange = false;
     _setupFocusListeners();
   }
 
@@ -691,6 +818,8 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
     _categoryFocusNode.dispose();
     _qtyFocusNode.dispose();
     _costFocusNode.dispose();
+    _retailFocusNode.dispose();
+    _retailController.dispose();
     _descFocusNode.dispose();
     super.dispose();
   }
@@ -734,15 +863,34 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                           focusNode: _nameFocusNode,
                           textEditingController: _nameController,
                           optionsBuilder: (TextEditingValue textEditingValue) {
-                            if (textEditingValue.text.isEmpty) {
-                              return const Iterable<ProductModel>.empty();
+                            final products = provider.allProducts;
+                            final query = textEditingValue.text.toLowerCase();
+                            
+                            if (query.isEmpty) {
+                              return products;
                             }
-                            return provider.allProducts.where((ProductModel option) {
-                              return option.name.toLowerCase().contains(textEditingValue.text.toLowerCase());
-                            });
+
+                            String? selectedName = widget.item.productName?.toLowerCase();
+
+                            if (selectedName != null && query == selectedName) {
+                              final selected = products.where((p) => p.name.toString().toLowerCase() == selectedName).toList();
+                              final rest = products.where((p) => p.name.toString().toLowerCase() != selectedName).toList();
+                              return [...selected, ...rest];
+                            }
+
+                            final matches = products.where((p) => 
+                              p.name.toString().toLowerCase().contains(query)
+                            ).toList();
+                            
+                            final nonMatches = products.where((p) => 
+                              !p.name.toString().toLowerCase().contains(query)
+                            ).toList();
+                            
+                            return [...matches, ...nonMatches];
                           },
                           displayStringForOption: (ProductModel option) => option.name,
                           onSelected: (ProductModel selection) {
+                             _isInternalChange = true;
                              _nameController.text = selection.name;
                              widget.onChanged(widget.item.copyWith(
                                product: selection.id,
@@ -750,13 +898,16 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                                categoryName: selection.categoryName,
                                categoryId: selection.categoryId,
                                unitCost: selection.costPrice ?? selection.price,
+                               retailPrice: selection.price, // ✅ Auto-fill rent rate from product.price
                                description: selection.detail,
                                totalPrice: (selection.costPrice ?? selection.price) * widget.item.quantity
                              ));
                              _costController.text = _formatNumber(selection.costPrice ?? selection.price);
+                             _retailController.text = _formatNumber(selection.price); // ✅ Show rent rate
                              _descController.text = selection.detail;
                              _categoryController.text = selection.categoryName ?? '';
                              _qtyFocusNode.requestFocus();
+                             Future.microtask(() => _isInternalChange = false);
                           },
                           fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
                             return PremiumTextField(
@@ -778,7 +929,7 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                                 : null,
                               onChanged: (val) {
                                 widget.onChanged(widget.item.copyWith(
-                                  product: null,
+                                  product: '',
                                   productName: val,
                                 ));
                               },
@@ -853,20 +1004,40 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                            focusNode: _categoryFocusNode,
                            textEditingController: _categoryController,
                            optionsBuilder: (TextEditingValue textEditingValue) {
-                             if (textEditingValue.text.isEmpty) {
-                               return const Iterable<CategoryModel>.empty();
-                             }
-                             return provider.categories.where((CategoryModel option) {
-                               return option.name.toLowerCase().contains(textEditingValue.text.toLowerCase());
-                             });
-                           },
+                              final categories = provider.categories;
+                              final query = textEditingValue.text.toLowerCase();
+                              
+                              if (query.isEmpty) {
+                                return categories;
+                              }
+
+                              String? selectedName = widget.item.categoryName?.toLowerCase();
+
+                              if (selectedName != null && query == selectedName) {
+                                final selected = categories.where((c) => c.name.toString().toLowerCase() == selectedName).toList();
+                                final rest = categories.where((c) => c.name.toString().toLowerCase() != selectedName).toList();
+                                return [...selected, ...rest];
+                              }
+
+                              final matches = categories.where((c) => 
+                                c.name.toString().toLowerCase().contains(query)
+                              ).toList();
+                              
+                              final nonMatches = categories.where((c) => 
+                                !c.name.toString().toLowerCase().contains(query)
+                              ).toList();
+                              
+                              return [...matches, ...nonMatches];
+                            },
                            displayStringForOption: (CategoryModel option) => option.name,
                            onSelected: (CategoryModel selection) {
+                               _isInternalChange = true;
                                _categoryController.text = selection.name;
                                widget.onChanged(widget.item.copyWith(
                                  categoryId: selection.id,
                                  categoryName: selection.name
                                ));
+                               Future.microtask(() => _isInternalChange = false);
                            },
                            fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
                               return PremiumTextField(
@@ -886,10 +1057,12 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                                     )
                                   : null,
                                 onChanged: (val) {
-                                   widget.onChanged(widget.item.copyWith(
-                                      categoryName: val,
-                                      categoryId: null,
-                                   ));
+                                  if (!_isInternalChange && focusNode.hasFocus) {
+                                    widget.onChanged(widget.item.copyWith(
+                                       categoryName: val,
+                                       categoryId: '',
+                                    ));
+                                  }
                                 },
                                 onSubmitted: (val) {
                                   if (val.isNotEmpty) {
@@ -991,7 +1164,7 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                flex: 2,
+                flex: 3,
                 child: PremiumTextField(
                   label: "Purchase Price",
                   fontSize: 13.sp,
@@ -1006,8 +1179,30 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                       totalPrice: double.parse((cost * widget.item.quantity).toStringAsFixed(2)),
                     ));
                   },
+                  onSubmitted: (_) => _retailFocusNode.requestFocus(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 3,
+                child: PremiumTextField(
+                  label: "Rent Price",
+                  fontSize: 13.sp,
+                  labelFontSize: 13.sp,
+                  controller: _retailController,
+                  focusNode: _retailFocusNode,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (val) {
+                    final r = double.tryParse(val) ?? 0;
+                    widget.onChanged(widget.item.copyWith(retailPrice: r));
+                  },
                   onSubmitted: (_) {
-                    FocusScope.of(context).unfocus();
+                    final state = context.findAncestorStateOfType<_AddPurchaseDialogState>();
+                    if (state != null) {
+                      state._saveFocusNode.requestFocus();
+                    } else {
+                      FocusScope.of(context).unfocus();
+                    }
                   },
                 ),
               ),

@@ -4,6 +4,8 @@ import '../services/auth_service.dart';
 import '../services/api_client.dart';
 import '../utils/storage_service.dart';
 
+import '../providers/dashboard_provider.dart';
+
 enum AuthState { initial, loading, authenticated, unauthenticated, error }
 
 class AuthProvider extends ChangeNotifier {
@@ -203,6 +205,14 @@ class AuthProvider extends ChangeNotifier {
     try {
       debugPrint('🔵 Starting logout...');
       await _authService.logout();
+      
+      // Reset dashboard menu to index 0 on logout
+      try {
+        DashboardProvider.instance.resetMenu();
+      } catch (e) {
+        debugPrint('⚠️ Could not reset dashboard menu: $e');
+      }
+
       _setUser(null);
       _setState(AuthState.unauthenticated);
       debugPrint('✅ Logout successful');

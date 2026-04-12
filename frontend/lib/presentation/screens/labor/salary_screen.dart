@@ -336,9 +336,9 @@ class _SalaryScreenState extends State<SalaryScreen> {
                 _buildFilterDropdown<int>(
                   label: 'Year',
                   value: _selectedYear,
-                  items: List.generate(5, (index) => DropdownMenuItem(
-                    value: DateTime.now().year - 2 + index,
-                    child: Text('${DateTime.now().year - 2 + index}'),
+                  items: List.generate(51, (index) => DropdownMenuItem(
+                    value: 2020 + index,
+                    child: Text('${2020 + index}'),
                   )), 
                   onChanged: (val) {
                     if (val != null) {
@@ -347,20 +347,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
                     }
                   }
                 ),
-                const SizedBox(width: 12),
-                _buildFilterDropdown<String?>(
-                  label: 'Status',
-                  value: _statusFilter,
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text("All Status")),
-                    const DropdownMenuItem(value: "PENDING", child: Text("Pending")),
-                    const DropdownMenuItem(value: "PAID", child: Text("Paid")),
-                  ], 
-                  onChanged: (val) {
-                    setState(() => _statusFilter = val);
-                    _loadSlips();
-                  }
-                ),
+
                 const Spacer(),
                 if (canAdd)
                   ElevatedButton.icon(

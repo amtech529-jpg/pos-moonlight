@@ -54,6 +54,10 @@ class _EditProductDialogState extends State<EditProductDialog>
   late FocusNode _categoryFocusNode;
   late FocusNode _serialFocusNode;
   late FocusNode _locationFocusNode;
+  late FocusNode _saveFocusNode;
+  late FocusNode _rentalFocusNode;
+  late FocusNode _consumableFocusNode;
+  late FocusNode _pricingFocusNode;
 
   late bool _isRental;
   late bool _isConsumable;
@@ -88,6 +92,10 @@ class _EditProductDialogState extends State<EditProductDialog>
     _categoryFocusNode = FocusNode();
     _serialFocusNode = FocusNode();
     _locationFocusNode = FocusNode();
+    _saveFocusNode = FocusNode();
+    _rentalFocusNode = FocusNode();
+    _consumableFocusNode = FocusNode();
+    _pricingFocusNode = FocusNode();
 
     // Populate form fields from existing product data
     _isRental = widget.product.isRental;
@@ -103,6 +111,27 @@ class _EditProductDialogState extends State<EditProductDialog>
     _warehouseLocationController.text = widget.product.warehouseLocation ?? '';
     _minStockController.text = widget.product.minStockThreshold.toString();
     _pricingType = widget.product.pricingType;
+
+    _categoryFocusNode.addListener(() {
+      if (_categoryFocusNode.hasFocus) {
+        // ignore: invalid_use_of_protected_member
+        _categoryController.notifyListeners(); 
+      }
+    });
+
+    _consumableFocusNode.skipTraversal = _isRental;
+
+    _saveFocusNode.addListener(() {
+      if (_saveFocusNode.hasFocus && _saveFocusNode.context != null) {
+        Future.microtask(() {
+          Scrollable.ensureVisible(
+            _saveFocusNode.context!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        });
+      }
+    });
 
     _setupKeyboardNavigation();
     _animationController.forward();
@@ -147,6 +176,10 @@ class _EditProductDialogState extends State<EditProductDialog>
     _categoryFocusNode.dispose();
     _serialFocusNode.dispose();
     _locationFocusNode.dispose();
+    _saveFocusNode.dispose();
+    _rentalFocusNode.dispose();
+    _consumableFocusNode.dispose();
+    _pricingFocusNode.dispose();
     super.dispose();
   }
 
@@ -479,13 +512,17 @@ class _EditProductDialogState extends State<EditProductDialog>
                     prefixIcon: Icons.inventory_2_outlined,
                     keyboardType: TextInputType.number,
                     selectAllOnFocus: true,
-                    onSubmitted: (_) => _minStockFocusNode.requestFocus(),
+                    onSubmitted: (_) => _pricingFocusNode.requestFocus(),
                   ),
                 ),
                 SizedBox(width: context.cardPadding),
                 Expanded(
                   child: PremiumDropdownField<String>(
+                    focusNode: _pricingFocusNode,
                     label: 'Pricing Type',
+                    hint: 'Select pricing model',
+                    prefixIcon: Icons.payments_outlined,
+                    focusColor: AppTheme.accentGold,
                     items: [
                       DropdownItem(value: 'PER_DAY', label: 'Per Day'),
                       DropdownItem(value: 'PER_EVENT', label: 'Per Event'),
@@ -493,6 +530,7 @@ class _EditProductDialogState extends State<EditProductDialog>
                     value: _pricingType,
                     onChanged: (value) {
                       if (value != null) setState(() => _pricingType = value);
+                      _rentalFocusNode.requestFocus();
                     },
                   ),
                 ),
@@ -503,59 +541,182 @@ class _EditProductDialogState extends State<EditProductDialog>
             Row(
               children: [
                 Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _isRental = !_isRental),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 40,
-                          child: Checkbox(
-                            value: _isRental,
-                            onChanged: (val) => setState(() => _isRental = val ?? true),
-                            activeColor: AppTheme.primaryMaroon,
-                          ),
-                        ),
-                        const Expanded(
-                          child: Text(
-                            'Rental Item',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.charcoalGray,
-                              fontSize: 14,
+                  child: Focus(
+                    focusNode: _rentalFocusNode,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.space) {
+                          setState(() {
+                            _isRental = !_isRental;
+                            if (_isRental) {
+                              _isConsumable = false;
+                              _consumableFocusNode.skipTraversal = true;
+                            } else {
+                              _consumableFocusNode.skipTraversal = false;
+                            }
+                          });
+                          return KeyEventResult.handled;
+                        } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+                          if (_isRental) {
+                            Future.microtask(() => _serialFocusNode.requestFocus());
+                          } else {
+                            Future.microtask(() => _consumableFocusNode.requestFocus());
+                          }
+                          return KeyEventResult.handled;
+                        }
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: Builder(
+                      builder: (context) {
+                        final isFocused = Focus.of(context).hasFocus;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _isRental = !_isRental;
+                              if (_isRental) {
+                                _isConsumable = false;
+                                _consumableFocusNode.skipTraversal = true;
+                              } else {
+                                _consumableFocusNode.skipTraversal = false;
+                              }
+                            });
+                            if (_isRental) {
+                              _serialFocusNode.requestFocus();
+                            } else {
+                              _consumableFocusNode.requestFocus();
+                            }
+                          },
+                          child: Container(
+                            decoration: isFocused ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(context.borderRadius()),
+                              border: Border.all(color: AppTheme.accentGold, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.accentGold.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ) : null,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 40,
+                                  child: Checkbox(
+                                    value: _isRental,
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _isRental = val ?? true;
+                                        if (_isRental) {
+                                          _isConsumable = false;
+                                          _consumableFocusNode.skipTraversal = true;
+                                        } else {
+                                          _consumableFocusNode.skipTraversal = false;
+                                        }
+                                      });
+                                      if (_isRental) {
+                                        _serialFocusNode.requestFocus();
+                                      } else {
+                                        _consumableFocusNode.requestFocus();
+                                      }
+                                    },
+                                    activeColor: AppTheme.primaryMaroon,
+                                  ),
+                                ),
+                                const Expanded(
+                                  child: Text(
+                                    'Rental Item',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.charcoalGray,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
+                        );
+                      }
                     ),
                   ),
                 ),
                 SizedBox(width: context.cardPadding),
                 Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _isConsumable = !_isConsumable),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 40,
-                          child: Checkbox(
-                            value: _isConsumable,
-                            onChanged: (val) => setState(() => _isConsumable = val ?? false),
-                            activeColor: AppTheme.primaryMaroon,
-                          ),
-                        ),
-                        const Expanded(
-                          child: Text(
-                            'Consumable',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.charcoalGray,
-                              fontSize: 14,
+                  child: Focus(
+                    focusNode: _consumableFocusNode,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.space) {
+                          setState(() {
+                            _isConsumable = !_isConsumable;
+                            if (_isConsumable) _isRental = false;
+                          });
+                          return KeyEventResult.handled;
+                        } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+                          Future.microtask(() => _serialFocusNode.requestFocus());
+                          return KeyEventResult.handled;
+                        }
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: Builder(
+                      builder: (context) {
+                        final isFocused = Focus.of(context).hasFocus;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _isConsumable = !_isConsumable;
+                              if (_isConsumable) _isRental = false;
+                            });
+                            _serialFocusNode.requestFocus();
+                          },
+                          child: Container(
+                            decoration: isFocused ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(context.borderRadius()),
+                              border: Border.all(color: AppTheme.accentGold, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.accentGold.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ) : null,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 40,
+                                  child: Checkbox(
+                                    value: _isConsumable,
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _isConsumable = val ?? false;
+                                        if (_isConsumable) _isRental = false;
+                                      });
+                                      _serialFocusNode.requestFocus();
+                                    },
+                                    activeColor: AppTheme.primaryMaroon,
+                                  ),
+                                ),
+                                const Expanded(
+                                  child: Text(
+                                    'Consumable',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.charcoalGray,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
+                        );
+                      }
                     ),
                   ),
                 ),
@@ -581,7 +742,7 @@ class _EditProductDialogState extends State<EditProductDialog>
                     controller: _warehouseLocationController,
                     focusNode: _locationFocusNode,
                     prefixIcon: Icons.location_on_outlined,
-                    onSubmitted: (_) => _handleSubmit(),
+                    onSubmitted: (_) => _minStockFocusNode.requestFocus(),
                   ),
                 ),
               ],
@@ -623,7 +784,7 @@ class _EditProductDialogState extends State<EditProductDialog>
                           _categorySearchText = selection.name;
                           _categoryController.text = selection.name;
                         });
-                        _serialFocusNode.requestFocus();
+                        _minStockFocusNode.requestFocus();
                       },
                       fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
                          return PremiumTextField(
@@ -639,8 +800,19 @@ class _EditProductDialogState extends State<EditProductDialog>
                           },
                           onSubmitted: (val) {
                             onFieldSubmitted();
-                            _serialFocusNode.requestFocus();
+                            _saveFocusNode.requestFocus();
                           },
+                          containerDecoration: focusNode.hasFocus ? BoxDecoration(
+                            borderRadius: BorderRadius.circular(context.borderRadius()),
+                            border: Border.all(color: AppTheme.accentGold, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.accentGold.withOpacity(0.3),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ) : null,
                         );
                       },
                       optionsViewBuilder: (context, onSelected, options) {
@@ -740,12 +912,13 @@ class _EditProductDialogState extends State<EditProductDialog>
             backgroundColor: Colors.grey,
           ),
         ),
-        SizedBox(width: context.cardPadding),
+        const SizedBox(width: 20),
         Expanded(
           child: Consumer<ProductProvider>(
             builder: (context, provider, child) {
               return PremiumButton(
                 text: 'Update Product',
+                focusNode: _saveFocusNode,
                 onPressed: provider.isLoading ? null : _handleSubmit,
                 isLoading: provider.isLoading,
                 height: 48,

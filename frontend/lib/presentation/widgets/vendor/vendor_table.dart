@@ -82,6 +82,9 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
           return Scrollbar(
             controller: _horizontalController,
             thumbVisibility: true,
+            trackVisibility: true,
+            thickness: 8,
+            radius: const Radius.circular(8),
             child: SingleChildScrollView(
               controller: _horizontalController,
               scrollDirection: Axis.horizontal,
@@ -111,6 +114,9 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
                       child: Scrollbar(
                         controller: _verticalController,
                         thumbVisibility: true,
+                        trackVisibility: true,
+                        thickness: 8,
+                        radius: const Radius.circular(8),
                         child: ListView.builder(
                           controller: _verticalController,
                           itemCount: provider.vendors.length,

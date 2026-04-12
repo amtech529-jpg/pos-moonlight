@@ -11,6 +11,8 @@ class EnhancedCategoryTable extends StatefulWidget {
   final Function(Category) onEdit;
   final Function(Category) onDelete;
   final Function(Category) onView;
+  final bool canEdit;
+  final bool canDelete;
   final CategoryFilter? filter;
 
   const EnhancedCategoryTable({
@@ -18,6 +20,8 @@ class EnhancedCategoryTable extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onView,
+    this.canEdit = true,
+    this.canDelete = true,
     this.filter,
   });
 
@@ -475,50 +479,52 @@ class _EnhancedCategoryTableState extends State<EnhancedCategoryTable> {
         ),
 
         SizedBox(width: context.smallPadding / 2),
-
+        
         // Edit Button
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => widget.onEdit(category),
-            borderRadius: BorderRadius.circular(context.borderRadius('small')),
-            child: Container(
-              padding: EdgeInsets.all(context.smallPadding * 0.5),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(context.borderRadius('small')),
-              ),
-              child: Icon(
-                Icons.edit_outlined,
-                color: Colors.blue,
-                size: context.iconSize('small'),
+        if (widget.canEdit)
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => widget.onEdit(category),
+              borderRadius: BorderRadius.circular(context.borderRadius('small')),
+              child: Container(
+                padding: EdgeInsets.all(context.smallPadding * 0.5),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                ),
+                child: Icon(
+                  Icons.edit_outlined,
+                  color: Colors.blue,
+                  size: context.iconSize('small'),
+                ),
               ),
             ),
           ),
-        ),
 
-        SizedBox(width: context.smallPadding / 2),
+        if (widget.canEdit && widget.canDelete) SizedBox(width: context.smallPadding / 2),
 
         // Delete Button
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => widget.onDelete(category),
-            borderRadius: BorderRadius.circular(context.borderRadius('small')),
-            child: Container(
-              padding: EdgeInsets.all(context.smallPadding * 0.5),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(context.borderRadius('small')),
-              ),
-              child: Icon(
-                Icons.delete_outline,
-                color: Colors.red,
-                size: context.iconSize('small'),
+        if (widget.canDelete)
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => widget.onDelete(category),
+              borderRadius: BorderRadius.circular(context.borderRadius('small')),
+              child: Container(
+                padding: EdgeInsets.all(context.smallPadding * 0.5),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                ),
+                child: Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                  size: context.iconSize('small'),
+                ),
               ),
             ),
           ),
-        ),
       ],
     );
   }

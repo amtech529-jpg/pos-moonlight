@@ -367,7 +367,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(horizontal: context.cardPadding, vertical: context.smallPadding * 0.8),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [AppTheme.primaryMaroon, AppTheme.secondaryMaroon],
@@ -380,44 +380,34 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(context.smallPadding),
+            padding: EdgeInsets.all(context.smallPadding * 0.7),
             decoration: BoxDecoration(
               color: AppTheme.pureWhite.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(context.borderRadius()),
+              borderRadius: BorderRadius.circular(context.borderRadius('small')),
             ),
             child: Icon(
               Icons.inventory_2_rounded,
               color: AppTheme.pureWhite,
-              size: context.iconSize('large'),
+              size: context.iconSize('small'),
             ),
           ),
           SizedBox(width: context.cardPadding),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   context.shouldShowCompactLayout
                       ? l10n.selectProduct
                       : l10n.selectProductForOrder,
                   style: TextStyle(
-                    fontSize: context.headerFontSize,
+                    fontSize: context.subtitleFontSize,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.pureWhite,
                     letterSpacing: 0.5,
                   ),
                 ),
-                if (!context.isTablet) ...[
-                  SizedBox(height: context.smallPadding / 2),
-                  Text(
-                    l10n.chooseProductToAddToOrder,
-                    style: TextStyle(
-                      fontSize: context.subtitleFontSize,
-                      fontWeight: FontWeight.w400,
-                      color: AppTheme.pureWhite.withOpacity(0.9),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -442,25 +432,29 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
   }
 
   Widget _buildFormContent() {
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
+    final ScrollController _contentScrollController = ScrollController();
+    return Scrollbar(
+      controller: _contentScrollController,
+      thumbVisibility: true,
+      trackVisibility: true,
       child: SingleChildScrollView(
+        controller: _contentScrollController,
         child: Padding(
-          padding: EdgeInsets.all(context.cardPadding),
+          padding: EdgeInsets.all(context.smallPadding),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildSearchSection(),
-                SizedBox(height: context.cardPadding),
+                SizedBox(height: context.smallPadding),
 
                 _buildProductListSection(),
-                SizedBox(height: context.cardPadding),
+                SizedBox(height: context.smallPadding),
 
                 if (_selectedProduct != null) ...[
                   _buildSelectedProductSection(),
-                  SizedBox(height: context.mainPadding),
+                  SizedBox(height: context.smallPadding),
                 ],
 
                 ResponsiveBreakpoints.responsive(
@@ -484,7 +478,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding * 0.7),
       decoration: BoxDecoration(
         color: AppTheme.pureWhite,
         borderRadius: BorderRadius.circular(context.borderRadius()),
@@ -503,8 +497,6 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionTitle(l10n.searchProducts, Icons.search),
-          SizedBox(height: context.cardPadding),
           PremiumTextField(
             label: l10n.searchProducts,
             hint: context.shouldShowCompactLayout
@@ -523,7 +515,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding * 0.7),
       decoration: BoxDecoration(
         color: AppTheme.pureWhite,
         borderRadius: BorderRadius.circular(context.borderRadius()),
@@ -543,7 +535,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionTitle(l10n.availableProducts, Icons.inventory_2),
-          SizedBox(height: context.cardPadding),
+          SizedBox(height: context.smallPadding),
           Consumer<ProductProvider>(
             builder: (context, provider, child) {
               final products = provider.products.where((product) {
@@ -646,24 +638,24 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
                           context.borderRadius(),
                         ),
                         child: Padding(
-                          padding: EdgeInsets.all(context.cardPadding),
+                          padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding * 0.6),
                           child: Row(
                             children: [
                               Container(
-                                width: 60,
-                                height: 60,
+                                width: 50,
+                                height: 50,
                                 decoration: BoxDecoration(
                                   color: AppTheme.primaryMaroon.withOpacity(
                                     0.1,
                                   ),
                                   borderRadius: BorderRadius.circular(
-                                    context.borderRadius(),
+                                    context.borderRadius('small'),
                                   ),
                                 ),
                                 child: Icon(
                                   Icons.inventory_2,
                                   color: AppTheme.primaryMaroon,
-                                  size: context.iconSize('medium'),
+                                  size: context.iconSize('small'),
                                 ),
                               ),
                               SizedBox(width: context.cardPadding),
@@ -794,7 +786,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding * 0.7),
       decoration: BoxDecoration(
         color: AppTheme.pureWhite,
         borderRadius: BorderRadius.circular(context.borderRadius()),
@@ -817,12 +809,12 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
             l10n.selectedProductDetails,
             Icons.check_circle_outline,
           ),
-          SizedBox(height: context.cardPadding),
+          SizedBox(height: context.smallPadding),
           Row(
             children: [
               Container(
-                width: 60,
-                height: 60,
+                width: 45,
+                height: 45,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [AppTheme.primaryMaroon, AppTheme.secondaryMaroon],
@@ -837,7 +829,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
                         ? _selectedProduct!.name[0].toUpperCase()
                         : 'P',
                     style: TextStyle(
-                      fontSize: context.headerFontSize,
+                      fontSize: context.bodyFontSize,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.pureWhite,
                     ),
@@ -928,7 +920,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
               ),
             ],
           ),
-          SizedBox(height: context.cardPadding),
+          SizedBox(height: context.smallPadding),
           ResponsiveBreakpoints.responsive(
             context,
             tablet: _buildFormFieldsColumn(),
@@ -937,7 +929,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
             large: _buildFormFieldsRow(),
             ultrawide: _buildFormFieldsRow(),
           ),
-          SizedBox(height: context.cardPadding),
+          SizedBox(height: context.smallPadding),
           PremiumTextField(
             label: l10n.customizationNotesOptional,
             hint: context.shouldShowCompactLayout
@@ -963,9 +955,9 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
           
           SizedBox(height: context.cardPadding),
           _buildPartnerRentalSection(),
-          SizedBox(height: context.cardPadding),
+          SizedBox(height: context.smallPadding),
           Container(
-            padding: EdgeInsets.all(context.cardPadding),
+            padding: EdgeInsets.symmetric(horizontal: context.cardPadding, vertical: context.smallPadding * 0.7),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [

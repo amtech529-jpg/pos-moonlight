@@ -26,6 +26,10 @@ class _AddAdvancePaymentDialogState extends State<AddAdvancePaymentDialog> with 
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _scrollController = ScrollController();
+  final _amountFocusNode = FocusNode();
+  final _descriptionFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
+  final _dateFocusNode = FocusNode();
 
   LaborModel? _selectedLabor;
   DateTime _selectedDate = DateTime.now();
@@ -60,6 +64,10 @@ class _AddAdvancePaymentDialogState extends State<AddAdvancePaymentDialog> with 
     _amountController.dispose();
     _descriptionController.dispose();
     _scrollController.dispose();
+    _amountFocusNode.dispose();
+    _descriptionFocusNode.dispose();
+    _saveFocusNode.dispose();
+    _dateFocusNode.dispose();
     super.dispose();
   }
 
@@ -164,6 +172,7 @@ class _AddAdvancePaymentDialogState extends State<AddAdvancePaymentDialog> with 
           _selectedDate = date;
           _selectedTime = time;
         });
+        _saveFocusNode.requestFocus();
       },
       title: l10n.selectDateAndTime,
       showTimeInline: true,
@@ -370,6 +379,9 @@ class _AddAdvancePaymentDialogState extends State<AddAdvancePaymentDialog> with 
       controller: _amountController,
       prefixIcon: Icons.attach_money_rounded,
       keyboardType: TextInputType.number,
+      focusNode: _amountFocusNode,
+      textInputAction: TextInputAction.next,
+      onSubmitted: (_) => _descriptionFocusNode.requestFocus(),
       onChanged: (value) => setState(() {}),
       validator: (value) {
         if (value?.isEmpty ?? true) return l10n.pleaseEnterAdvanceAmount;
@@ -395,6 +407,9 @@ class _AddAdvancePaymentDialogState extends State<AddAdvancePaymentDialog> with 
       hint: context.shouldShowCompactLayout ? l10n.enterReason : l10n.enterReasonForAdvancePayment,
       controller: _descriptionController,
       prefixIcon: Icons.description_outlined,
+      focusNode: _descriptionFocusNode,
+      textInputAction: TextInputAction.next,
+      onSubmitted: (_) => _dateFocusNode.requestFocus(),
       maxLines: ResponsiveBreakpoints.responsive(context, tablet: 2, small: 3, medium: 3, large: 4, ultrawide: 4),
       validator: (value) {
         if (value?.isEmpty ?? true) return l10n.pleaseEnterDescription;
@@ -410,17 +425,45 @@ class _AddAdvancePaymentDialogState extends State<AddAdvancePaymentDialog> with 
     return Row(
       children: [
         Expanded(
-          child: GestureDetector(
-            onTap: _selectDateTime,
-            child: PremiumTextField(
-              label: l10n.dateAndTime,
-              hint: l10n.selectDateAndTime,
-              controller: TextEditingController(
-                text:
-                '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
-              ),
-              prefixIcon: Icons.calendar_today,
-              enabled: false,
+          child: Focus(
+            focusNode: _dateFocusNode,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                _selectDateTime();
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: Builder(
+              builder: (context) {
+                final isFocused = Focus.of(context).hasFocus;
+                return GestureDetector(
+                  onTap: _selectDateTime,
+                  child: AbsorbPointer(
+                    child: PremiumTextField(
+                      label: l10n.dateAndTime,
+                      hint: l10n.selectDateAndTime,
+                      controller: TextEditingController(
+                        text:
+                        '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+                      ),
+                      prefixIcon: Icons.calendar_today,
+                      enabled: false,
+                      containerDecoration: isFocused ? BoxDecoration(
+                        borderRadius: BorderRadius.circular(context.borderRadius()),
+                        border: Border.all(color: AppTheme.accentGold, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.accentGold.withOpacity(0.3),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ) : null,
+                    ),
+                  ),
+                );
+              }
             ),
           ),
         ),
@@ -517,13 +560,14 @@ class _AddAdvancePaymentDialogState extends State<AddAdvancePaymentDialog> with 
         children: [
           PremiumButton(
             text: l10n.addPayment,
+            focusNode: _saveFocusNode,
             onPressed: _isSubmitting ? null : _handleSubmit,
             isLoading: _isSubmitting,
             height: context.buttonHeight,
             icon: Icons.add_rounded,
             backgroundColor: AppTheme.primaryMaroon,
           ),
-          SizedBox(height: context.cardPadding),
+          const SizedBox(height: 20),
           PremiumButton(
             text: l10n.cancel,
             onPressed: _handleCancel,
@@ -547,11 +591,12 @@ class _AddAdvancePaymentDialogState extends State<AddAdvancePaymentDialog> with 
               textColor: Colors.grey[600],
             ),
           ),
-          SizedBox(width: context.cardPadding),
+          const SizedBox(width: 20),
           Expanded(
             flex: 2,
             child: PremiumButton(
               text: l10n.addPayment,
+              focusNode: _saveFocusNode,
               onPressed: _isSubmitting ? null : _handleSubmit,
               isLoading: _isSubmitting,
               height: context.buttonHeight / 1.5,

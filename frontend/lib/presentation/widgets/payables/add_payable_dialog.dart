@@ -37,6 +37,9 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
   final _amountBorrowedFocusNode = FocusNode();
   final _amountPaidFocusNode = FocusNode();
   final _reasonFocusNode = FocusNode();
+  final _dateBorrowedFocusNode = FocusNode();
+  final _expectedRepaymentDateFocusNode = FocusNode();
+  final _submitButtonFocusNode = FocusNode();
 
   DateTime _dateBorrowed = DateTime.now();
   DateTime _expectedRepaymentDate = DateTime.now().add(const Duration(days: 30));
@@ -61,6 +64,19 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
       final vendorProvider = context.read<VendorProvider>();
       vendorProvider.loadVendors();
     });
+
+    _dateBorrowedFocusNode.addListener(() {
+      if (_dateBorrowedFocusNode.hasFocus) {
+        _dateBorrowedFocusNode.unfocus();
+        _selectDateBorrowed();
+      }
+    });
+    _expectedRepaymentDateFocusNode.addListener(() {
+      if (_expectedRepaymentDateFocusNode.hasFocus) {
+        _expectedRepaymentDateFocusNode.unfocus();
+        _selectExpectedRepaymentDate();
+      }
+    });
   }
 
   @override
@@ -80,6 +96,9 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
     _amountBorrowedFocusNode.dispose();
     _amountPaidFocusNode.dispose();
     _reasonFocusNode.dispose();
+    _dateBorrowedFocusNode.dispose();
+    _expectedRepaymentDateFocusNode.dispose();
+    _submitButtonFocusNode.dispose();
     super.dispose();
   }
 
@@ -190,6 +209,10 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
               _expectedRepaymentDate = _dateBorrowed.add(const Duration(days: 30));
             }
           });
+          // Automatically move focus to the next date field
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) FocusScope.of(context).requestFocus(_expectedRepaymentDateFocusNode);
+          });
         }
       },
       title: l10n.selectBorrowedDate,
@@ -209,6 +232,10 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
         if (date != _expectedRepaymentDate) {
           setState(() {
             _expectedRepaymentDate = date;
+          });
+          // Automatically move focus to the Submit button
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) FocusScope.of(context).requestFocus(_submitButtonFocusNode);
           });
         }
       },
@@ -528,7 +555,8 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
             controller: _reasonOrItemController,
             prefixIcon: Icons.receipt_long_outlined,
             focusNode: _reasonFocusNode,
-            textInputAction: TextInputAction.done,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).requestFocus(_dateBorrowedFocusNode),
             maxLines: 2,
           ),
           if (_amountBorrowedController.text.isNotEmpty) ...[
@@ -570,30 +598,30 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
           Row(
             children: [
               Expanded(
-                child: GestureDetector(
-                  onTap: _selectDateBorrowed,
-                  child: PremiumTextField(
-                    label: l10n.dateBorrowed,
-                    hint: l10n.selectDate,
-                    controller: TextEditingController(text: '${_dateBorrowed.day.toString().padLeft(2, '0')}/${_dateBorrowed.month.toString().padLeft(2, '0')}/${_dateBorrowed.year}'),
-                    prefixIcon: Icons.calendar_today,
-                    enabled: false,
-                  ),
+                child: PremiumTextField(
+                  label: l10n.dateBorrowed,
+                  hint: l10n.selectDate,
+                  controller: TextEditingController(text: '${_dateBorrowed.day.toString().padLeft(2, '0')}/${_dateBorrowed.month.toString().padLeft(2, '0')}/${_dateBorrowed.year}'),
+                  prefixIcon: Icons.calendar_today,
+                  readOnly: true,
+                  focusNode: _dateBorrowedFocusNode,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(_expectedRepaymentDateFocusNode),
                 ),
               ),
               SizedBox(width: context.cardPadding),
               Expanded(
-                child: GestureDetector(
-                  onTap: _selectExpectedRepaymentDate,
-                  child: PremiumTextField(
-                    label: l10n.expectedRepaymentDate,
-                    hint: l10n.selectDate,
-                    controller: TextEditingController(
-                      text: '${_expectedRepaymentDate.day.toString().padLeft(2, '0')}/${_expectedRepaymentDate.month.toString().padLeft(2, '0')}/${_expectedRepaymentDate.year}',
-                    ),
-                    prefixIcon: Icons.event_available,
-                    enabled: false,
+                child: PremiumTextField(
+                  label: l10n.expectedRepaymentDate,
+                  hint: l10n.selectDate,
+                  controller: TextEditingController(
+                    text: '${_expectedRepaymentDate.day.toString().padLeft(2, '0')}/${_expectedRepaymentDate.month.toString().padLeft(2, '0')}/${_expectedRepaymentDate.year}',
                   ),
+                  prefixIcon: Icons.event_available,
+                  readOnly: true,
+                  focusNode: _expectedRepaymentDateFocusNode,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(_submitButtonFocusNode),
                 ),
               ),
             ],
@@ -681,6 +709,7 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
                 height: context.buttonHeight,
                 icon: Icons.add_rounded,
                 backgroundColor: AppTheme.primaryMaroon,
+                focusNode: _submitButtonFocusNode,
               );
             },
           ),
@@ -720,6 +749,7 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
                   height: context.buttonHeight / 1.5,
                   icon: Icons.add_rounded,
                   backgroundColor: AppTheme.primaryMaroon,
+                  focusNode: _submitButtonFocusNode,
                 );
               },
             ),

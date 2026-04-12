@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
@@ -29,8 +30,20 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
   late TextEditingController _addressController;
   late TextEditingController _noteController;
   
+  // Focus Nodes
+  final _nameFocusNode = FocusNode();
+  final _phoneFocusNode = FocusNode();
+  final _businessNameFocusNode = FocusNode();
+  final _addressFocusNode = FocusNode();
+  final _noteFocusNode = FocusNode();
+  final _dateFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
+
   // Date
   late DateTime _selectedDate;
+
+  // Scroll Controller
+  final ScrollController _scrollController = ScrollController();
 
   // Animation controllers
   late AnimationController _animationController;
@@ -40,28 +53,6 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
   // Track changes
   bool _hasChanges = false;
   Map<String, dynamic> _originalData = {};
-
-  // Options
-  final List<String> _commonCities = [
-    'Karachi',
-    'Lahore',
-    'Islamabad',
-    'Rawalpindi',
-    'Faisalabad',
-    'Multan',
-    'Peshawar',
-    'Quetta',
-  ];
-  final List<String> _commonAreas = [
-    'Gulshan',
-    'Clifton',
-    'DHA',
-    'Johar Town',
-    'Model Town',
-    'F-7',
-    'Blue Area',
-    'Saddar',
-  ];
 
   @override
   void initState() {
@@ -106,6 +97,25 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
     ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeIn));
 
     _animationController.forward();
+
+    // Listen for focus changes to handle auto-scrolling
+    _saveFocusNode.addListener(_scrollToBottom);
+    _dateFocusNode.addListener(_scrollToBottom);
+    _noteFocusNode.addListener(_scrollToBottom);
+  }
+
+  void _scrollToBottom() {
+    if (_saveFocusNode.hasFocus || _dateFocusNode.hasFocus || _noteFocusNode.hasFocus) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -116,6 +126,15 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
     _phoneController.dispose();
     _addressController.dispose();
     _noteController.dispose();
+    
+    _nameFocusNode.dispose();
+    _phoneFocusNode.dispose();
+    _businessNameFocusNode.dispose();
+    _addressFocusNode.dispose();
+    _noteFocusNode.dispose();
+    _dateFocusNode.dispose();
+    _saveFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -515,16 +534,24 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
   }
 
   Widget _buildFormContent() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildFormFields(),
-            ],
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      trackVisibility: true,
+      thickness: 6,
+      radius: const Radius.circular(3),
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildFormFields(),
+              ],
+            ),
           ),
         ),
       ),
@@ -543,7 +570,9 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
           hint: l10n.enterVendorName,
           controller: _nameController,
           prefixIcon: Icons.person_outline,
+          focusNode: _nameFocusNode,
           textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _phoneFocusNode.requestFocus(),
           validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
         ),
         const SizedBox(height: 12),
@@ -554,7 +583,9 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
           controller: _phoneController,
           prefixIcon: Icons.phone_outlined,
           keyboardType: TextInputType.phone,
+          focusNode: _phoneFocusNode,
           textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _businessNameFocusNode.requestFocus(),
           validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
         ),
         const SizedBox(height: 12),
@@ -564,7 +595,9 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
           hint: 'Enter Business/Company Name',
           controller: _businessNameController,
           prefixIcon: Icons.business_outlined,
+          focusNode: _businessNameFocusNode,
           textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _addressFocusNode.requestFocus(),
           validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
         ),
         const SizedBox(height: 12),
@@ -574,9 +607,11 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
           hint: 'Enter Full Address',
           controller: _addressController,
           prefixIcon: Icons.location_on_outlined,
+          focusNode: _addressFocusNode,
           maxLines: 2,
           keyboardType: TextInputType.multiline,
           textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _noteFocusNode.requestFocus(),
           validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
         ),
         const SizedBox(height: 12),
@@ -586,10 +621,11 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
           hint: 'Add notes here',
           controller: _noteController,
           prefixIcon: Icons.note_outlined,
+          focusNode: _noteFocusNode,
           maxLines: 2,
           keyboardType: TextInputType.multiline,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _handleUpdate(),
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _dateFocusNode.requestFocus(),
         ),
         const SizedBox(height: 12),
         _buildDatePicker(),
@@ -598,20 +634,55 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
   }
 
   Widget _buildDatePicker() {
-    return InkWell(
-      onTap: () => _selectDate(context),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.calendar_today, color: AppTheme.primaryMaroon),
-            const SizedBox(width: 12),
-            Text("${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}", style: const TextStyle(fontSize: 14)),
-          ],
+    return Focus(
+      focusNode: _dateFocusNode,
+      onKey: (node, event) {
+        if (event is RawKeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+          _saveFocusNode.requestFocus();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: InkWell(
+        onTap: () => _selectDate(context),
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedBuilder(
+          animation: _dateFocusNode,
+          builder: (context, child) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _dateFocusNode.hasFocus ? AppTheme.primaryMaroon.withOpacity(0.05) : Colors.transparent,
+                border: Border.all(
+                  color: _dateFocusNode.hasFocus ? AppTheme.accentGold : Colors.grey[300]!,
+                  width: _dateFocusNode.hasFocus ? 2.0 : 1.0,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  if (_dateFocusNode.hasFocus)
+                    BoxShadow(
+                      color: AppTheme.accentGold.withOpacity(0.2),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today, color: _dateFocusNode.hasFocus ? AppTheme.accentGold : AppTheme.primaryMaroon),
+                  const SizedBox(width: 12),
+                  Text(
+                    "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}", 
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: _dateFocusNode.hasFocus ? FontWeight.bold : FontWeight.normal,
+                    )
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -659,12 +730,13 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
             height: 48,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: Consumer<VendorProvider>(
             builder: (context, provider, child) {
               return PremiumButton(
                 text: "Update Vendor",
+                focusNode: _saveFocusNode,
                 onPressed: (!_hasChanges || provider.isLoading) ? null : _handleUpdate,
                 isLoading: provider.isLoading,
                 height: 48,

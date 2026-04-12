@@ -46,6 +46,7 @@ class PurchaseItem(models.Model):
 
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2)
+    retail_price = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Intended selling/rent price set during purchase")
     total_cost = models.DecimalField(max_digits=12, decimal_places=2)
     description = models.TextField(
         blank=True,

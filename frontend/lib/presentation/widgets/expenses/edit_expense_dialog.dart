@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:frontend/presentation/widgets/globals/custom_date_picker.dart';
 import 'package:frontend/presentation/widgets/globals/drop_down.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
@@ -28,6 +29,17 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
   late TextEditingController _expenseController;
   late TextEditingController _descriptionController;
   late TextEditingController _amountController;
+  
+  // Focus Nodes
+  final _expenseFocusNode = FocusNode();
+  final _descriptionFocusNode = FocusNode();
+  final _amountFocusNode = FocusNode();
+  final _categoryFocusNode = FocusNode();
+  final _recurringFocusNode = FocusNode();
+  final _deductibleFocusNode = FocusNode();
+  final _laborFocusNode = FocusNode();
+  final _dateFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
 
   late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
@@ -78,6 +90,15 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
     _expenseController.dispose();
     _descriptionController.dispose();
     _amountController.dispose();
+    _expenseFocusNode.dispose();
+    _descriptionFocusNode.dispose();
+    _amountFocusNode.dispose();
+    _categoryFocusNode.dispose();
+    _recurringFocusNode.dispose();
+    _deductibleFocusNode.dispose();
+    _laborFocusNode.dispose();
+    _dateFocusNode.dispose();
+    _saveFocusNode.dispose();
     super.dispose();
   }
 
@@ -170,6 +191,7 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
           _selectedDate = date;
           _selectedTime = time;
         });
+        _saveFocusNode.requestFocus();
       },
     );
   }
@@ -301,7 +323,9 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
               label: l10n.expense,
               hint: context.shouldShowCompactLayout ? l10n.enterExpense : l10n.enterExpenseTypeCategory,
               controller: _expenseController,
+              focusNode: _expenseFocusNode,
               prefixIcon: Icons.category_outlined,
+              onSubmitted: (_) => _descriptionFocusNode.requestFocus(),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return l10n.pleaseEnterExpenseType;
@@ -318,8 +342,10 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
               label: l10n.description,
               hint: context.shouldShowCompactLayout ? l10n.enterDescription : l10n.enterExpenseDescription,
               controller: _descriptionController,
+              focusNode: _descriptionFocusNode,
               prefixIcon: Icons.description_outlined,
               maxLines: 3,
+              onSubmitted: (_) => _amountFocusNode.requestFocus(),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return l10n.pleaseEnterDescription;
@@ -336,8 +362,10 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
               label: l10n.amount,
               hint: context.shouldShowCompactLayout ? l10n.enterAmount : l10n.enterAmountPKR,
               controller: _amountController,
+              focusNode: _amountFocusNode,
               prefixIcon: Icons.attach_money_rounded,
               keyboardType: TextInputType.number,
+              onSubmitted: (_) => _categoryFocusNode.requestFocus(),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return l10n.pleaseEnterAmount;
@@ -351,55 +379,125 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
             ),
             SizedBox(height: context.cardPadding),
 
-            PremiumDropdownField<String>(
-              label: l10n.expenseCategory,
-              hint: l10n.selectCategory,
-              value: _selectedCategory,
-              prefixIcon: Icons.category_rounded,
-              items: ExpensesProvider.expenseCategories.map((category) => DropdownItem<String>(value: category, label: category)).toList(),
-              onChanged: (category) {
-                setState(() {
-                  _selectedCategory = category;
-                });
-              },
-              validator: (value) {
-                if (value == null) {
-                  return l10n.pleaseSelectCategory;
+            Focus(
+              focusNode: _categoryFocusNode,
+              child: Builder(
+                builder: (context) {
+                  final isFocused = Focus.of(context).hasFocus;
+                  return PremiumDropdownField<String>(
+                    label: l10n.expenseCategory,
+                    hint: l10n.selectCategory,
+                    value: _selectedCategory,
+                    prefixIcon: Icons.category_rounded,
+                    containerDecoration: isFocused ? BoxDecoration(
+                      borderRadius: BorderRadius.circular(context.borderRadius()),
+                      border: Border.all(color: AppTheme.accentGold, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.accentGold.withOpacity(0.3),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ) : null,
+                    items: ExpensesProvider.expenseCategories.map((category) => DropdownItem<String>(value: category, label: category)).toList(),
+                    onChanged: (category) {
+                      setState(() {
+                        _selectedCategory = category;
+                      });
+                      _recurringFocusNode.requestFocus();
+                    },
+                    validator: (value) {
+                      if (value == null) {
+                        return l10n.pleaseSelectCategory;
+                      }
+                      return null;
+                    },
+                  );
                 }
-                return null;
-              },
+              ),
             ),
             SizedBox(height: context.cardPadding),
 
             SizedBox(height: context.cardPadding),
 
-            // Recurring Checkbox
-            CheckboxListTile(
-                          title: Text(l10n.recurringExpense, style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.normal)),
-              value: _isRecurring,
-              activeColor: AppTheme.primaryMaroon,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              onChanged: (bool? value) {
-                setState(() {
-                  _isRecurring = value ?? false;
-                });
+            Focus(
+              focusNode: _recurringFocusNode,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                  setState(() => _isRecurring = !_isRecurring);
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
               },
+              child: Builder(
+                builder: (context) {
+                  final isFocused = Focus.of(context).hasFocus;
+                  return Container(
+                    decoration: isFocused ? BoxDecoration(
+                      borderRadius: BorderRadius.circular(context.borderRadius()),
+                      border: Border.all(color: AppTheme.accentGold, width: 2),
+                    ) : null,
+                    child: CheckboxListTile(
+                      title: Text(l10n.recurringExpense, style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.normal)),
+                      value: _isRecurring,
+                      activeColor: AppTheme.primaryMaroon,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _isRecurring = value ?? false;
+                        });
+                        _deductibleFocusNode.requestFocus();
+                      },
+                    ),
+                  );
+                }
+              ),
             ),
             
             // Salary Deductible Checkbox
-            CheckboxListTile(
-                            title: Text(l10n.deductFromSalary, style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.normal)),
-              value: _isSalaryDeductible,
-              activeColor: AppTheme.primaryMaroon,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              onChanged: (bool? value) {
-                setState(() {
-                  _isSalaryDeductible = value ?? false;
-                  if (!_isSalaryDeductible) _selectedLaborId = null;
-                });
+            Focus(
+              focusNode: _deductibleFocusNode,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                  setState(() {
+                    _isSalaryDeductible = !_isSalaryDeductible;
+                    if (!_isSalaryDeductible) _selectedLaborId = null;
+                  });
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
               },
+              child: Builder(
+                builder: (context) {
+                  final isFocused = Focus.of(context).hasFocus;
+                  return Container(
+                    decoration: isFocused ? BoxDecoration(
+                      borderRadius: BorderRadius.circular(context.borderRadius()),
+                      border: Border.all(color: AppTheme.accentGold, width: 2),
+                    ) : null,
+                    child: CheckboxListTile(
+                      title: Text(l10n.deductFromSalary, style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.normal)),
+                      value: _isSalaryDeductible,
+                      activeColor: AppTheme.primaryMaroon,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _isSalaryDeductible = value ?? false;
+                          if (!_isSalaryDeductible) _selectedLaborId = null;
+                        });
+                        if (_isSalaryDeductible) {
+                          _laborFocusNode.requestFocus();
+                        } else {
+                          _dateFocusNode.requestFocus();
+                        }
+                      },
+                    ),
+                  );
+                }
+              ),
             ),
 
             if (_isSalaryDeductible) ...[
@@ -410,6 +508,7 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
                                         label: l10n.selectLabor,
                     hint: l10n.selectEmployeeForDeduction,
                     value: _selectedLaborId,
+                    focusNode: _laborFocusNode,
                     prefixIcon: Icons.badge_outlined,
                     items: laborProvider.labors.map((labor) => DropdownItem<String>(
                       value: labor.id, 
@@ -419,6 +518,7 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
                       setState(() {
                         _selectedLaborId = id;
                       });
+                      _dateFocusNode.requestFocus();
                     },
                     validator: (value) {
                       if (_isSalaryDeductible && value == null) {
@@ -434,87 +534,100 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
             SizedBox(height: context.cardPadding),
 
 
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _selectDateTime,
-                    borderRadius: BorderRadius.circular(context.borderRadius()),
-                    child: Container(
-                      padding: EdgeInsets.all(context.cardPadding),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [AppTheme.primaryMaroon.withOpacity(0.1), AppTheme.secondaryMaroon.withOpacity(0.1)]),
-                        border: Border.all(color: AppTheme.primaryMaroon.withOpacity(0.3)),
-                        borderRadius: BorderRadius.circular(context.borderRadius()),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.date_range_rounded, color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
-                              SizedBox(width: context.smallPadding),
-                              Text(
-                                l10n.selectDateTime,
-                                style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.primaryMaroon),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: context.smallPadding),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              Column(
-                                children: [
-                                  Text(
-                                    l10n.date,
-                                    style: TextStyle(
-                                      fontSize: context.subtitleFontSize,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppTheme.charcoalGray.withOpacity(0.7),
+            Focus(
+              focusNode: _dateFocusNode,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                  _selectDateTime();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
+              child: Builder(
+                builder: (context) {
+                  final isFocused = Focus.of(context).hasFocus;
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _selectDateTime,
+                      borderRadius: BorderRadius.circular(context.borderRadius()),
+                      child: Container(
+                        padding: EdgeInsets.all(context.cardPadding),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [AppTheme.primaryMaroon.withOpacity(0.1), AppTheme.secondaryMaroon.withOpacity(0.1)]),
+                          border: Border.all(color: isFocused ? AppTheme.accentGold : AppTheme.primaryMaroon.withOpacity(0.3), width: isFocused ? 2 : 1),
+                          borderRadius: BorderRadius.circular(context.borderRadius()),
+                          boxShadow: isFocused ? [
+                            BoxShadow(color: AppTheme.accentGold.withOpacity(0.3), blurRadius: 8, spreadRadius: 2)
+                          ] : null,
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.date_range_rounded, color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
+                                SizedBox(width: context.smallPadding),
+                                Text(
+                                  l10n.selectDateTime,
+                                  style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.primaryMaroon),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: context.smallPadding),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                Column(
+                                  children: [
+                                    Text(
+                                      l10n.date,
+                                      style: TextStyle(
+                                        fontSize: context.subtitleFontSize,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppTheme.charcoalGray.withOpacity(0.7),
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                                    style: TextStyle(
-                                      fontSize: context.bodyFontSize,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.charcoalGray,
+                                    Text(
+                                      '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                                      style: TextStyle(
+                                        fontSize: context.bodyFontSize,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.charcoalGray,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              Container(height: 40, width: 1, color: Colors.grey.shade300),
-                              Column(
-                                children: [
-                                  Text(
-                                    l10n.time,
-                                    style: TextStyle(
-                                      fontSize: context.subtitleFontSize,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppTheme.charcoalGray.withOpacity(0.7),
+                                  ],
+                                ),
+                                Container(height: 40, width: 1, color: Colors.grey.shade300),
+                                Column(
+                                  children: [
+                                    Text(
+                                      l10n.time,
+                                      style: TextStyle(
+                                        fontSize: context.subtitleFontSize,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppTheme.charcoalGray.withOpacity(0.7),
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    _selectedTime.format(context),
-                                    style: TextStyle(
-                                      fontSize: context.bodyFontSize,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.charcoalGray,
+                                    Text(
+                                      _selectedTime.format(context),
+                                      style: TextStyle(
+                                        fontSize: context.bodyFontSize,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.charcoalGray,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                  );
+                }
+              ),
             ),
 
             SizedBox(height: context.mainPadding),
@@ -543,6 +656,7 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
           builder: (context, provider, child) {
             return PremiumButton(
               text: l10n.updateExpense,
+              focusNode: _saveFocusNode,
               onPressed: provider.isLoading ? null : _handleUpdate,
               isLoading: provider.isLoading,
               height: context.buttonHeight,
@@ -551,7 +665,7 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
             );
           },
         ),
-        SizedBox(height: context.cardPadding),
+        const SizedBox(height: 20),
         PremiumButton(
           text: l10n.cancel,
           onPressed: _handleCancel,
@@ -579,12 +693,13 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
             textColor: Colors.grey[600],
           ),
         ),
-        SizedBox(width: context.cardPadding),
+        const SizedBox(width: 20),
         Expanded(
           child: Consumer<ExpensesProvider>(
             builder: (context, provider, child) {
               return PremiumButton(
                 text: l10n.updateExpense,
+                focusNode: _saveFocusNode,
                 onPressed: provider.isLoading ? null : _handleUpdate,
                 isLoading: provider.isLoading,
                 height: context.buttonHeight / 1.5,

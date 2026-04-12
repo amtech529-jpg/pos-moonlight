@@ -26,6 +26,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog>
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   final _descriptionFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
 
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -67,6 +68,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog>
     _nameController.dispose();
     _descriptionController.dispose();
     _descriptionFocusNode.dispose();
+    _saveFocusNode.dispose();
     super.dispose();
   }
 
@@ -281,124 +283,130 @@ class _EditCategoryDialogState extends State<EditCategoryDialog>
   Widget _buildFormContent() {
     final l10n = AppLocalizations.of(context)!;
 
-    return Padding(
-      padding: EdgeInsets.all(context.cardPadding),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            PremiumTextField(
-              label: l10n.categoryName,
-              labelFontSize: 12.sp,
-              hint: context.shouldShowCompactLayout
-                  ? l10n.enterCategoryName
-                  : l10n.enterCategoryNameHint,
-              controller: _nameController,
-              prefixIcon: Icons.label_outline,
-              textInputAction: TextInputAction.next,
-              onSubmitted: (_) => FocusScope.of(context).requestFocus(_descriptionFocusNode),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return l10n.pleaseEnterCategoryName;
-                }
-                if (value!.length < 2) {
-                  return l10n.categoryNameMinLength;
-                }
-                if (value.length > 50) {
-                  return l10n.categoryNameMaxLength;
-                }
-                return null;
-              },
-            ),
-
-            SizedBox(height: context.cardPadding),
-
-            PremiumTextField(
-              label: l10n.description,
-              labelFontSize: 12.sp,
-              hint: context.shouldShowCompactLayout
-                  ? l10n.enterDescriptionOptional
-                  : l10n.enterCategoryDescriptionOptional,
-              controller: _descriptionController,
-              focusNode: _descriptionFocusNode,
-              prefixIcon: Icons.description_outlined,
-              maxLines: ResponsiveBreakpoints.responsive(
-                context,
-                tablet: 2,
-                small: 3,
-                medium: 4,
-                large: 5,
-                ultrawide: 6,
-              ),
-              validator: (value) {
-                if (value != null && value.length > 200) {
-                  return l10n.descriptionMaxLength;
-                }
-                return null;
-              },
-              onChanged: (value) {
-                setState(() {});
-              },
-            ),
-
-            SizedBox(height: context.smallPadding),
-
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '${_descriptionController.text.length}/200 ${l10n.characters}',
-                style: TextStyle(
-                  fontSize: context.captionFontSize,
-                  fontWeight: FontWeight.w400,
-                  color: _descriptionController.text.length > 200
-                      ? Colors.red[600]
-                      : Colors.grey[500],
+    return Flexible(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(context.cardPadding),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PremiumTextField(
+                  label: l10n.categoryName,
+                  labelFontSize: 12.sp,
+                  hint: context.shouldShowCompactLayout
+                      ? l10n.enterCategoryName
+                      : l10n.enterCategoryNameHint,
+                  controller: _nameController,
+                  prefixIcon: Icons.label_outline,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(_descriptionFocusNode),
+                  validator: (value) {
+                    if (value?.isEmpty ?? true) {
+                      return l10n.pleaseEnterCategoryName;
+                    }
+                    if (value!.length < 2) {
+                      return l10n.categoryNameMinLength;
+                    }
+                    if (value.length > 50) {
+                      return l10n.categoryNameMaxLength;
+                    }
+                    return null;
+                  },
                 ),
-              ),
-            ),
-
-            SizedBox(height: context.smallPadding),
-
-            Container(
-              padding: EdgeInsets.all(context.smallPadding),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(context.borderRadius()),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: Colors.blue,
-                    size: context.iconSize('small'),
+    
+                SizedBox(height: context.cardPadding),
+    
+                PremiumTextField(
+                  label: l10n.description,
+                  labelFontSize: 12.sp,
+                  hint: context.shouldShowCompactLayout
+                      ? l10n.enterDescriptionOptional
+                      : l10n.enterCategoryDescriptionOptional,
+                  controller: _descriptionController,
+                  focusNode: _descriptionFocusNode,
+                  prefixIcon: Icons.description_outlined,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _saveFocusNode.requestFocus(),
+                  maxLines: ResponsiveBreakpoints.responsive(
+                    context,
+                    tablet: 2,
+                    small: 3,
+                    medium: 4,
+                    large: 5,
+                    ultrawide: 6,
                   ),
-                  SizedBox(width: context.smallPadding),
-                  Expanded(
-                    child: Text(
-                      '${l10n.lastUpdated}: ${_formatDateTime(widget.category.lastEdited)}',
-                      style: TextStyle(
-                        fontSize: context.captionFontSize,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.blue[700],
-                      ),
+                  validator: (value) {
+                    if (value != null && value.length > 200) {
+                      return l10n.descriptionMaxLength;
+                    }
+                    return null;
+                  },
+                  onChanged: (value) {
+                    setState(() {});
+                  },
+                ),
+    
+                SizedBox(height: context.smallPadding),
+    
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '${_descriptionController.text.length}/200 ${l10n.characters}',
+                    style: TextStyle(
+                      fontSize: context.captionFontSize,
+                      fontWeight: FontWeight.w400,
+                      color: _descriptionController.text.length > 200
+                          ? Colors.red[600]
+                          : Colors.grey[500],
                     ),
                   ),
-                ],
-              ),
+                ),
+    
+                SizedBox(height: context.smallPadding),
+    
+                Container(
+                  padding: EdgeInsets.all(context.smallPadding),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(context.borderRadius()),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.blue,
+                        size: context.iconSize('small'),
+                      ),
+                      SizedBox(width: context.smallPadding),
+                      Expanded(
+                        child: Text(
+                          '${l10n.lastUpdated}: ${_formatDateTime(widget.category.lastEdited)}',
+                          style: TextStyle(
+                            fontSize: context.captionFontSize,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.blue[700],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+    
+                SizedBox(height: context.mainPadding),
+    
+                ResponsiveBreakpoints.responsive(
+                  context,
+                  tablet: _buildCompactButtons(),
+                  small: _buildCompactButtons(),
+                  medium: _buildDesktopButtons(),
+                  large: _buildDesktopButtons(),
+                  ultrawide: _buildDesktopButtons(),
+                ),
+              ],
             ),
-
-            SizedBox(height: context.mainPadding),
-
-            ResponsiveBreakpoints.responsive(
-              context,
-              tablet: _buildCompactButtons(),
-              small: _buildCompactButtons(),
-              medium: _buildDesktopButtons(),
-              large: _buildDesktopButtons(),
-              ultrawide: _buildDesktopButtons(),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -414,6 +422,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog>
           builder: (context, provider, child) {
             return PremiumButton(
               text: l10n.updateCategory,
+              focusNode: _saveFocusNode,
               onPressed: provider.isLoading ? null : _handleUpdate,
               isLoading: provider.isLoading,
               height: context.buttonHeight,
@@ -423,7 +432,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog>
           },
         ),
 
-        SizedBox(height: context.cardPadding),
+        const SizedBox(height: 20),
 
         PremiumButton(
           text: l10n.cancel,
@@ -453,13 +462,14 @@ class _EditCategoryDialogState extends State<EditCategoryDialog>
           ),
         ),
 
-        SizedBox(width: context.cardPadding),
+        const SizedBox(width: 20),
 
         Expanded(
           child: Consumer<CategoryProvider>(
             builder: (context, provider, child) {
               return PremiumButton(
                 text: l10n.updateCategory,
+                focusNode: _saveFocusNode,
                 onPressed: provider.isLoading ? null : _handleUpdate,
                 isLoading: provider.isLoading,
                 height: context.buttonHeight / 1.5,

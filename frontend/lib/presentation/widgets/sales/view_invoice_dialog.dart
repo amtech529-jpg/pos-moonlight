@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:sizer/sizer.dart';
 import 'package:open_file/open_file.dart';
 import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
 import 'dart:typed_data';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -48,11 +51,11 @@ class _ViewInvoiceDialogState extends State<ViewInvoiceDialog> {
       final response = await _invoiceService.getInvoiceById(widget.invoice.id);
       if (response.success && response.data != null) {
         if (mounted) {
-           setState(() {
-             _detailedInvoice = response.data;
-           });
-           
-           await _deepSyncAdditionalData();
+          setState(() {
+            _detailedInvoice = response.data;
+          });
+          
+          await _deepSyncAdditionalData();
         }
       } else {
         if (mounted) setState(() => _isSyncing = false);
@@ -69,11 +72,9 @@ class _ViewInvoiceDialogState extends State<ViewInvoiceDialog> {
      
      final cId = invoice.customerId;
      if (cId != null && cId.isNotEmpty) {
-        // fetchCustomerById is async - fetches from API and updates provider
         await customerProvider.fetchCustomerById(cId);
      }
 
-     
      final sId = invoice.saleId;
      if (sId.isNotEmpty) {
         await salesProvider.getSaleById(sId);
@@ -84,6 +85,42 @@ class _ViewInvoiceDialogState extends State<ViewInvoiceDialog> {
           _isSyncing = false;
         });
      }
+  }
+
+  Future<void> _directPrint() async {
+    if (_isSyncing) return;
+    
+    try {
+      final bytes = await _generatePdfBytesForPreview(context);
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => bytes,
+        name: 'Invoice_${widget.invoice.invoiceNumber}',
+      );
+    } catch (e) {
+      if (kDebugMode) print('Error printing: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to open print dialog.')),
+      );
+    }
+  }
+
+  Future<void> _openExternally() async {
+    try {
+      final bytes = await _generatePdfBytesForPreview(context);
+      if (bytes.isEmpty) return;
+      
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/Invoice_${widget.invoice.invoiceNumber.replaceAll('#', '')}.pdf');
+      await file.writeAsBytes(bytes);
+      
+      await OpenFile.open(file.path);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open in web view: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<Uint8List> _generatePdfBytesForPreview(BuildContext context) async {
@@ -143,7 +180,6 @@ class _ViewInvoiceDialogState extends State<ViewInvoiceDialog> {
           ? (resolvedCustomer!.businessName ?? resolvedCustomer!.name) 
           : (effectiveInvoice.customerName ?? 'Walk-in Customer');
 
-    // Use business name if available (priority)
     if (resolvedCustomer != null) {
        if (resolvedCustomer!.businessName != null && resolvedCustomer!.businessName!.trim().isNotEmpty) {
           displayName = resolvedCustomer!.businessName!;
@@ -154,30 +190,23 @@ class _ViewInvoiceDialogState extends State<ViewInvoiceDialog> {
        displayName = resolvedSale!.customerName;
     }
 
-    // 5. Items Recovery (CRITICAL FIX FOR EMPTY COLUMNS)
+    // 5. Items Recovery
     List<SaleItemModel> finalItems = [];
-    
-    // Attempt 1: Get from resolvedSale
     if (resolvedSale != null && (resolvedSale!.saleItems.isNotEmpty)) {
        finalItems = List.from(resolvedSale!.saleItems);
-       debugPrint('✅ Found ${finalItems.length} items in resolvedSale');
     }
     
-    // Attempt 2: Recover from Search by invoice number if still empty
     if (finalItems.isEmpty) {
        final invNum = effectiveInvoice.invoiceNumber.replaceAll('#', '').trim();
        final match = salesProvider.sales.where((s) => s.invoiceNumber == invNum).firstOrNull;
        if (match != null && match.saleItems.isNotEmpty) {
          finalItems = List.from(match.saleItems);
-         debugPrint('✅ Recovered ${finalItems.length} items from sales list match');
        }
     }
 
-    // Attempt 3: Recover from Order Items (LAST RESORT)
     if (finalItems.isEmpty && (associatedOrderModel != null || effectiveInvoice.orderId != null)) {
        final oId = associatedOrderModel?.id ?? effectiveInvoice.orderId ?? '';
        if (oId.isNotEmpty) {
-         debugPrint('🔍 Attempting recovery from Order ID: $oId');
          try {
            final orderItemsRes = await OrderItemService().getOrderItemsByOrder(oId);
            if (orderItemsRes.success && orderItemsRes.data != null && orderItemsRes.data!.orderItems.isNotEmpty) {
@@ -198,20 +227,11 @@ class _ViewInvoiceDialogState extends State<ViewInvoiceDialog> {
                   createdAt: oi.createdAt,
                   updatedAt: oi.updatedAt ?? oi.createdAt,
               )).toList();
-              debugPrint('✅ Recovered ${finalItems.length} items from Order Items API');
            }
-         } catch(e) {
-           debugPrint('❌ Items recovery from order failed: $e');
-         }
+         } catch(e) {}
        }
     }
     
-    debugPrint('📊 Final items count for PDF: ${finalItems.length}');
-    if (finalItems.isNotEmpty) {
-      debugPrint('📦 First item: ${finalItems.first.productName} x ${finalItems.first.quantity}');
-    }
-
-    // 6. Build Final Sale Object for PDF
     final saleForPdf = SaleModel(
       id: (resolvedSale?.id ?? saleId).isNotEmpty ? (resolvedSale?.id ?? saleId) : effectiveInvoice.id,
       invoiceNumber: effectiveInvoice.invoiceNumber.replaceAll('#', ''),
@@ -246,8 +266,6 @@ class _ViewInvoiceDialogState extends State<ViewInvoiceDialog> {
         customer: resolvedCustomer,
       );
     } catch (e) {
-      debugPrint('❌ Fatal PDf Generation Error: $e');
-      // Final fallback to avoid non-nullable return error
       return Uint8List(0);
     }
   }
@@ -255,100 +273,89 @@ class _ViewInvoiceDialogState extends State<ViewInvoiceDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
-    final isDesktop = size.width >= 1024;
 
-    return Dialog(
-      insetPadding: EdgeInsets.all(isDesktop ? 50 : 10),
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: isDesktop ? 75.w : 95.w,
-        height: 90.h,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              spreadRadius: 5,
+    return Dialog.fullscreen(
+      backgroundColor: Colors.white,
+      child: Column(
+        children: [
+          // Compact Professional Header
+          Container(
+            padding: EdgeInsets.only(
+              left: 20, 
+              right: 20, 
+              top: MediaQuery.of(context).padding.top + 8, 
+              bottom: 8
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(
-                color: theme.primaryColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Invoice Preview',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
-                ],
-              ),
+            decoration: BoxDecoration(
+              color: theme.primaryColor,
             ),
-
-            Expanded(
-              child: _isSyncing
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const CircularProgressIndicator(),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Resolving Data...',
-                            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
-                          ),
-                        ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.description_rounded, color: Colors.white, size: 22),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Invoice: ${widget.invoice.invoiceNumber}',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
-                    )
-                  : PdfPreview(
-                      build: (format) => _generatePdfBytesForPreview(context),
-                      useActions: true,
-                      canChangePageFormat: false,
-                      canChangeOrientation: false,
-                      canDebug: false,
-                      allowPrinting: true,
-                      allowSharing: true,
-                      padding: const EdgeInsets.all(10),
-                      pdfFileName: 'Invoice_${widget.invoice.invoiceNumber}.pdf',
-                      loadingWidget: const Center(child: CircularProgressIndicator()),
                     ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: _isSyncing ? null : _directPrint,
+                      icon: const Icon(Icons.print_rounded, color: Colors.white, size: 18),
+                      label: const Text(
+                        "PRINT",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.15),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  PremiumButton(
-                    onPressed: () => Navigator.pop(context),
-                    text: 'Close',
-                    width: 100,
+          ),
+
+          // Main Preview Area (Maximized & Scaled)
+          Expanded(
+            child: _isSyncing
+                ? const Center(child: CircularProgressIndicator())
+                : Container(
+                    color: const Color(0xFF1A1A1A), 
+                    child: PdfPreview(
+                        build: (format) => _generatePdfBytesForPreview(context),
+                        useActions: false,
+                        canChangePageFormat: false,
+                        canChangeOrientation: false,
+                        canDebug: false,
+                        allowPrinting: true,
+                        allowSharing: true,
+                        initialPageFormat: PdfPageFormat.a4,
+                        maxPageWidth: 710, 
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 5),
+                        pdfFileName: 'Invoice_${widget.invoice.invoiceNumber}.pdf',
+                        loadingWidget: const Center(child: CircularProgressIndicator()),
+                      ),
                   ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
 import '../../../l10n/app_localizations.dart';
@@ -6,12 +7,15 @@ import '../../../src/models/purchase_model.dart';
 import '../../../src/providers/purchase_provider.dart';
 import '../../../src/providers/vendor_provider.dart';
 import '../../../src/providers/product_provider.dart';
+import '../../../src/providers/category_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
 import '../globals/text_field.dart';
 import '../globals/drop_down.dart';
 import '../globals/custom_date_picker.dart';
 import '../globals/text_button.dart';
+import '../../../src/models/vendor/vendor_model.dart';
+import '../../../src/models/product/product_model.dart';
 
 
 class EditPurchaseDialog extends StatefulWidget {
@@ -33,8 +37,23 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
   String? _selectedVendorId;
   late String _status;
   List<PurchaseItemModel> _items = [];
-  final Map<int, TextEditingController> _qtyControllers = {};
+   final Map<int, TextEditingController> _qtyControllers = {};
   final Map<int, TextEditingController> _costControllers = {};
+  final Map<int, TextEditingController> _retailControllers = {};
+
+  final FocusNode _vendorFocusNode = FocusNode();
+  final TextEditingController _vendorController = TextEditingController();
+  final FocusNode _dateFocusNode = FocusNode();
+  final FocusNode _invoiceFocusNode = FocusNode();
+  final FocusNode _taxFocusNode = FocusNode();
+  final FocusNode _saveFocusNode = FocusNode();
+  final FocusNode _addRowFocusNode = FocusNode(skipTraversal: true);
+
+  final Map<int, FocusNode> _productFocusNodes = {};
+  final Map<int, TextEditingController> _productControllers = {};
+  final Map<int, FocusNode> _qtyFocusNodes = {};
+  final Map<int, FocusNode> _costFocusNodes = {};
+  final Map<int, FocusNode> _retailFocusNodes = {};
 
   @override
   void initState() {
@@ -49,14 +68,34 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
     _status = widget.purchase.status;
     _items = List.from(widget.purchase.items);
 
+    _saveFocusNode.addListener(() {
+      if (_saveFocusNode.hasFocus && _saveFocusNode.context != null) {
+        Future.microtask(() {
+          Scrollable.ensureVisible(
+            _saveFocusNode.context!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        });
+      }
+    });
+
     for (int i = 0; i < _items.length; i++) {
       _qtyControllers[i] = TextEditingController(text: _items[i].quantity.toString());
       _costControllers[i] = TextEditingController(text: _items[i].unitCost.toString());
+      _retailControllers[i] = TextEditingController(text: _items[i].retailPrice.toString());
+      
+      _productFocusNodes[i] = FocusNode();
+      _productControllers[i] = TextEditingController();
+      _qtyFocusNodes[i] = FocusNode();
+      _costFocusNodes[i] = FocusNode();
+      _retailFocusNodes[i] = FocusNode();
     }
 
     Future.microtask(() {
       context.read<VendorProvider>().initialize();
       context.read<ProductProvider>().initialize();
+      context.read<CategoryProvider>().loadCategories();
     });
   }
 
@@ -74,6 +113,13 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
       ));
       _qtyControllers[newIndex] = TextEditingController(text: "1");
       _costControllers[newIndex] = TextEditingController(text: "0");
+      _retailControllers[newIndex] = TextEditingController(text: "0");
+      
+      _productFocusNodes[newIndex] = FocusNode();
+      _productControllers[newIndex] = TextEditingController();
+      _qtyFocusNodes[newIndex] = FocusNode();
+      _costFocusNodes[newIndex] = FocusNode();
+      _retailFocusNodes[newIndex] = FocusNode();
     });
   }
 
@@ -87,6 +133,20 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
     for (var controller in _costControllers.values) {
       controller.dispose();
     }
+    _vendorFocusNode.dispose();
+    _vendorController.dispose();
+    _dateFocusNode.dispose();
+    _invoiceFocusNode.dispose();
+    _taxFocusNode.dispose();
+    _saveFocusNode.dispose();
+    _addRowFocusNode.dispose();
+    for (var node in _productFocusNodes.values) { node.dispose(); }
+    for (var node in _productControllers.values) { node.dispose(); }
+    for (var node in _qtyFocusNodes.values) { node.dispose(); }
+    for (var node in _costFocusNodes.values) { node.dispose(); }
+    for (var node in _retailFocusNodes.values) { node.dispose(); }
+    for (var controller in _retailControllers.values) { controller.dispose(); }
+    
     super.dispose();
   }
 
@@ -100,29 +160,33 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
       ),
       backgroundColor: AppTheme.creamWhite,
       child: Container(
-        width: 75.w, // Desktop-optimized width
-        constraints: BoxConstraints(maxHeight: 90.h),
-        padding: EdgeInsets.all(context.mainPadding),
+        width: context.dialogWidth, // Use responsive width helper
+        constraints: BoxConstraints(
+          maxHeight: 90.h,
+          maxWidth: 1000,
+        ),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
               // Header
-              Row(
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, left: 16.0, right: 16.0, bottom: 4.0),
+                child: Row(
                 children: [
                   Container(
-                    padding: EdgeInsets.all(context.smallPadding),
+                    padding: const EdgeInsets.all(6.0),
                     decoration: BoxDecoration(
                         color: AppTheme.primaryMaroon.withOpacity(0.1),
                         shape: BoxShape.circle
                     ),
-                    child: Icon(
+                    child: const Icon(
                         Icons.edit_note_rounded,
                         color: AppTheme.primaryMaroon,
-                        size: context.iconSize('medium')
+                        size: 20
                     ),
                   ),
-                  SizedBox(width: context.smallPadding),
+                  const SizedBox(width: 10),
                   Text(
                     l10n.editPurchase ?? "Edit Purchase",
                     style: TextStyle(
@@ -134,28 +198,39 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
                   const Spacer(),
                   IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded)
+                      icon: const Icon(Icons.close_rounded, size: 20,)
                   ),
                 ],
+              ),
               ),
               const Divider(height: 32),
 
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _buildGeneralInfo(context, l10n),
-                      SizedBox(height: context.mainPadding),
-                      _buildItemsSection(context, l10n),
-                      SizedBox(height: context.mainPadding),
-                      _buildSummarySection(context, l10n),
-                    ],
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.only(top: 12, bottom: 12, left: context.mainPadding, right: context.mainPadding),
+                      child: Column(
+                        children: [
+                          _buildGeneralInfo(context, l10n),
+                          SizedBox(height: context.mainPadding),
+                          _buildItemsSection(context, l10n),
+                          SizedBox(height: context.mainPadding),
+                          _buildSummarySection(context, l10n),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
 
               const Divider(height: 32),
-              _buildActions(context, l10n),
+              Padding(
+                padding: EdgeInsets.only(bottom: context.mainPadding, left: context.mainPadding, right: context.mainPadding),
+                child: _buildActions(context, l10n),
+              ),
             ],
           ),
         ),
@@ -171,15 +246,119 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
             Expanded(
               child: Consumer<VendorProvider>(
                 builder: (context, provider, child) {
-                  return PremiumDropdownField<String>(
-                    label: l10n.vendor ?? "Vendor",
-                    value: _selectedVendorId,
-                    items: provider.vendors.map((v) => DropdownItem<String>(
-                        value: v.id!,
-                        label: v.name
-                    )).toList(),
-                    onChanged: (val) => setState(() => _selectedVendorId = val),
-                    hint: l10n.selectVendorError ?? "Select Vendor",
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Autocomplete<VendorModel>(
+                        focusNode: _vendorFocusNode,
+                        textEditingController: _vendorController,
+                        optionsBuilder: (TextEditingValue textEditingValue) {
+                          final vendors = provider.vendors;
+                          final query = textEditingValue.text.toLowerCase();
+                          
+                          if (query.isEmpty) {
+                            return vendors;
+                          }
+
+                          // Find currently selected vendor name
+                          String? selectedName;
+                          if (_selectedVendorId != null) {
+                            final match = vendors.where((v) => v.id == _selectedVendorId);
+                            if (match.isNotEmpty) {
+                              final v = match.first;
+                              selectedName = (v.businessName.isNotEmpty ? v.businessName : v.name).toLowerCase();
+                            }
+                          }
+
+                          // If text exactly matches the selected vendor, show all with selected at top
+                          if (selectedName != null && query == selectedName) {
+                            final selected = vendors.where((v) => v.id == _selectedVendorId).toList();
+                            final rest = vendors.where((v) => v.id != _selectedVendorId).toList();
+                            return [...selected, ...rest];
+                          }
+
+                          // Otherwise put matches at top, and the rest beneath
+                          final matches = vendors.where((v) => 
+                            v.name.toString().toLowerCase().contains(query) ||
+                            v.businessName.toString().toLowerCase().contains(query)
+                          ).toList();
+                          
+                          final nonMatches = vendors.where((v) => 
+                            !v.name.toString().toLowerCase().contains(query) &&
+                            !v.businessName.toString().toLowerCase().contains(query)
+                          ).toList();
+                          
+                          return [...matches, ...nonMatches];
+                        },
+                        displayStringForOption: (option) => option.businessName.isNotEmpty ? option.businessName : option.name,
+                        onSelected: (selection) {
+                          setState(() => _selectedVendorId = selection.id);
+                        },
+                        fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                          if (_selectedVendorId != null && controller.text.isEmpty) {
+                            final existing = provider.vendors.where((v) => v.id == _selectedVendorId).toList();
+                            if (existing.isNotEmpty) {
+                              final v = existing.first;
+                              controller.text = v.businessName.isNotEmpty ? v.businessName : v.name;
+                            }
+                          }
+                          return PremiumTextField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            label: l10n.vendor ?? "Vendor",
+                            hint: "Select Vendor...",
+                            suffixIcon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.grey, size: 24),
+                            onChanged: (val) {
+                              if (_selectedVendorId != null) setState(() => _selectedVendorId = null);
+                            },
+                            onSubmitted: (_) {
+                              onFieldSubmitted();
+                              _invoiceFocusNode.requestFocus();
+                            },
+                          );
+                        },
+                        optionsViewBuilder: (context, onSelected, options) {
+                          return Align(
+                            alignment: Alignment.topLeft,
+                            child: Material(
+                              elevation: 8.0,
+                              borderRadius: BorderRadius.circular(8),
+                              color: AppTheme.pureWhite,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(maxHeight: 250, maxWidth: constraints.maxWidth),
+                                child: ListView.builder(
+                                  padding: EdgeInsets.zero,
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  itemBuilder: (BuildContext context, int index) {
+                                    final option = options.elementAt(index);
+                                    return InkWell(
+                                      onTap: () => onSelected(option),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              option.businessName.isNotEmpty ? option.businessName : option.name,
+                                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)
+                                            ),
+                                            if (option.businessName.isNotEmpty)
+                                              Text(
+                                                option.name,
+                                                style: TextStyle(fontSize: 12, color: Colors.grey[600])
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }
                   );
                 },
               ),
@@ -188,8 +367,10 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
             Expanded(
               child: PremiumTextField(
                 controller: _invoiceController,
+                focusNode: _invoiceFocusNode,
                 label: l10n.invoiceNumber ?? "Invoice #",
                 validator: (val) => val!.isEmpty ? (l10n.enterInvoiceNumberError ?? "Required") : null,
+                onSubmitted: (_) => _dateFocusNode.requestFocus(),
               ),
             ),
           ],
@@ -198,42 +379,76 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
         Row(
           children: [
             Expanded(
-              child: InkWell(
-                onTap: () {
-                  context.showSyncfusionDateTimePicker(
-                    initialDate: _selectedDate,
-                    initialTime: _selectedTime,
-                    onDateTimeSelected: (date, time) {
-                      setState(() {
-                        _selectedDate = date;
-                        _selectedTime = time;
-                      });
-                    },
-                  );
+              child: Focus(
+                focusNode: _dateFocusNode,
+                onKeyEvent: (node, event) {
+                  if (event is KeyDownEvent && (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
+                    context.showSyncfusionDateTimePicker(
+                      initialDate: _selectedDate,
+                      initialTime: _selectedTime,
+                      onDateTimeSelected: (date, time) {
+                        setState(() {
+                          _selectedDate = date;
+                          _selectedTime = time;
+                        });
+                        Future.microtask(() {
+                          if (_items.isNotEmpty && _productFocusNodes.containsKey(0)) {
+                            _productFocusNodes[0]!.requestFocus();
+                          } else {
+                            _saveFocusNode.requestFocus();
+                          }
+                        });
+                      },
+                    );
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
                 },
-                child: IgnorePointer(
-                  child: PremiumTextField(
-                    label: l10n.purchaseDate ?? "Purchase Date",
-                    controller: TextEditingController(
-                      text: "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.format(context)}",
-                    ),
-                    prefixIcon: Icons.calendar_today_rounded,
-                  ),
+                child: Builder(
+                  builder: (context) {
+                    final isFocused = Focus.of(context).hasFocus;
+                    return InkWell(
+                      onTap: () {
+                        context.showSyncfusionDateTimePicker(
+                          initialDate: _selectedDate,
+                          initialTime: _selectedTime,
+                          onDateTimeSelected: (date, time) {
+                            setState(() {
+                              _selectedDate = date;
+                              _selectedTime = time;
+                            });
+                          },
+                        );
+                      },
+                      child: Container(
+                        decoration: isFocused ? BoxDecoration(
+                          borderRadius: BorderRadius.circular(context.borderRadius()),
+                          border: Border.all(color: AppTheme.accentGold, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.accentGold.withOpacity(0.3),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ) : null,
+                        child: IgnorePointer(
+                          child: PremiumTextField(
+                            label: l10n.purchaseDate ?? "Purchase Date",
+                            controller: TextEditingController(
+                              text: "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.format(context)}",
+                            ),
+                            prefixIcon: Icons.calendar_today_rounded,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
                 ),
               ),
             ),
             SizedBox(width: context.mainPadding),
-            Expanded(
-              child: PremiumDropdownField<String>(
-                label: "Status",
-                value: _status,
-                items: [
-                  DropdownItem(value: 'draft', label: "Draft"),
-                  DropdownItem(value: 'posted', label: "Posted"),
-                ],
-                onChanged: (val) => setState(() => _status = val!),
-              ),
-            ),
+            const Expanded(child: SizedBox()), // Empty space to keep width at 50%
           ],
         ),
       ],
@@ -253,6 +468,7 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
               text: l10n.addProductRow ?? "Add Product Row",
               onPressed: _addItem,
               icon: Icons.add_rounded,
+              focusNode: _addRowFocusNode,
               width: 200,
               height: 40,
             ),
@@ -273,37 +489,106 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
             child: Row(
               children: [
                 Expanded(
-                  flex: 4,
+                  flex: 5,
                   child: Consumer<ProductProvider>(
                         builder: (context, provider, child) {
-                          final List<DropdownItem<String>> dropdownItems = provider.products.map((p) => DropdownItem<String>(
-                              value: p.id!,
-                              label: p.name
-                          )).toList();
+                          return LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Autocomplete<ProductModel>(
+                                focusNode: _productFocusNodes[index],
+                                textEditingController: _productControllers[index],
+                                optionsBuilder: (TextEditingValue textEditingValue) {
+                                  final products = provider.products;
+                                  final query = textEditingValue.text.toLowerCase();
+                                  
+                                  if (query.isEmpty) {
+                                    return products;
+                                  }
 
-                          // Add the current product if it's not in the list (e.g. inactive or filtered)
-                          if (item.product != null && !dropdownItems.any((di) => di.value == item.product)) {
-                            dropdownItems.add(DropdownItem<String>(
-                                value: item.product!,
-                                label: item.productDetail?.name ?? item.productName ?? "Previous Product"
-                            ));
-                          }
+                                  String? selectedName = item.productName?.toLowerCase();
 
-                          return PremiumDropdownField<String>(
-                            label: l10n.purchasedProducts ?? "Product",
-                            value: item.product,
-                            items: dropdownItems,
-                            onChanged: (val) {
-                              final prod = provider.products.firstWhere((p) => p.id == val);
-                                setState(() {
-                                  _items[index] = item.copyWith(
-                                    product: val,
-                                    productName: prod.name,
-                                    categoryName: prod.categoryName,
+                                  if (selectedName != null && query == selectedName) {
+                                    final selected = products.where((p) => p.name.toString().toLowerCase() == selectedName).toList();
+                                    final rest = products.where((p) => p.name.toString().toLowerCase() != selectedName).toList();
+                                    return [...selected, ...rest];
+                                  }
+
+                                  final matches = products.where((p) => 
+                                    p.name.toString().toLowerCase().contains(query)
+                                  ).toList();
+                                  
+                                  final nonMatches = products.where((p) => 
+                                    !p.name.toString().toLowerCase().contains(query)
+                                  ).toList();
+                                  
+                                  return [...matches, ...nonMatches];
+                                },
+                                displayStringForOption: (option) => option.name.toString(),
+                                onSelected: (selection) {
+                                    setState(() {
+                                      _items[index] = item.copyWith(
+                                        product: selection.id,
+                                        productName: selection.name,
+                                        categoryName: selection.categoryName,
+                                      );
+                                    });
+                                },
+                                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                                  if (item.productName != null && controller.text.isEmpty) {
+                                    controller.text = item.productName!;
+                                  }
+                                  return PremiumTextField(
+                                    controller: controller,
+                                    focusNode: focusNode,
+                                    label: l10n.purchasedProducts ?? "Product",
+                                    hint: "Select Product...",
+                                    suffixIcon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.grey, size: 24),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _items[index] = item.copyWith(
+                                          product: "", // Use empty string so copyWith overwrites it
+                                          productName: val,
+                                        );
+                                      });
+                                    },
+                                    onSubmitted: (_) {
+                                      onFieldSubmitted();
+                                      if (_qtyFocusNodes.containsKey(index)) {
+                                          _qtyFocusNodes[index]!.requestFocus();
+                                      }
+                                    },
                                   );
-                                });
-                            },
-                            hint: "Product",
+                                },
+                                optionsViewBuilder: (context, onSelected, options) {
+                                  return Align(
+                                    alignment: Alignment.topLeft,
+                                    child: Material(
+                                      elevation: 8.0,
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: AppTheme.pureWhite,
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(maxHeight: 250, maxWidth: constraints.maxWidth),
+                                        child: ListView.builder(
+                                          padding: EdgeInsets.zero,
+                                          shrinkWrap: true,
+                                          itemCount: options.length,
+                                          itemBuilder: (BuildContext context, int index) {
+                                            final option = options.elementAt(index);
+                                            return InkWell(
+                                              onTap: () => onSelected(option),
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                                child: Text(option.name.toString(), style: const TextStyle(fontSize: 14)),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }
                           );
                         },
                   ),
@@ -315,6 +600,8 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
                     label: "Qty",
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     controller: _qtyControllers[index],
+                    focusNode: _qtyFocusNodes[index],
+                    selectAllOnFocus: true,
                     onChanged: (v) {
                       final q = double.tryParse(v) ?? 0;
                       setState(() {
@@ -324,15 +611,22 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
                         );
                       });
                     },
+                    onSubmitted: (_) {
+                      if (_costFocusNodes.containsKey(index)) {
+                        _costFocusNodes[index]!.requestFocus();
+                      }
+                    },
                   ),
                 ),
                 SizedBox(width: context.smallPadding),
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: PremiumTextField(
                     label: l10n.unitCost ?? "Cost",
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     controller: _costControllers[index],
+                    focusNode: _costFocusNodes[index],
+                    selectAllOnFocus: true,
                     onChanged: (v) {
                       final c = double.tryParse(v) ?? 0;
                       setState(() {
@@ -341,6 +635,37 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
                           totalPrice: c * item.quantity,
                         );
                       });
+                    },
+                    onSubmitted: (_) {
+                      if (_retailFocusNodes.containsKey(index)) {
+                        _retailFocusNodes[index]!.requestFocus();
+                      }
+                    },
+                  ),
+                ),
+                SizedBox(width: context.smallPadding),
+                Expanded(
+                  flex: 3,
+                  child: PremiumTextField(
+                    label: "Rent Price",
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    controller: _retailControllers[index],
+                    focusNode: _retailFocusNodes[index],
+                    selectAllOnFocus: true,
+                    onChanged: (v) {
+                      final r = double.tryParse(v) ?? 0;
+                      setState(() {
+                         _items[index] = item.copyWith(retailPrice: r);
+                      });
+                    },
+                    onSubmitted: (_) {
+                      if (_items.length - 1 == index) {
+                        _taxFocusNode.requestFocus();
+                      } else {
+                        if (_productFocusNodes.containsKey(index + 1)) {
+                          _productFocusNodes[index + 1]!.requestFocus();
+                        }
+                      }
                     },
                   ),
                 ),
@@ -359,9 +684,13 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
                 IconButton(
                     onPressed: () {
                       setState(() {
-                        _items.removeAt(index);
-                        _qtyControllers.remove(index);
-                        _costControllers.remove(index);
+                         _items.removeAt(index);
+                         _qtyControllers.remove(index)?.dispose();
+                         _costControllers.remove(index)?.dispose();
+                         _productControllers.remove(index)?.dispose();
+                         _productFocusNodes.remove(index)?.dispose();
+                         _qtyFocusNodes.remove(index)?.dispose();
+                         _costFocusNodes.remove(index)?.dispose();
                       });
                     },
                     icon: const Icon(Icons.delete_sweep_rounded, color: Colors.red)
@@ -392,10 +721,14 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
               Text(l10n.taxAdjustment ?? "Total Tax", style: TextStyle(color: Colors.grey[600])),
               SizedBox(
                   width: 150,
-                  child: PremiumTextField(
+                      child: PremiumTextField(
                       controller: _taxController,
+                      focusNode: _taxFocusNode,
                       label: "Tax",
-                      onChanged: (_) => setState(() {})
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      selectAllOnFocus: true,
+                      onChanged: (_) => setState(() {}),
+                      onSubmitted: (_) => _saveFocusNode.requestFocus(),
                   )
               ),
             ],
@@ -441,6 +774,7 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
             return PremiumButton(
               text: l10n.savePurchase ?? "Update Purchase",
               isLoading: provider.isLoading,
+              focusNode: _saveFocusNode,
               onPressed: _handleUpdate,
               width: 200,
             );
@@ -452,6 +786,57 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
 
   void _handleUpdate() async {
     if (_formKey.currentState!.validate()) {
+      if (_selectedVendorId == null || _selectedVendorId!.isEmpty) {
+        _showError("Please select a valid Vendor strictly from the dropdown list.");
+        return;
+      }
+
+      if (_items.isEmpty) {
+        _showError("Please add at least one product.");
+        return;
+      }
+
+      final productProvider = context.read<ProductProvider>();
+      final categoryProvider = context.read<CategoryProvider>();
+      String defaultCategoryId = "";
+      if (categoryProvider.categories.isNotEmpty) {
+        defaultCategoryId = categoryProvider.categories.first.id;
+      }
+
+      for (int i = 0; i < _items.length; i++) {
+        // 1. If product is new, create it with the retailPrice
+        if (_items[i].product == null || _items[i].product!.isEmpty) {
+          if (defaultCategoryId.isEmpty) {
+             _showError("Row ${i+1}: Cannot auto-create product because no categories exist. Create a category first.");
+             return;
+          }
+          final newProduct = await productProvider.addProduct(
+            name: _items[i].productName!,
+            detail: _items[i].description ?? 'Auto-created during purchase edit',
+            price: _items[i].retailPrice > 0 ? _items[i].retailPrice : _items[i].unitCost, // Use retailPrice if set
+            costPrice: _items[i].unitCost,
+            quantity: 0,
+            categoryId: defaultCategoryId,
+          );
+
+          if (newProduct != null && newProduct.id.isNotEmpty) {
+            _items[i] = _items[i].copyWith(product: newProduct.id);
+          } else {
+            final err = productProvider.errorMessage ?? "Product creation failed";
+            _showError("Row ${i+1}: Failed to auto-create product. $err");
+            return;
+          }
+        } 
+        // 2. If product exists, update its retail price if user changed it in the purchase row
+        else if (_items[i].retailPrice > 0) {
+          await productProvider.updateProduct(
+            id: _items[i].product!,
+            price: _items[i].retailPrice,
+            costPrice: _items[i].unitCost,
+          );
+        }
+      }
+
       final updated = widget.purchase.copyWith(
         vendor: _selectedVendorId,
         invoiceNumber: _invoiceController.text,
@@ -473,10 +858,62 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
       if (success && mounted) {
         Navigator.pop(context);
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.read<PurchaseProvider>().error ?? "Failed to update"))
-        );
+        _showError(context.read<PurchaseProvider>().error ?? "Failed to update");
       }
     }
+  }
+
+  void _showError(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.pureWhite,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.red, size: 24),
+            const SizedBox(width: 8),
+            const Text(
+              "Error",
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(
+            color: AppTheme.charcoalGray,
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryMaroon,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            ),
+            child: const Text(
+              "OK",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -18,31 +18,33 @@ class ViewPurchaseDetailsDialog extends StatelessWidget {
 
   /// Helper to robustly get the Vendor Name with Localization
   String _getVendorName(BuildContext context, AppLocalizations l10n) {
-    // 1. Try direct name field (from model)
-    if (purchase.vendorName != null && purchase.vendorName!.isNotEmpty) {
-      return purchase.vendorName!;
-    }
-
-    // 2. Try nested object
-    if (purchase.vendorDetail?.name != null) {
-      return purchase.vendorDetail!.name;
-    }
-
-    // 3. Last resort: Lookup in Provider using ID
+    // 1. First priority: Provider lookup (most accurate if ID exists)
     if (purchase.vendor != null) {
       try {
         final vendorProvider = context.read<VendorProvider>();
         final foundVendor = vendorProvider.vendors.firstWhere(
-              (v) => v.id == purchase.vendor,
+          (v) => v.id == purchase.vendor,
         );
-        // If found, return its name
+        if (foundVendor.businessName.isNotEmpty) return foundVendor.businessName;
         return foundVendor.name;
-      } catch (e) {
-        // Not found in the list (e.g. pagination or not loaded)
-      }
+      } catch (_) {}
     }
 
-    return l10n.unknownVendor ?? "Unknown Vendor";
+    // 2. Second priority: Business name from nested detail object
+    if (purchase.vendorDetail?.businessName != null && purchase.vendorDetail!.businessName.isNotEmpty) {
+      return purchase.vendorDetail!.businessName;
+    }
+
+    // 3. Third priority: Direct name field or Detail name
+    if (purchase.vendorName != null && purchase.vendorName!.isNotEmpty) {
+      return purchase.vendorName!;
+    }
+
+    if (purchase.vendorDetail?.name != null) {
+      return purchase.vendorDetail!.name;
+    }
+
+    return l10n.unknownVendor ?? "Unknown Company";
   }
 
   /// Helper to get Product Name robustly with Localization

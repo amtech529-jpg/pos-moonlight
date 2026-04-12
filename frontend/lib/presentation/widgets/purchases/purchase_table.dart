@@ -104,6 +104,7 @@ class _PurchaseTableState extends State<PurchaseTable> {
              final name = (item.productDetail?.name ?? item.productName ?? "").toLowerCase();
              final category = (item.productDetail?.categoryName ?? item.categoryName ?? "").toLowerCase();
              final vendorName = (purchase.vendorName ?? purchase.vendorDetail?.name ?? "").toLowerCase();
+             final vendorBusiness = (purchase.vendorDetail?.businessName ?? "").toLowerCase();
              final invoiceNum = (purchase.invoiceNumber ?? "").toLowerCase();
              final description = (item.description ?? "").toLowerCase();
 
@@ -111,6 +112,7 @@ class _PurchaseTableState extends State<PurchaseTable> {
                  name.contains(search) || 
                  category.contains(search) ||
                  vendorName.contains(search) ||
+                 vendorBusiness.contains(search) ||
                  invoiceNum.contains(search) ||
                  description.contains(search);
 

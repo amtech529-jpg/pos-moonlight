@@ -57,7 +57,7 @@ class _PurchaseFilterDialogState extends State<PurchaseFilterDialog> {
       ),
       backgroundColor: AppTheme.creamWhite,
       child: Container(
-        width: 50.w, // Increased width for larger fonts
+        constraints: const BoxConstraints(maxWidth: 500),
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -104,27 +104,16 @@ class _PurchaseFilterDialogState extends State<PurchaseFilterDialog> {
                   value: _currentFilter.vendorId,
                   items: provider.vendors.map((v) => DropdownItem<String>(
                     value: v.id!,
-                    label: v.name,
+                    label: v.businessName.isNotEmpty ? v.businessName : v.name,
                   )).toList(),
                   onChanged: (val) => setState(() => _currentFilter.vendorId = val),
-                  hint: "All Vendors",
+                  hint: "All Companies",
                 );
               },
             ),
             SizedBox(height: context.mainPadding),
 
-            // Status Selection
-            PremiumDropdownField<String>(
-              label: "Status",
-              value: _currentFilter.status,
-              items: [
-                DropdownItem(value: 'draft', label: "Draft"),
-                DropdownItem(value: 'posted', label: "Posted"),
-              ],
-              onChanged: (val) => setState(() => _currentFilter.status = val),
-              hint: "All Statuses",
-            ),
-            SizedBox(height: context.mainPadding),
+
 
             // Date Range Selection
             Row(

@@ -300,12 +300,12 @@ class _ToolsInventoryScreenState extends State<ToolsInventoryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "Usage Analysis",
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFBBBBBB),
+                    color: const Color(0xFF555555), // Darker for better contrast
                   ),
                 ),
                 Container(
@@ -427,9 +427,9 @@ class _ToolsInventoryScreenState extends State<ToolsInventoryScreen> {
           child: Center(
             child: Text(
               text,
-              style: const TextStyle(
-                color: Color(0xFFBBBBBB),
-                fontSize: 16,
+              style: TextStyle(
+                color: const Color(0xFF666666), // Darker grey
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -847,7 +847,8 @@ class _ToolsInventoryScreenState extends State<ToolsInventoryScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: isActive ? Colors.white : const Color(0xFF888888),
+            color: isActive ? Colors.white : const Color(0xFF666666),
+            fontSize: 12.sp,
             fontWeight: FontWeight.bold,
           ),
         ),

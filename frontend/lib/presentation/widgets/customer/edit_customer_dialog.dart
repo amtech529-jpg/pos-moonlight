@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
@@ -42,6 +43,18 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
   // Loading state for fetching full customer details
   bool _isLoadingFullDetails = false;
   Customer? _fullCustomerDetails;
+  
+  // Focus Nodes
+  final _nameFocusNode = FocusNode();
+  final _phoneFocusNode = FocusNode();
+  final _emailFocusNode = FocusNode();
+  final _addressFocusNode = FocusNode();
+  final _cityFocusNode = FocusNode();
+  final _countryFocusNode = FocusNode();
+  final _businessNameFocusNode = FocusNode();
+  final _taxNumberFocusNode = FocusNode();
+  final _notesFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
 
   // Animation controllers
   late AnimationController _animationController;
@@ -164,6 +177,17 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
     _businessNameController.dispose();
     _taxNumberController.dispose();
     _notesController.dispose();
+    
+    _nameFocusNode.dispose();
+    _phoneFocusNode.dispose();
+    _emailFocusNode.dispose();
+    _addressFocusNode.dispose();
+    _cityFocusNode.dispose();
+    _countryFocusNode.dispose();
+    _businessNameFocusNode.dispose();
+    _taxNumberFocusNode.dispose();
+    _notesFocusNode.dispose();
+    _saveFocusNode.dispose();
 
     // Clear selected customer from provider
     try {
@@ -677,6 +701,9 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
           hint: context.shouldShowCompactLayout ? 'Enter full name' : 'Enter customer\'s full name',
           controller: _nameController,
           prefixIcon: Icons.person_outline,
+          focusNode: _nameFocusNode,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _phoneFocusNode.requestFocus(),
           validator: (value) {
             if (value?.isEmpty ?? true) {
               return 'Please enter customer name';
@@ -707,7 +734,10 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
           hint: context.shouldShowCompactLayout ? 'Enter phone' : 'Enter phone number',
           controller: _phoneController,
           prefixIcon: Icons.phone_outlined,
+          focusNode: _phoneFocusNode,
           keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _emailFocusNode.requestFocus(),
           validator: (value) {
             if (value?.isEmpty ?? true) {
               return 'Please enter phone number';
@@ -726,7 +756,10 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
           hint: context.shouldShowCompactLayout ? 'Enter email (optional)' : 'Enter email address (optional)',
           controller: _emailController,
           prefixIcon: Icons.email_outlined,
+          focusNode: _emailFocusNode,
           keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _addressFocusNode.requestFocus(),
           validator: (value) {
             if (value != null && value.isNotEmpty) {
               if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
@@ -744,7 +777,10 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
           hint: context.shouldShowCompactLayout ? 'Enter address' : 'Enter complete address (optional)',
           controller: _addressController,
           prefixIcon: Icons.location_on_outlined,
+          focusNode: _addressFocusNode,
           maxLines: 2,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _cityFocusNode.requestFocus(),
           validator: (value) {
             if (value != null && value.isNotEmpty) {
               if (value.length > 300) {
@@ -885,6 +921,9 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
           hint: 'Enter city',
           controller: _cityController,
           prefixIcon: Icons.location_city_outlined,
+          focusNode: _cityFocusNode,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _countryFocusNode.requestFocus(),
           validator: (value) {
             if (value != null && value.isNotEmpty) {
               if (value.length > 100) {
@@ -909,6 +948,15 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
           hint: 'Enter country',
           controller: _countryController,
           prefixIcon: Icons.public_outlined,
+          focusNode: _countryFocusNode,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) {
+            if (_showBusinessFields) {
+              _businessNameFocusNode.requestFocus();
+            } else {
+              _notesFocusNode.requestFocus();
+            }
+          },
           validator: (value) {
             if (value != null && value.isNotEmpty) {
               if (value.length > 100) {
@@ -1018,7 +1066,10 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
           hint: context.shouldShowCompactLayout ? 'Enter notes' : 'Enter any additional notes about the customer (optional)',
           controller: _notesController,
           prefixIcon: Icons.description_outlined,
+          focusNode: _notesFocusNode,
           maxLines: 3,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _saveFocusNode.requestFocus(),
           validator: (value) {
             if (value != null && value.isNotEmpty && value.length > 500) {
               return 'Notes must be less than 500 characters';
@@ -1051,6 +1102,7 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
           builder: (context, provider, child) {
             return PremiumButton(
               text: 'Update Customer',
+              focusNode: _saveFocusNode,
               onPressed: provider.isLoading ? null : _handleUpdate,
               isLoading: provider.isLoading,
               height: context.buttonHeight,
@@ -1059,7 +1111,7 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
             );
           },
         ),
-        SizedBox(height: context.cardPadding),
+        const SizedBox(height: 10),
         PremiumButton(
           text: 'Cancel',
           onPressed: _handleCancel,
@@ -1085,13 +1137,14 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
             textColor: Colors.grey[600],
           ),
         ),
-        SizedBox(width: context.cardPadding),
+        const SizedBox(width: 20),
         Expanded(
           flex: 2,
           child: Consumer<CustomerProvider>(
             builder: (context, provider, child) {
               return PremiumButton(
                 text: 'Update Customer',
+                focusNode: _saveFocusNode,
                 onPressed: provider.isLoading ? null : _handleUpdate,
                 isLoading: provider.isLoading,
                 height: context.buttonHeight / 1.5,

@@ -21,6 +21,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _descriptionFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
 
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -59,6 +60,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
     _nameController.dispose();
     _descriptionController.dispose();
     _descriptionFocusNode.dispose();
+    _saveFocusNode.dispose();
     super.dispose();
   }
 
@@ -281,98 +283,104 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
   Widget _buildFormContent({required bool isCompact}) {
     final l10n = AppLocalizations.of(context)!;
 
-    return Padding(
-      padding: EdgeInsets.all(context.cardPadding),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Category Name Field
-            PremiumTextField(
-              label: '${l10n.category} ${l10n.name}',
-              labelFontSize: 12.sp,
-              hint: isCompact
-                  ? '${l10n.category} ${l10n.name}'
-                  : '${l10n.category} ${l10n.name} ${l10n.enterEmail}',
-              controller: _nameController,
-              prefixIcon: Icons.label_outline,
-              textInputAction: TextInputAction.next,
-              onSubmitted: (_) => FocusScope.of(context).requestFocus(_descriptionFocusNode),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return '${l10n.category} ${l10n.name}';
-                }
-                if (value!.length < 2) {
-                  return '${l10n.category} ${l10n.name} 2 ${l10n.characters}';
-                }
-                if (value.length > 50) {
-                  return '${l10n.category} ${l10n.name} 50 ${l10n.characters}';
-                }
-                return null;
-              },
-            ),
-
-            SizedBox(height: context.cardPadding),
-
-            // Description Field with responsive lines
-            PremiumTextField(
-              label: l10n.notes,
-              labelFontSize: 12.sp,
-              hint: isCompact
-                  ? '${l10n.notes} (${l10n.optional})'
-                  : '${l10n.category} ${l10n.notes} (${l10n.optional})',
-              controller: _descriptionController,
-              focusNode: _descriptionFocusNode,
-              prefixIcon: Icons.description_outlined,
-              maxLines: ResponsiveBreakpoints.responsive(
-                context,
-                tablet: 2,    // Fewer lines on tablets
-                small: 3,     // Fewer lines on small screens
-                medium: 4,    // Standard lines on medium screens
-                large: 5,     // More lines on large screens
-                ultrawide: 6, // Maximum lines on ultrawide
-              ),
-              validator: (value) {
-                if (value != null && value.length > 200) {
-                  return '${l10n.notes} 200 ${l10n.characters}';
-                }
-                return null;
-              },
-              onChanged: (value) {
-                setState(() {}); // Update character count
-              },
-            ),
-
-            SizedBox(height: context.smallPadding),
-
-            // Character Count
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '${_descriptionController.text.length}/200 ${l10n.characters}',
-                style: TextStyle(
-                  fontSize: context.captionFontSize,
-                  fontWeight: FontWeight.w400,
-                  color: _descriptionController.text.length > 200
-                      ? Colors.red[600]
-                      : Colors.grey[500],
+    return Flexible(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(context.cardPadding),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Category Name Field
+                PremiumTextField(
+                  label: '${l10n.category} ${l10n.name}',
+                  labelFontSize: 12.sp,
+                  hint: isCompact
+                      ? '${l10n.category} ${l10n.name}'
+                      : '${l10n.category} ${l10n.name} ${l10n.enterEmail}',
+                  controller: _nameController,
+                  prefixIcon: Icons.label_outline,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(_descriptionFocusNode),
+                  validator: (value) {
+                    if (value?.isEmpty ?? true) {
+                      return '${l10n.category} ${l10n.name}';
+                    }
+                    if (value!.length < 2) {
+                      return '${l10n.category} ${l10n.name} 2 ${l10n.characters}';
+                    }
+                    if (value.length > 50) {
+                      return '${l10n.category} ${l10n.name} 50 ${l10n.characters}';
+                    }
+                    return null;
+                  },
                 ),
-              ),
+    
+                SizedBox(height: context.cardPadding),
+    
+                // Description Field with responsive lines
+                PremiumTextField(
+                  label: l10n.notes,
+                  labelFontSize: 12.sp,
+                  hint: isCompact
+                      ? '${l10n.notes} (${l10n.optional})'
+                      : '${l10n.category} ${l10n.notes} (${l10n.optional})',
+                  controller: _descriptionController,
+                  focusNode: _descriptionFocusNode,
+                  prefixIcon: Icons.description_outlined,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _saveFocusNode.requestFocus(),
+                  maxLines: ResponsiveBreakpoints.responsive(
+                    context,
+                    tablet: 2,    // Fewer lines on tablets
+                    small: 3,     // Fewer lines on small screens
+                    medium: 4,    // Standard lines on medium screens
+                    large: 5,     // More lines on large screens
+                    ultrawide: 6, // Maximum lines on ultrawide
+                  ),
+                  validator: (value) {
+                    if (value != null && value.length > 200) {
+                      return '${l10n.notes} 200 ${l10n.characters}';
+                    }
+                    return null;
+                  },
+                  onChanged: (value) {
+                    setState(() {}); // Update character count
+                  },
+                ),
+    
+                SizedBox(height: context.smallPadding),
+    
+                // Character Count
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '${_descriptionController.text.length}/200 ${l10n.characters}',
+                    style: TextStyle(
+                      fontSize: context.captionFontSize,
+                      fontWeight: FontWeight.w400,
+                      color: _descriptionController.text.length > 200
+                          ? Colors.red[600]
+                          : Colors.grey[500],
+                    ),
+                  ),
+                ),
+    
+                SizedBox(height: context.mainPadding),
+    
+                // Action Buttons with responsive layout
+                ResponsiveBreakpoints.responsive(
+                  context,
+                  tablet: _buildCompactButtons(),
+                  small: _buildCompactButtons(),
+                  medium: _buildDesktopButtons(),
+                  large: _buildDesktopButtons(),
+                  ultrawide: _buildDesktopButtons(),
+                ),
+              ],
             ),
-
-            SizedBox(height: context.mainPadding),
-
-            // Action Buttons with responsive layout
-            ResponsiveBreakpoints.responsive(
-              context,
-              tablet: _buildCompactButtons(),
-              small: _buildCompactButtons(),
-              medium: _buildDesktopButtons(),
-              large: _buildDesktopButtons(),
-              ultrawide: _buildDesktopButtons(),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -389,6 +397,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
           builder: (context, provider, child) {
             return PremiumButton(
               text: '${l10n.add} ${l10n.category}',
+              focusNode: _saveFocusNode,
               onPressed: provider.isLoading ? null : _handleSubmit,
               isLoading: provider.isLoading,
               height: context.buttonHeight,
@@ -397,7 +406,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
           },
         ),
 
-        SizedBox(height: context.cardPadding),
+        const SizedBox(height: 20),
 
         // Cancel Button (full width)
         PremiumButton(
@@ -429,7 +438,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
           ),
         ),
 
-        SizedBox(width: context.cardPadding),
+        const SizedBox(width: 20),
 
         // Add Button
         Expanded(
@@ -437,6 +446,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
             builder: (context, provider, child) {
               return PremiumButton(
                 text: '${l10n.add} ${l10n.category}',
+                focusNode: _saveFocusNode,
                 onPressed: provider.isLoading ? null : _handleSubmit,
                 isLoading: provider.isLoading,
                 height: context.buttonHeight / 1.5,

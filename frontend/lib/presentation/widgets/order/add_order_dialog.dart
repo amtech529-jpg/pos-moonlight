@@ -51,6 +51,8 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
   final _partnerRateFocusNode = FocusNode();
   final _eventNameFocusNode = FocusNode();
   final _eventLocationFocusNode = FocusNode();
+  final _nextButtonFocusNode = FocusNode();
+  late List<FocusNode> _statusFocusNodes;
 
   // Form state
   Customer? _selectedCustomer;
@@ -116,6 +118,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     ));
 
     _advancePaymentController.addListener(_updateRemainingAmount);
+    _statusFocusNodes = _orderStatuses.map((_) => FocusNode()).toList();
     _animationController.forward();
   }
 
@@ -144,6 +147,10 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     _partnerRateFocusNode.dispose();
     _eventNameFocusNode.dispose();
     _eventLocationFocusNode.dispose();
+    _nextButtonFocusNode.dispose();
+    for (var node in _statusFocusNodes) {
+      node.dispose();
+    }
     
     // Clear filters and search from provider when closing the dialog
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -395,7 +402,10 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.cardPadding,
+        vertical: context.smallPadding * 0.8,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(colors: [AppTheme.primaryMaroon, AppTheme.secondaryMaroon]),
         borderRadius: BorderRadius.only(
@@ -406,7 +416,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(context.smallPadding),
+            padding: EdgeInsets.all(context.smallPadding * 0.7),
             decoration: BoxDecoration(
               color: AppTheme.pureWhite.withOpacity(0.2),
               borderRadius: BorderRadius.circular(context.borderRadius()),
@@ -414,35 +424,19 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
             child: Icon(
               Icons.shopping_cart_rounded,
               color: AppTheme.pureWhite,
-              size: context.iconSize('large'),
+              size: context.iconSize('medium'),
             ),
           ),
           SizedBox(width: context.cardPadding),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.shouldShowCompactLayout ? l10n.newOrder : '${l10n.add} ${l10n.orders}',
-                  style: TextStyle(
-                    fontSize: context.headerFontSize,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.pureWhite,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                if (!context.isTablet) ...[
-                  SizedBox(height: context.smallPadding / 2),
-                  Text(
-                    l10n.createOrder,
-                    style: TextStyle(
-                      fontSize: context.subtitleFontSize,
-                      fontWeight: FontWeight.w400,
-                      color: AppTheme.pureWhite.withOpacity(0.9),
-                    ),
-                  ),
-                ],
-              ],
+            child: Text(
+              context.shouldShowCompactLayout ? l10n.newOrder : '${l10n.add} ${l10n.orders}',
+              style: TextStyle(
+                fontSize: context.headerFontSize,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.pureWhite,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
           Material(
@@ -471,7 +465,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: context.cardPadding,
-        vertical: context.cardPadding,
+        vertical: context.smallPadding,
       ),
       decoration: BoxDecoration(
         color: AppTheme.primaryMaroon.withOpacity(0.05),
@@ -584,15 +578,18 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
   Widget _buildStep1CustomerDetails() {
     final l10n = AppLocalizations.of(context)!;
 
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-      child: SingleChildScrollView(
+    return Scrollbar(
       controller: _scrollController,
-      padding: EdgeInsets.all(context.cardPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStepTitle('${l10n.customer} & ${l10n.orders}', Icons.person_outline),
+      thumbVisibility: true,
+      trackVisibility: true,
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        child: Padding(
+          padding: EdgeInsets.all(context.cardPadding).copyWith(top: context.cardPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStepTitle('${l10n.customer} & ${l10n.orders}', Icons.person_outline),
           SizedBox(height: context.cardPadding),
 
           // Customer Selection Card
@@ -642,7 +639,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSectionTitle('Event Details', Icons.event_note_rounded),
-                SizedBox(height: context.cardPadding),
+                SizedBox(height: context.smallPadding),
                 Row(
                   children: [
                     Expanded(
@@ -656,7 +653,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                         onSubmitted: (_) => FocusScope.of(context).requestFocus(_eventLocationFocusNode),
                       ),
                     ),
-                    SizedBox(width: context.cardPadding),
+                    SizedBox(width: context.smallPadding),
                     Expanded(
                       child: PremiumTextField(
                         label: 'Event Location',
@@ -669,7 +666,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                     ),
                   ],
                 ),
-                SizedBox(height: context.cardPadding),
+                SizedBox(height: context.smallPadding),
                 Row(
                   children: [
                     Expanded(
@@ -716,7 +713,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                         ),
                       ),
                     ),
-                    SizedBox(width: context.cardPadding),
+                    SizedBox(width: context.smallPadding),
                     Expanded(
                       child: GestureDetector(
                         onTap: () async {
@@ -766,8 +763,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
               ],
             ),
           ),
-
-          SizedBox(height: context.cardPadding),
+          SizedBox(height: context.smallPadding),
 
           // Order Details Card
           _buildFormCard(
@@ -775,7 +771,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSectionTitle(l10n.info, Icons.description_outlined),
-                SizedBox(height: context.cardPadding),
+                SizedBox(height: context.smallPadding),
                 PremiumTextField(
                   label: l10n.notes,
                   hint: l10n.additionalReceiptNotes,
@@ -783,13 +779,18 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                   prefixIcon: Icons.description_outlined,
                   focusNode: _notesFocusNode,
                   maxLines: context.shouldShowCompactLayout ? 3 : 4,
-                  textInputAction: TextInputAction.done,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) {
+                    if (_statusFocusNodes.isNotEmpty) {
+                      FocusScope.of(context).requestFocus(_statusFocusNodes[0]);
+                    }
+                  },
                   validator: (value) {
                     return null;
                   },
                 ),
 
-                SizedBox(height: context.cardPadding),
+                SizedBox(height: context.smallPadding),
 
                 Text(
                   l10n.status,
@@ -799,11 +800,15 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                     color: Colors.black87,
                   ),
                 ),
-                SizedBox(height: context.smallPadding),
-                Wrap(
-                  spacing: context.smallPadding,
-                  runSpacing: context.smallPadding,
-                  children: _orderStatuses.map((status) => _buildStatusChip(status)).toList(),
+                SizedBox(height: context.smallPadding / 2),
+                FocusTraversalGroup(
+                  child: Wrap(
+                    spacing: context.smallPadding,
+                    runSpacing: context.smallPadding / 2,
+                    children: List.generate(_orderStatuses.length, (index) {
+                      return _buildStatusChip(_orderStatuses[index], _statusFocusNodes[index]);
+                    }),
+                  ),
                 ),
               ],
             ),
@@ -811,20 +816,23 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
         ],
       ),
     ),
-  );
+  ),
+);
 }
 
   Widget _buildStep2ProductSelection() {
     final l10n = AppLocalizations.of(context)!;
 
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+    return Scrollbar(
+      thumbVisibility: true,
+      trackVisibility: true,
       child: SingleChildScrollView(
-      padding: EdgeInsets.all(context.cardPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStepTitle(l10n.products, Icons.shopping_cart_outlined),
+        child: Padding(
+          padding: EdgeInsets.all(context.cardPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStepTitle(l10n.products, Icons.shopping_cart_outlined),
           SizedBox(height: context.cardPadding),
 
           _buildFormCard(
@@ -973,20 +981,23 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
         ],
       ),
     ),
-  );
+  ),
+);
 }
 
   Widget _buildStep3ReviewOrder() {
     final l10n = AppLocalizations.of(context)!;
 
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+    return Scrollbar(
+      thumbVisibility: true,
+      trackVisibility: true,
       child: SingleChildScrollView(
-      padding: EdgeInsets.all(context.cardPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStepTitle('${l10n.view} & ${l10n.confirm}', Icons.check_circle_outline),
+        child: Padding(
+          padding: EdgeInsets.all(context.cardPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStepTitle('${l10n.view} & ${l10n.confirm}', Icons.check_circle_outline),
           SizedBox(height: context.cardPadding),
 
           // Order Summary Card
@@ -1007,7 +1018,70 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                 _buildSummaryRow(l10n.notes, _descriptionController.text, Icons.description),
                 _buildSummaryRow(l10n.status, _getStatusText(_selectedStatus), Icons.info,
                     valueColor: _getStatusColor(_selectedStatus)),
-                _buildSummaryRow(l10n.products, '${_orderItems.length} ${l10n.items}', Icons.shopping_bag),
+
+                // Products — show each item with name + qty
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: context.smallPadding * 0.7),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.shopping_bag, size: context.iconSize('small'), color: AppTheme.primaryMaroon),
+                      SizedBox(width: context.smallPadding),
+                      SizedBox(
+                        width: context.shouldShowCompactLayout ? 80 : 110,
+                        child: Text(
+                          l10n.products,
+                          style: TextStyle(
+                            fontSize: context.subtitleFontSize,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: context.smallPadding),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ..._orderItems.map((item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      item.productName,
+                                      style: TextStyle(
+                                        fontSize: context.bodyFontSize,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryMaroon.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Qty: ${item.quantity}',
+                                      style: TextStyle(
+                                        fontSize: context.captionFontSize,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.primaryMaroon,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 _buildSummaryRow('${l10n.total} ${l10n.amount}', 'PKR ${_totalAmount.toStringAsFixed(2)}', Icons.attach_money,
                     valueColor: AppTheme.primaryMaroon, isBold: true),
 
@@ -1101,29 +1175,30 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
         ],
       ),
     ),
-  );
+  ),
+);
 }
 
   Widget _buildStepTitle(String title, IconData icon) {
     return Row(
       children: [
         Container(
-          padding: EdgeInsets.all(context.smallPadding),
+          padding: EdgeInsets.all(context.smallPadding * 0.7),
           decoration: BoxDecoration(
             color: AppTheme.primaryMaroon.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(context.borderRadius()),
+            borderRadius: BorderRadius.circular(context.borderRadius('small')),
           ),
           child: Icon(
             icon,
             color: AppTheme.primaryMaroon,
-            size: context.iconSize('medium'),
+            size: context.iconSize('small'),
           ),
         ),
-        SizedBox(width: context.cardPadding),
+        SizedBox(width: context.smallPadding),
         Text(
           title,
           style: TextStyle(
-            fontSize: context.bodyFontSize,
+            fontSize: context.subtitleFontSize,
             fontWeight: FontWeight.w700,
             color: Colors.black87,
           ),
@@ -1135,7 +1210,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
   Widget _buildFormCard({required Widget child}) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(horizontal: context.cardPadding, vertical: context.smallPadding),
       decoration: BoxDecoration(
         color: AppTheme.pureWhite,
         borderRadius: BorderRadius.circular(context.borderRadius()),
@@ -1158,7 +1233,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
   Widget _buildSectionTitle(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
+        Icon(icon, color: AppTheme.primaryMaroon, size: context.iconSize('small')),
         SizedBox(width: context.smallPadding),
         Text(
           title,
@@ -1174,17 +1249,17 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
 
   Widget _buildCustomerInfo() {
     return Container(
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding * 0.75),
       decoration: BoxDecoration(
-        color: AppTheme.primaryMaroon.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(context.borderRadius()),
-        border: Border.all(color: AppTheme.primaryMaroon.withOpacity(0.2)),
+        color: AppTheme.primaryMaroon.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(context.borderRadius('small')),
+        border: Border.all(color: AppTheme.primaryMaroon.withOpacity(0.15)),
       ),
       child: Row(
         children: [
           Container(
-            width: context.shouldShowCompactLayout ? 50 : 60,
-            height: context.shouldShowCompactLayout ? 50 : 60,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [AppTheme.primaryMaroon, AppTheme.secondaryMaroon],
@@ -1196,45 +1271,45 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
             child: Center(
               child: Text(
                 _selectedCustomer!.initials,
-                style: TextStyle(
-                  fontSize: context.shouldShowCompactLayout ? 16 : 20,
+                style: const TextStyle(
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.pureWhite,
                 ),
               ),
             ),
           ),
-          SizedBox(width: context.cardPadding),
+          SizedBox(width: context.smallPadding),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: context.smallPadding,
-                        vertical: context.smallPadding / 2,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                       decoration: BoxDecoration(
                         color: AppTheme.primaryMaroon.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        _selectedCustomer!.id,
-                        style: TextStyle(
-                          fontSize: context.captionFontSize,
+                        _selectedCustomer!.id.length > 12 
+                            ? '${_selectedCustomer!.id.substring(0, 8)}...' 
+                            : _selectedCustomer!.id,
+                        style: const TextStyle(
+                          fontSize: 9,
                           fontWeight: FontWeight.w600,
                           color: AppTheme.primaryMaroon,
                         ),
                       ),
                     ),
-                    SizedBox(width: context.smallPadding),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _selectedCustomer!.name,
                         style: TextStyle(
-                          fontSize: context.bodyFontSize,
+                          fontSize: context.bodyFontSize * 0.9,
                           fontWeight: FontWeight.w600,
                           color: AppTheme.charcoalGray,
                         ),
@@ -1243,34 +1318,35 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                     ),
                   ],
                 ),
-                if (!context.shouldShowCompactLayout) ...[ SizedBox(height: context.smallPadding),
-                  Row(
-                    children: [
-                      Icon(Icons.phone, size: 14, color: AppTheme.lightGray),
-                      SizedBox(width: context.smallPadding / 2),
-                      Text(
-                        _selectedCustomer!.phone,
-                        style: TextStyle(
-                          fontSize: context.subtitleFontSize,
-                          color: AppTheme.charcoalGray,
-                        ),
+                SizedBox(height: context.smallPadding / 4),
+                Row(
+                  children: [
+                    Icon(Icons.phone, size: 11, color: AppTheme.lightGray),
+                    SizedBox(width: context.smallPadding / 4),
+                    Text(
+                      _selectedCustomer!.phone,
+                      style: TextStyle(
+                        fontSize: context.captionFontSize,
+                        color: AppTheme.charcoalGray.withOpacity(0.8),
                       ),
+                    ),
+                    if (!context.isTablet) ...[
                       SizedBox(width: context.cardPadding),
-                      Icon(Icons.email, size: 14, color: AppTheme.charcoalGray),
-                      SizedBox(width: context.smallPadding / 2),
+                      Icon(Icons.email, size: 11, color: AppTheme.lightGray),
+                      SizedBox(width: context.smallPadding / 4),
                       Expanded(
                         child: Text(
                           _selectedCustomer!.email,
                           style: TextStyle(
-                            fontSize: context.subtitleFontSize,
-                            color: AppTheme.charcoalGray,
+                            fontSize: context.captionFontSize,
+                            color: AppTheme.charcoalGray.withOpacity(0.8),
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
-                  ),
-                ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -1279,26 +1355,32 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     );
   }
 
-  Widget _buildStatusChip(OrderStatus status) {
+  Widget _buildStatusChip(OrderStatus status, FocusNode focusNode) {
     final isSelected = _selectedStatus == status;
     final color = _getStatusColor(status);
 
     return InkWell(
-      onTap: () => _handleStatusChange(status),
+      onTap: () {
+        _handleStatusChange(status);
+        FocusScope.of(context).requestFocus(_nextButtonFocusNode);
+      },
+      focusNode: focusNode,
+      canRequestFocus: true,
       borderRadius: BorderRadius.circular(context.borderRadius()),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(
           horizontal: context.cardPadding,
-          vertical: context.smallPadding,
+          vertical: context.smallPadding * 0.7,
         ),
         decoration: BoxDecoration(
           color: isSelected ? color.withOpacity(0.15) : AppTheme.lightGray.withOpacity(0.1),
           borderRadius: BorderRadius.circular(context.borderRadius()),
           border: Border.all(
-            color: isSelected ? color : AppTheme.lightGray.withOpacity(0.3),
-            width: isSelected ? 2 : 1,
+            color: isSelected ? color : (focusNode.hasFocus ? color : AppTheme.lightGray.withOpacity(0.3)),
+            width: isSelected || focusNode.hasFocus ? 2 : 1,
           ),
+          boxShadow: focusNode.hasFocus ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8)] : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1313,8 +1395,8 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
               _getStatusText(status),
               style: TextStyle(
                 fontSize: context.bodyFontSize,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? color : AppTheme.charcoalGray.withOpacity(0.7),
+                fontWeight: isSelected || focusNode.hasFocus ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected || focusNode.hasFocus ? color : AppTheme.charcoalGray.withOpacity(0.7),
               ),
             ),
           ],
@@ -1571,20 +1653,20 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
 
   Widget _buildSummaryRow(String label, String value, IconData icon, {Color? valueColor, bool isBold = false}) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: context.smallPadding),
+      padding: EdgeInsets.symmetric(vertical: context.smallPadding * 0.7),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: context.iconSize('small'), color: AppTheme.primaryMaroon),
           SizedBox(width: context.smallPadding),
           SizedBox(
-            width: context.shouldShowCompactLayout ? 80 : 120,
+            width: context.shouldShowCompactLayout ? 80 : 110,
             child: Text(
               label,
               style: TextStyle(
                 fontSize: context.subtitleFontSize,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.lightGray,
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
               ),
             ),
           ),
@@ -1595,7 +1677,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
               style: TextStyle(
                 fontSize: context.bodyFontSize,
                 fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
-                color: valueColor ?? AppTheme.charcoalGray,
+                color: valueColor ?? Colors.black87,
               ),
             ),
           ),
@@ -1608,7 +1690,10 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.cardPadding,
+        vertical: context.smallPadding,
+      ),
       decoration: BoxDecoration(
         color: AppTheme.pureWhite,
         border: Border(
@@ -1644,6 +1729,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
               height: context.buttonHeight,
               backgroundColor: AppTheme.primaryMaroon,
               icon: Icons.arrow_forward,
+              focusNode: _nextButtonFocusNode,
             )
                 : Consumer<OrderProvider>(
               builder: (context, provider, child) {

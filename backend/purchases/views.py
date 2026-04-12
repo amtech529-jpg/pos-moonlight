@@ -70,8 +70,14 @@ def purchase_list(request):
                         try:
                             product = item.product
                             product.update_quantity(product.quantity + item.quantity)
+                            # ✅ Update selling price and cost price if provided
+                            if item.retail_price > 0:
+                                product.price = item.retail_price
+                            if item.unit_cost > 0:
+                                product.cost_price = item.unit_cost
+                            product.save()
                         except Exception as e:
-                            print(f"Error updating stock on create: {e}")
+                            print(f"Error updating stock/price on create: {e}")
 
                     return Response({
                         'success': True,
@@ -157,6 +163,7 @@ def purchase_detail(request, pk):
                         product=product,
                         quantity=quantity,
                         unit_cost=unit_cost,
+                        retail_price=float(item_data.get('retail_price', 0)),
                         total_cost=total_cost,
                         description=item_data.get('description') or ''
                     )
@@ -164,8 +171,15 @@ def purchase_detail(request, pk):
                     try:
                         # Apply new stock: add new quantity to current stock
                         product.update_quantity(product.quantity + int(quantity))
+                        # ✅ Update selling price and cost price if provided
+                        new_retail = float(item_data.get('retail_price', 0))
+                        if new_retail > 0:
+                            product.price = new_retail
+                        if unit_cost > 0:
+                            product.cost_price = unit_cost
+                        product.save()
                     except Exception as e:
-                        logger.error(f"Error applying new stock for product {product.id}: {e}")
+                        logger.error(f"Error applying new stock/price for product {product.id}: {e}")
 
                     subtotal += total_cost
 

@@ -50,7 +50,10 @@ class _ExistingOrdersDialogState extends State<ExistingOrdersDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: EdgeInsets.all(context.cardPadding),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.cardPadding,
+                vertical: context.smallPadding * 1.5,
+              ),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(colors: [Colors.blue, Colors.blueAccent]),
                 borderRadius: BorderRadius.only(

@@ -521,9 +521,6 @@ class _CustomerPageState extends State<CustomerPage> {
         Expanded(flex: 1, child: _buildSearchBar(provider)),
         SizedBox(width: context.cardPadding),
         Expanded(flex: 1, child: _buildShowInactiveToggle(provider)),
-        SizedBox(width: context.smallPadding),
-        Expanded(flex: 1, child: _buildFilterButton(provider)),
-        SizedBox(width: context.smallPadding),
       ],
     );
   }
@@ -536,8 +533,6 @@ class _CustomerPageState extends State<CustomerPage> {
         Row(
           children: [
             Expanded(child: _buildShowInactiveToggle(provider)),
-            SizedBox(width: context.cardPadding),
-            Expanded(child: _buildFilterButton(provider)),
           ],
         ),
       ],
@@ -552,9 +547,6 @@ class _CustomerPageState extends State<CustomerPage> {
         Row(
           children: [
             Expanded(child: _buildShowInactiveToggle(provider)),
-            SizedBox(width: context.smallPadding),
-            Expanded(child: _buildFilterButton(provider)),
-            SizedBox(width: context.smallPadding),
           ],
         ),
       ],
@@ -563,46 +555,66 @@ class _CustomerPageState extends State<CustomerPage> {
 
   Widget _buildSearchBar(CustomerProvider provider) {
     final l10n = AppLocalizations.of(context)!;
-    return SizedBox(
-      height: context.buttonHeight / 1.5,
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: TextField(
         controller: _searchController,
-        onChanged: provider.searchCustomers,
-        style: TextStyle(
-          fontSize: context.bodyFontSize,
-          color: AppTheme.charcoalGray,
+        onChanged: (value) {
+          provider.searchCustomers(value);
+        },
+        cursorColor: Colors.black,
+        textAlignVertical: TextAlignVertical.center,
+        style: const TextStyle(
+          fontSize: 15,
+          color: Colors.black,
+          fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
-          hintText: context.isTablet
-              ? l10n.searchCustomersShortHint
-              : l10n.searchCustomersHint,
-          hintStyle: TextStyle(
-            fontSize: context.bodyFontSize * 0.9,
-            color: Colors.grey[500],
-          ),
-          prefixIcon: Icon(
-            Icons.search_rounded,
-            color: Colors.grey[500],
-            size: context.iconSize('medium'),
-          ),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-            onPressed: () {
-              _searchController.clear();
-              provider.clearSearch();
-            },
-            icon: Icon(
-              Icons.clear_rounded,
-              color: Colors.grey[500],
-              size: context.iconSize('small'),
+            filled: true,
+            fillColor: const Color(0xFFE8E8E8),
+            hintText: context.isTablet
+                ? l10n.searchCustomersShortHint
+                : l10n.searchCustomersHint,
+            hintStyle: const TextStyle(
+              fontSize: 15,
+              color: Color(0xFF8E8E8E),
             ),
-          )
-              : null,
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: context.cardPadding / 2,
-            vertical: context.cardPadding / 2,
-          ),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              color: Color(0xFF8E8E8E),
+              size: 22,
+            ),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    onPressed: () {
+                      _searchController.clear();
+                      provider.clearSearch();
+                      setState(() {});
+                    },
+                    icon: const Icon(
+                      Icons.clear_rounded,
+                      color: Color(0xFF8E8E8E),
+                      size: 20,
+                    ),
+                  )
+                : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+            isCollapsed: true,
+            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         ),
       ),
     );

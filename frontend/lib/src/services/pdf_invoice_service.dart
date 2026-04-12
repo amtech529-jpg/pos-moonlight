@@ -30,7 +30,7 @@ class PdfInvoiceService {
 
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
+        pageFormat: PdfPageFormat(21.0 * PdfPageFormat.cm, 23.0 * PdfPageFormat.cm),
         margin: const pw.EdgeInsets.all(30),
         build: (pw.Context context) {
           return pw.Container(
@@ -121,7 +121,7 @@ class PdfInvoiceService {
                 ),
                 pw.Divider(thickness: 1, color: PdfColors.black, height: 1),
 
-                // Table Area
+                // Table Area (Classic Expanded with Vertical Lines)
                 pw.Expanded(
                   child: pw.Stack(
                     children: [
@@ -133,7 +133,7 @@ class PdfInvoiceService {
                           pw.Container(width: 40, decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(color: PdfColors.black)))), // Days
                           pw.Container(width: 50, decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(color: PdfColors.black)))), // Event
                           pw.Container(width: 70, decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(color: PdfColors.black)))), // Rate
-                          pw.Container(width: 80), // Amount
+                          pw.Container(width: 80), // Amount (No right border for last column)
                         ],
                       ),
                       pw.Column(
@@ -167,10 +167,7 @@ class PdfInvoiceService {
                             padding: const pw.EdgeInsets.symmetric(vertical: 6),
                             child: pw.Row(
                               children: [
-                                // Qty
                                 pw.Container(width: 40, child: pw.Text("${item.quantity}", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-                                
-                                // Description (Product Name + Notes)
                                 pw.Expanded(child: pw.Padding(
                                   padding: const pw.EdgeInsets.only(left: 8),
                                   child: pw.Column(
@@ -187,32 +184,13 @@ class PdfInvoiceService {
                                     ]
                                   ),
                                 )),
-                                
-                                // Days
                                 pw.Container(width: 40, child: pw.Text("${item.days > 0 ? item.days : 1}", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9))),
-                                
-                                // Event Pricing? (Converted from pricingType)
-                                pw.Container(width: 50, child: pw.Text(
-                                  (item.pricingType == 'PER_EVENT' || item.pricingType == 'FIXED') ? "Yes" : "No", 
-                                  textAlign: pw.TextAlign.center, 
-                                  style: pw.TextStyle(fontSize: 9)
-                                )),
-                                
-                                // Rate
+                                pw.Container(width: 50, child: pw.Text((item.pricingType == 'PER_EVENT' || item.pricingType == 'FIXED') ? "Yes" : "No", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9))),
                                 pw.Container(width: 70, child: pw.Text(NumberFormat("#,##0").format(item.unitPrice), textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9))),
-                                
-                                // Amount
                                 pw.Container(width: 80, padding: const pw.EdgeInsets.only(right: 8), child: pw.Text(NumberFormat("#,##0").format(item.lineTotal), textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
                               ],
                             ),
                           )).toList(),
-                          
-                          // If no items, show a placeholder row to avoid empty table lookup
-                          if (sale.saleItems.isEmpty)
-                            pw.Container(
-                              padding: const pw.EdgeInsets.all(20),
-                              child: pw.Center(child: pw.Text("No item details available", style: pw.TextStyle(color: PdfColors.grey500, fontStyle: pw.FontStyle.italic))),
-                            ),
                         ],
                       ),
                     ],

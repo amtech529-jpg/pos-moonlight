@@ -40,6 +40,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
   final _countryChipsFirstFocusNode = FocusNode();
   final _cityFocusNode = FocusNode();
   final _countryFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
 
   // Form state
   String _selectedCustomerType = 'INDIVIDUAL';
@@ -97,6 +98,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
     _countryChipsFirstFocusNode.dispose();
     _cityFocusNode.dispose();
     _countryFocusNode.dispose();
+    _saveFocusNode.dispose();
     super.dispose();
   }
 
@@ -755,7 +757,8 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
           prefixIcon: Icons.description_outlined,
           focusNode: _notesFocusNode,
           maxLines: 3,
-          textInputAction: TextInputAction.done,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _saveFocusNode.requestFocus(),
           validator: (value) {
             if (value != null && value.isNotEmpty && value.length > 500) {
               return 'Notes must be less than 500 characters';
@@ -863,6 +866,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
           builder: (context, provider, child) {
             return PremiumButton(
               text: 'Add Customer',
+              focusNode: _saveFocusNode,
               onPressed: provider.isLoading ? null : _handleSubmit,
               isLoading: provider.isLoading,
               height: context.buttonHeight,
@@ -871,7 +875,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
             );
           },
         ),
-        SizedBox(height: context.cardPadding),
+        const SizedBox(height: 10),
         PremiumButton(
           text: 'Cancel',
           onPressed: _handleCancel,
@@ -897,13 +901,14 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
             textColor: Colors.grey[600],
           ),
         ),
-        SizedBox(width: context.cardPadding),
+        const SizedBox(width: 20),
         Expanded(
           flex: 2,
           child: Consumer<CustomerProvider>(
             builder: (context, provider, child) {
               return PremiumButton(
                 text: 'Add Customer',
+                focusNode: _saveFocusNode,
                 onPressed: provider.isLoading ? null : _handleSubmit,
                 isLoading: provider.isLoading,
                 height: context.buttonHeight / 1.5,

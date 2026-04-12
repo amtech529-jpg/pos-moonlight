@@ -218,16 +218,14 @@ class _CategoryFilterDialogState extends State<CategoryFilterDialog> {
       }) {
     return InkWell(
       onTap: () {
-        showDatePicker(
-          context: context,
+        context.showSyncfusionDateTimePicker(
           initialDate: date ?? DateTime.now(),
-          firstDate: DateTime(2020),
-          lastDate: DateTime.now().add(Duration(days: 30)),
-        ).then((selectedDate) {
-          if (selectedDate != null) {
+          initialTime: TimeOfDay.now(),
+          title: label,
+          onDateTimeSelected: (selectedDate, _) {
             onSelected(selectedDate);
-          }
-        });
+          },
+        );
       },
       child: Container(
         padding: EdgeInsets.all(context.cardPadding / 1.5),

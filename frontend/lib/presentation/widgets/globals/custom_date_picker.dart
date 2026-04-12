@@ -93,20 +93,30 @@ class _SyncfusionDateTimePickerState extends State<SyncfusionDateTimePicker> {
   }
 
   Widget _buildContent() {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? AppTheme.pureWhite : AppTheme.charcoalGray;
+    final Color backgroundColor = isDark ? const Color(0xFF2C2C2C) : AppTheme.pureWhite;
+    final Color secondaryTextColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+
     return Padding(
       padding: EdgeInsets.all(context.cardPadding),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            height: 280,
+            height: 300,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade200),
+              color: backgroundColor,
+              border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
               borderRadius: BorderRadius.circular(context.borderRadius()),
+              boxShadow: [
+                if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, spreadRadius: 0),
+              ],
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(context.borderRadius()),
               child: SfDateRangePicker(
+                backgroundColor: backgroundColor,
                 initialSelectedDate: _tempSelectedDate,
                 initialDisplayDate: _tempSelectedDate,
                 minDate: widget.minDate ?? DateTime(2000),
@@ -120,24 +130,34 @@ class _SyncfusionDateTimePickerState extends State<SyncfusionDateTimePicker> {
                   }
                 },
                 monthCellStyle: DateRangePickerMonthCellStyle(
-                  todayTextStyle: TextStyle(color: AppTheme.primaryMaroon, fontWeight: FontWeight.w600),
-                  textStyle: TextStyle(color: AppTheme.charcoalGray),
-                  leadingDatesTextStyle: TextStyle(color: Colors.grey.shade400),
-                  trailingDatesTextStyle: TextStyle(color: Colors.grey.shade400),
+                  todayTextStyle: TextStyle(color: AppTheme.primaryMaroon, fontWeight: FontWeight.bold),
+                  textStyle: TextStyle(color: textColor, fontWeight: FontWeight.w500),
+                  leadingDatesTextStyle: TextStyle(color: secondaryTextColor.withOpacity(0.5)),
+                  trailingDatesTextStyle: TextStyle(color: secondaryTextColor.withOpacity(0.5)),
+                  disabledDatesTextStyle: TextStyle(color: secondaryTextColor.withOpacity(0.2)),
                 ),
                 selectionColor: AppTheme.primaryMaroon,
                 todayHighlightColor: AppTheme.primaryMaroon,
                 headerStyle: DateRangePickerHeaderStyle(
                   textAlign: TextAlign.center,
-                  textStyle: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
+                  backgroundColor: backgroundColor,
+                  textStyle: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
                 ),
-                monthViewSettings: const DateRangePickerMonthViewSettings(
+                monthViewSettings: DateRangePickerMonthViewSettings(
                   firstDayOfWeek: 1,
                   showTrailingAndLeadingDates: true,
+                  viewHeaderStyle: DateRangePickerViewHeaderStyle(
+                    textStyle: TextStyle(color: textColor.withOpacity(0.7), fontWeight: FontWeight.w600),
+                  ),
                 ),
                 yearCellStyle: DateRangePickerYearCellStyle(
-                  textStyle: TextStyle(color: AppTheme.charcoalGray),
-                  todayTextStyle: TextStyle(color: AppTheme.primaryMaroon, fontWeight: FontWeight.w600),
+                  textStyle: TextStyle(color: textColor),
+                  todayTextStyle: TextStyle(color: AppTheme.primaryMaroon, fontWeight: FontWeight.bold),
+                  leadingDatesTextStyle: TextStyle(color: secondaryTextColor),
                 ),
               ),
             ),
@@ -337,8 +357,8 @@ class _SyncfusionDateTimePickerState extends State<SyncfusionDateTimePicker> {
           SizedBox(width: context.smallPadding),
           ElevatedButton(
             onPressed: () {
-              widget.onDateTimeSelected(_tempSelectedDate, _tempSelectedTime);
               Navigator.of(context).pop();
+              widget.onDateTimeSelected(_tempSelectedDate, _tempSelectedTime);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryMaroon,

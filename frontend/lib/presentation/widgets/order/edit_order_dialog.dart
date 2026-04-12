@@ -417,7 +417,10 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.cardPadding,
+        vertical: context.smallPadding * 0.8,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(colors: [Colors.blue, Colors.blueAccent]),
         borderRadius: BorderRadius.only(
@@ -428,14 +431,15 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(context.smallPadding),
+            padding: EdgeInsets.all(context.smallPadding * 0.7),
             decoration: BoxDecoration(color: AppTheme.pureWhite.withOpacity(0.2), borderRadius: BorderRadius.circular(context.borderRadius())),
-            child: Icon(Icons.edit_outlined, color: AppTheme.pureWhite, size: context.iconSize('large')),
+            child: Icon(Icons.edit_outlined, color: AppTheme.pureWhite, size: context.iconSize('medium')),
           ),
           SizedBox(width: context.cardPadding),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   l10n.editOrder,
@@ -446,42 +450,33 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                     letterSpacing: 0.5,
                   ),
                 ),
-                if (!context.isTablet) ...[
-                  SizedBox(height: context.smallPadding / 2),
-                  Text(
-                    l10n.updateOrderInformation,
-                    style: TextStyle(
-                      fontSize: context.subtitleFontSize,
-                      fontWeight: FontWeight.w400,
-                      color: AppTheme.pureWhite.withOpacity(0.9),
-                    ),
-                  ),
-                  SizedBox(height: context.smallPadding / 2),
-                  Row(
+                Transform.translate(
+                  offset: const Offset(0, -2),
+                  child: Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: AppTheme.pureWhite.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(color: AppTheme.pureWhite.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
                         child: Text(
                           widget.order.id,
-                          style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w600, color: AppTheme.pureWhite),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.pureWhite),
                         ),
                       ),
-                      SizedBox(width: context.smallPadding / 2),
+                      const SizedBox(width: 6),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(
                           color: _getStatusColor(widget.order.status).withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           _getStatusText(widget.order.status),
-                          style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w600, color: AppTheme.pureWhite),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.pureWhite),
                         ),
                       ),
                     ],
                   ),
-                ],
+                ),
               ],
             ),
           ),

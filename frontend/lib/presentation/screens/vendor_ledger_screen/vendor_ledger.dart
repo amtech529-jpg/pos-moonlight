@@ -26,6 +26,7 @@ class VendorLedgerScreen extends StatefulWidget {
 
 class _VendorLedgerScreenState extends State<VendorLedgerScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String? _selectedMonth;
 
   @override
@@ -45,13 +46,27 @@ class _VendorLedgerScreenState extends State<VendorLedgerScreen> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5ECE9), // Matches screenshot background
       body: Consumer<VendorLedgerProvider>(
         builder: (context, provider, child) {
-          return CustomScrollView(
-            slivers: [
+          return Scrollbar(
+            controller: _scrollController,
+            thumbVisibility: true,
+            trackVisibility: true,
+            thickness: 8,
+            radius: const Radius.circular(8),
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
               // Header
               SliverToBoxAdapter(
                 child: Padding(
@@ -278,9 +293,10 @@ class _VendorLedgerScreenState extends State<VendorLedgerScreen> {
               
               const SliverToBoxAdapter(child: SizedBox(height: 50)),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
+    ),
     );
   }
 

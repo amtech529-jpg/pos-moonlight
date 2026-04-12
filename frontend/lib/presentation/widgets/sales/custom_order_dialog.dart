@@ -282,7 +282,10 @@ class _CreateCustomOrderDialogState extends State<CreateCustomOrderDialog>
 
   Widget _buildHeader() {
     return Container(
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.cardPadding,
+        vertical: context.smallPadding * 1.5,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Colors.purple, Colors.purpleAccent],

@@ -57,6 +57,10 @@ class _AddProductDialogState extends State<AddProductDialog>
   late FocusNode _categoryFocusNode;
   late FocusNode _serialFocusNode;
   late FocusNode _locationFocusNode;
+  late FocusNode _saveFocusNode;
+  late FocusNode _rentalFocusNode;
+  late FocusNode _consumableFocusNode;
+  late FocusNode _pricingFocusNode;
 
   List<String> _selectedPieces = [];
   late bool _isRental;
@@ -111,6 +115,28 @@ class _AddProductDialogState extends State<AddProductDialog>
     _categoryFocusNode = FocusNode();
     _serialFocusNode = FocusNode();
     _locationFocusNode = FocusNode();
+    _saveFocusNode = FocusNode();
+    _rentalFocusNode = FocusNode();
+    _consumableFocusNode = FocusNode();
+    _pricingFocusNode = FocusNode();
+
+    // Add listeners to ensure UI updates when focus changes (fixes "border remains" issue)
+    void focusListener() {
+      if (mounted) setState(() {});
+    }
+
+    _nameFocusNode.addListener(focusListener);
+    _detailFocusNode.addListener(focusListener);
+    _priceFocusNode.addListener(focusListener);
+    _quantityFocusNode.addListener(focusListener);
+    _minStockFocusNode.addListener(focusListener);
+    _categoryFocusNode.addListener(focusListener);
+    _serialFocusNode.addListener(focusListener);
+    _locationFocusNode.addListener(focusListener);
+    _saveFocusNode.addListener(focusListener);
+    _rentalFocusNode.addListener(focusListener);
+    _consumableFocusNode.addListener(focusListener);
+    _pricingFocusNode.addListener(focusListener);
 
     _setupKeyboardNavigation();
   }
@@ -155,6 +181,10 @@ class _AddProductDialogState extends State<AddProductDialog>
     _categoryFocusNode.dispose();
     _serialFocusNode.dispose();
     _locationFocusNode.dispose();
+    _saveFocusNode.dispose();
+    _rentalFocusNode.dispose();
+    _consumableFocusNode.dispose();
+    _pricingFocusNode.dispose();
     super.dispose();
   }
 
@@ -511,7 +541,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                     });
                     _detailFocusNode.requestFocus();
                   },
-                  fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
                     return PremiumTextField(
                       label: '${l10n.product} ${l10n.name}',
                       hint: isCompact ? '${l10n.enterEmail} ${l10n.name}' : '${l10n.enterEmail} ${l10n.product} ${l10n.name}',
@@ -519,7 +549,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                       focusNode: focusNode,
                       prefixIcon: Icons.label_outlined,
                       onSubmitted: (_) {
-                        onSubmitted();
+                        onFieldSubmitted();
                         _detailFocusNode.requestFocus();
                       },
                       validator: (value) {
@@ -614,7 +644,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                     selectAllOnFocus: true,
                     prefixIcon: Icons.inventory_2_outlined,
                     keyboardType: TextInputType.number,
-                    onSubmitted: (_) => _minStockFocusNode.requestFocus(),
+                    onSubmitted: (_) => _pricingFocusNode.requestFocus(),
                     validator: (value) {
                       if (value?.isEmpty ?? true) {
                         return '${l10n.pleaseEnter} ${l10n.quantity}';
@@ -630,6 +660,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                 SizedBox(width: context.cardPadding),
                 Expanded(
                   child: PremiumDropdownField<String>(
+                    focusNode: _pricingFocusNode,
                     label: 'Pricing Type',
                     hint: 'Select pricing model',
                     prefixIcon: Icons.payments_outlined,
@@ -640,6 +671,8 @@ class _AddProductDialogState extends State<AddProductDialog>
                     value: _pricingType,
                     onChanged: (value) {
                       if (value != null) setState(() => _pricingType = value);
+                      // Auto trigger next focus after selection
+                      _rentalFocusNode.requestFocus();
                     },
                   ),
                 ),
@@ -651,59 +684,188 @@ class _AddProductDialogState extends State<AddProductDialog>
             Row(
               children: [
                 Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _isRental = !_isRental),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 40,
-                          child: Checkbox(
-                            value: _isRental,
-                            onChanged: (val) => setState(() => _isRental = val ?? true),
-                            activeColor: AppTheme.primaryMaroon,
-                          ),
-                        ),
-                        const Expanded(
-                          child: Text(
-                            'Rental Item',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.charcoalGray,
-                              fontSize: 14,
+                  child: Focus(
+                    focusNode: _rentalFocusNode,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.space) {
+                          setState(() {
+                            _isRental = !_isRental;
+                            if (_isRental) {
+                              _isConsumable = false;
+                              _consumableFocusNode.skipTraversal = true;
+                            } else {
+                              _consumableFocusNode.skipTraversal = false;
+                            }
+                          });
+                          return KeyEventResult.handled;
+                        } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+                          if (_isRental) {
+                            Future.microtask(() => _serialFocusNode.requestFocus());
+                          } else {
+                            Future.microtask(() => _consumableFocusNode.requestFocus());
+                          }
+                          return KeyEventResult.handled;
+                        }
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: Builder(
+                      builder: (context) {
+                        final isFocused = _rentalFocusNode.hasFocus;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _isRental = !_isRental;
+                              if (_isRental) {
+                                _isConsumable = false;
+                                _consumableFocusNode.skipTraversal = true;
+                              } else {
+                                _consumableFocusNode.skipTraversal = false;
+                              }
+                            });
+                            if (_isRental) {
+                              _serialFocusNode.requestFocus();
+                            } else {
+                              _consumableFocusNode.requestFocus();
+                            }
+                          },
+                          child: Container(
+                            decoration: isFocused ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(context.borderRadius()),
+                              border: Border.all(color: AppTheme.accentGold, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.accentGold.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ) : BoxDecoration(
+                              borderRadius: BorderRadius.circular(context.borderRadius()),
+                              border: Border.all(color: Colors.transparent, width: 2),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 40,
+                                  child: Checkbox(
+                                    value: _isRental,
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _isRental = val ?? true;
+                                        if (_isRental) {
+                                          _isConsumable = false;
+                                          _consumableFocusNode.skipTraversal = true;
+                                        } else {
+                                          _consumableFocusNode.skipTraversal = false;
+                                        }
+                                      });
+                                      if (_isRental) {
+                                        _serialFocusNode.requestFocus();
+                                      } else {
+                                        _consumableFocusNode.requestFocus();
+                                      }
+                                    },
+                                    activeColor: AppTheme.primaryMaroon,
+                                  ),
+                                ),
+                                const Expanded(
+                                  child: Text(
+                                    'Rental Item',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.charcoalGray,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
+                        );
+                      }
                     ),
                   ),
                 ),
                 SizedBox(width: context.cardPadding),
                 Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _isConsumable = !_isConsumable),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 40,
-                          child: Checkbox(
-                            value: _isConsumable,
-                            onChanged: (val) => setState(() => _isConsumable = val ?? false),
-                            activeColor: AppTheme.primaryMaroon,
-                          ),
-                        ),
-                        const Expanded(
-                          child: Text(
-                            'Consumable',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.charcoalGray,
-                              fontSize: 14,
+                  child: Focus(
+                    focusNode: _consumableFocusNode,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.space) {
+                          setState(() {
+                            _isConsumable = !_isConsumable;
+                            if (_isConsumable) _isRental = false;
+                          });
+                          return KeyEventResult.handled;
+                        } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+                          Future.microtask(() => _serialFocusNode.requestFocus());
+                          return KeyEventResult.handled;
+                        }
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: Builder(
+                      builder: (context) {
+                        final isFocused = _consumableFocusNode.hasFocus;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _isConsumable = !_isConsumable;
+                              if (_isConsumable) _isRental = false;
+                            });
+                            _serialFocusNode.requestFocus();
+                          },
+                          child: Container(
+                            decoration: isFocused ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(context.borderRadius()),
+                              border: Border.all(color: AppTheme.accentGold, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.accentGold.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ) : BoxDecoration(
+                              borderRadius: BorderRadius.circular(context.borderRadius()),
+                              border: Border.all(color: Colors.transparent, width: 2),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 40,
+                                  child: Checkbox(
+                                    value: _isConsumable,
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _isConsumable = val ?? false;
+                                        if (_isConsumable) _isRental = false;
+                                      });
+                                      _serialFocusNode.requestFocus();
+                                    },
+                                    activeColor: AppTheme.primaryMaroon,
+                                  ),
+                                ),
+                                const Expanded(
+                                  child: Text(
+                                    'Consumable',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.charcoalGray,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
+                        );
+                      }
                     ),
                   ),
                 ),
@@ -732,7 +894,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                     controller: _warehouseLocationController,
                     focusNode: _locationFocusNode,
                     prefixIcon: Icons.location_on_outlined,
-                    onSubmitted: (_) => _handleSubmit(),
+                    onSubmitted: (_) => _minStockFocusNode.requestFocus(),
                   ),
                 ),
               ],
@@ -778,24 +940,31 @@ class _AddProductDialogState extends State<AddProductDialog>
                           _categorySearchText = selection.name;
                           _categoryController.text = selection.name;
                         });
-                        _serialFocusNode.requestFocus();
+                        _saveFocusNode.requestFocus();
                       },
                       fieldViewBuilder: (BuildContext context, TextEditingController controller, FocusNode focusNode, VoidCallback onFieldSubmitted) {
                          return PremiumTextField(
                           controller: controller,
                           focusNode: focusNode,
-                          label: l10n.category,
-                          hint: "Type category (e.g. Lights, Wiring)...",
+                          label: 'Category',
+                          hint: 'Search or select category',
                           prefixIcon: Icons.category_outlined,
-                          onChanged: (text) {
-                            _categorySearchText = text;
-                            _categoryController.text = text; // Sync
-                             _selectedCategoryId = null; 
-                          },
-                          onSubmitted: (val) {
+                          onSubmitted: (_) {
                             onFieldSubmitted();
-                            _serialFocusNode.requestFocus();
+                            // FIX: From category move to the SAVE button focus node
+                            _saveFocusNode.requestFocus();
                           },
+                          containerDecoration: focusNode.hasFocus ? BoxDecoration(
+                            borderRadius: BorderRadius.circular(context.borderRadius()),
+                            border: Border.all(color: AppTheme.accentGold, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.accentGold.withOpacity(0.3),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ) : null,
                         );
                       },
                       optionsViewBuilder: (context, onSelected, options) {
@@ -896,6 +1065,7 @@ class _AddProductDialogState extends State<AddProductDialog>
           builder: (context, provider, child) {
             return PremiumButton(
               text: isEditing ? 'Update Product' : '${l10n.add} ${l10n.product}',
+              focusNode: _saveFocusNode,
               onPressed: provider.isLoading ? null : _handleSubmit,
               isLoading: provider.isLoading,
               height: context.buttonHeight,
@@ -903,7 +1073,7 @@ class _AddProductDialogState extends State<AddProductDialog>
             );
           },
         ),
-        SizedBox(height: context.cardPadding),
+        const SizedBox(height: 20),
         PremiumButton(
           text: l10n.cancel,
           onPressed: _handleCancel,
@@ -931,12 +1101,13 @@ class _AddProductDialogState extends State<AddProductDialog>
             textColor: Colors.grey[600],
           ),
         ),
-        SizedBox(width: context.cardPadding),
+        const SizedBox(width: 20),
         Expanded(
           child: Consumer<ProductProvider>(
             builder: (context, provider, child) {
               return PremiumButton(
                 text: '${l10n.add} ${l10n.product}',
+                focusNode: _saveFocusNode,
                 onPressed: provider.isLoading ? null : _handleSubmit,
                 isLoading: provider.isLoading,
                 height: context.buttonHeight / 1.5,

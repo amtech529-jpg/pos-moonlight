@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:frontend/presentation/widgets/globals/custom_date_picker.dart';
 import 'package:frontend/presentation/widgets/globals/drop_down.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
@@ -31,6 +32,12 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
   final _expenseFocusNode = FocusNode();
   final _descriptionFocusNode = FocusNode();
   final _amountFocusNode = FocusNode();
+  final _categoryFocusNode = FocusNode();
+  final _recurringFocusNode = FocusNode();
+  final _deductibleFocusNode = FocusNode();
+  final _laborFocusNode = FocusNode();
+  final _dateFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
 
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
@@ -61,6 +68,19 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
       }
     });
 
+    // Add listeners for border updates
+    void focusListener() {
+      if (mounted) setState(() {});
+    }
+    _expenseFocusNode.addListener(focusListener);
+    _descriptionFocusNode.addListener(focusListener);
+    _amountFocusNode.addListener(focusListener);
+    _categoryFocusNode.addListener(focusListener);
+    _recurringFocusNode.addListener(focusListener);
+    _deductibleFocusNode.addListener(focusListener);
+    _laborFocusNode.addListener(focusListener);
+    _dateFocusNode.addListener(focusListener);
+    _saveFocusNode.addListener(focusListener);
   }
 
   @override
@@ -72,6 +92,12 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
     _expenseFocusNode.dispose();
     _descriptionFocusNode.dispose();
     _amountFocusNode.dispose();
+    _categoryFocusNode.dispose();
+    _recurringFocusNode.dispose();
+    _deductibleFocusNode.dispose();
+    _laborFocusNode.dispose();
+    _dateFocusNode.dispose();
+    _saveFocusNode.dispose();
     super.dispose();
   }
 
@@ -171,6 +197,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
           _selectedDate = date;
           _selectedTime = time;
         });
+        _saveFocusNode.requestFocus();
       },
     );
   }
@@ -354,7 +381,8 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
               prefixIcon: Icons.attach_money_rounded,
               keyboardType: TextInputType.number,
               focusNode: _amountFocusNode,
-              textInputAction: TextInputAction.done,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _categoryFocusNode.requestFocus(),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return l10n.pleaseEnterAmount;
@@ -366,9 +394,10 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
                 return null;
               },
             ),
-            SizedBox(height: context.cardPadding),
+            SizedBox(height: 20),
 
             PremiumDropdownField<String>(
+              focusNode: _categoryFocusNode,
               label: l10n.expenseCategory,
               hint: l10n.selectCategory,
               value: _selectedCategory,
@@ -378,6 +407,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
                 setState(() {
                   _selectedCategory = category;
                 });
+                _recurringFocusNode.requestFocus();
               },
               validator: (value) {
                 if (value == null) {
@@ -386,35 +416,111 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
                 return null;
               },
             ),
-            SizedBox(height: context.cardPadding),
+            SizedBox(height: 20),
 
-            // Recurring Checkbox
-            CheckboxListTile(
-                          title: Text(l10n.recurringExpense, style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.normal)),
-              value: _isRecurring,
-              activeColor: AppTheme.primaryMaroon,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              onChanged: (bool? value) {
-                setState(() {
-                  _isRecurring = value ?? false;
-                });
+            Focus(
+              focusNode: _recurringFocusNode,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent && (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
+                  setState(() => _isRecurring = !_isRecurring);
+                  _deductibleFocusNode.requestFocus();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
               },
+              child: Builder(
+                builder: (context) {
+                  final isFocused = _recurringFocusNode.hasFocus;
+                  return Container(
+                    decoration: isFocused ? BoxDecoration(
+                      borderRadius: BorderRadius.circular(context.borderRadius()),
+                      border: Border.all(color: AppTheme.accentGold, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.accentGold.withOpacity(0.3),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ) : BoxDecoration(
+                      borderRadius: BorderRadius.circular(context.borderRadius()),
+                      border: Border.all(color: Colors.transparent, width: 2),
+                    ),
+                    child: CheckboxListTile(
+                      title: Text(l10n.recurringExpense, style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.normal)),
+                      value: _isRecurring,
+                      activeColor: AppTheme.primaryMaroon,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _isRecurring = value ?? false;
+                        });
+                        _deductibleFocusNode.requestFocus();
+                      },
+                    ),
+                  );
+                }
+              ),
             ),
             
             // Salary Deductible Checkbox
-            CheckboxListTile(
-                            title: Text(l10n.deductFromSalary, style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.normal)),
-              value: _isSalaryDeductible,
-              activeColor: AppTheme.primaryMaroon,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              onChanged: (bool? value) {
-                setState(() {
-                  _isSalaryDeductible = value ?? false;
-                  if (!_isSalaryDeductible) _selectedLaborId = null;
-                });
+            Focus(
+              focusNode: _deductibleFocusNode,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent && (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
+                  setState(() {
+                    _isSalaryDeductible = !_isSalaryDeductible;
+                    if (!_isSalaryDeductible) _selectedLaborId = null;
+                  });
+                  if (_isSalaryDeductible) {
+                    _laborFocusNode.requestFocus();
+                  } else {
+                    _dateFocusNode.requestFocus();
+                  }
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
               },
+              child: Builder(
+                builder: (context) {
+                  final isFocused = _deductibleFocusNode.hasFocus;
+                  return Container(
+                    decoration: isFocused ? BoxDecoration(
+                      borderRadius: BorderRadius.circular(context.borderRadius()),
+                      border: Border.all(color: AppTheme.accentGold, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.accentGold.withOpacity(0.3),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ) : BoxDecoration(
+                      borderRadius: BorderRadius.circular(context.borderRadius()),
+                      border: Border.all(color: Colors.transparent, width: 2),
+                    ),
+                    child: CheckboxListTile(
+                      title: Text(l10n.deductFromSalary, style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.normal)),
+                      value: _isSalaryDeductible,
+                      activeColor: AppTheme.primaryMaroon,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _isSalaryDeductible = value ?? false;
+                          if (!_isSalaryDeductible) _selectedLaborId = null;
+                        });
+                        if (_isSalaryDeductible) {
+                          _laborFocusNode.requestFocus();
+                        } else {
+                          _dateFocusNode.requestFocus();
+                        }
+                      },
+                    ),
+                  );
+                }
+              ),
             ),
 
             if (_isSalaryDeductible) ...[
@@ -422,6 +528,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
               Consumer<LaborProvider>(
                 builder: (context, laborProvider, child) {
                   return PremiumDropdownField<String>(
+                    focusNode: _laborFocusNode,
                     label: l10n.selectLabor,
                     hint: l10n.selectEmployeeForDeduction,
                     value: _selectedLaborId,
@@ -434,6 +541,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
                       setState(() {
                         _selectedLaborId = id;
                       });
+                      _dateFocusNode.requestFocus();
                     },
                     validator: (value) {
                       if (_isSalaryDeductible && value == null) {
@@ -448,87 +556,101 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
             ],
 
 
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _selectDateTime,
-                    borderRadius: BorderRadius.circular(context.borderRadius()),
-                    child: Container(
-                      padding: EdgeInsets.all(context.cardPadding),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [AppTheme.primaryMaroon.withOpacity(0.1), AppTheme.secondaryMaroon.withOpacity(0.1)]),
-                        border: Border.all(color: AppTheme.primaryMaroon.withOpacity(0.3)),
-                        borderRadius: BorderRadius.circular(context.borderRadius()),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.date_range_rounded, color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
-                              SizedBox(width: context.smallPadding),
-                              Text(
-                                l10n.selectDateTime,
-                                style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.primaryMaroon),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: context.smallPadding),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              Column(
-                                children: [
-                                  Text(
-                                    l10n.date,
-                                    style: TextStyle(
-                                      fontSize: context.subtitleFontSize,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppTheme.charcoalGray.withOpacity(0.7),
+            Focus(
+              focusNode: _dateFocusNode,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                  _selectDateTime();
+                  _saveFocusNode.requestFocus();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
+              child: Builder(
+                builder: (context) {
+                  final isFocused = Focus.of(context).hasFocus;
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _selectDateTime,
+                      borderRadius: BorderRadius.circular(context.borderRadius()),
+                      child: Container(
+                        padding: EdgeInsets.all(context.cardPadding),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [AppTheme.primaryMaroon.withOpacity(0.1), AppTheme.secondaryMaroon.withOpacity(0.1)]),
+                          border: Border.all(color: isFocused ? AppTheme.accentGold : AppTheme.primaryMaroon.withOpacity(0.3), width: isFocused ? 2 : 1),
+                          borderRadius: BorderRadius.circular(context.borderRadius()),
+                          boxShadow: isFocused ? [
+                            BoxShadow(color: AppTheme.accentGold.withOpacity(0.3), blurRadius: 8, spreadRadius: 2)
+                          ] : null,
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.date_range_rounded, color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
+                                SizedBox(width: context.smallPadding),
+                                Text(
+                                  l10n.selectDateTime,
+                                  style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.primaryMaroon),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: context.smallPadding),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                Column(
+                                  children: [
+                                    Text(
+                                      l10n.date,
+                                      style: TextStyle(
+                                        fontSize: context.subtitleFontSize,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppTheme.charcoalGray.withOpacity(0.7),
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}',
-                                    style: TextStyle(
-                                      fontSize: context.bodyFontSize,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.charcoalGray,
+                                    Text(
+                                      '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}',
+                                      style: TextStyle(
+                                        fontSize: context.bodyFontSize,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.charcoalGray,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              Container(height: 40, width: 1, color: Colors.grey.shade300),
-                              Column(
-                                children: [
-                                  Text(
-                                    l10n.time,
-                                    style: TextStyle(
-                                      fontSize: context.subtitleFontSize,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppTheme.charcoalGray.withOpacity(0.7),
+                                  ],
+                                ),
+                                Container(height: 40, width: 1, color: Colors.grey.shade300),
+                                Column(
+                                  children: [
+                                    Text(
+                                      l10n.time,
+                                      style: TextStyle(
+                                        fontSize: context.subtitleFontSize,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppTheme.charcoalGray.withOpacity(0.7),
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    _selectedTime.format(context),
-                                    style: TextStyle(
-                                      fontSize: context.bodyFontSize,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.charcoalGray,
+                                    Text(
+                                      _selectedTime.format(context),
+                                      style: TextStyle(
+                                        fontSize: context.bodyFontSize,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.charcoalGray,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                  );
+                }
+              ),
             ),
 
             SizedBox(height: context.mainPadding),
@@ -549,7 +671,6 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
 
   Widget _buildCompactButtons() {
     final l10n = AppLocalizations.of(context)!;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -557,6 +678,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
           builder: (context, provider, child) {
             return PremiumButton(
               text: l10n.addExpense,
+              focusNode: _saveFocusNode,
               onPressed: provider.isLoading ? null : _handleSubmit,
               isLoading: provider.isLoading,
               height: context.buttonHeight,
@@ -564,7 +686,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
             );
           },
         ),
-        SizedBox(height: context.cardPadding),
+        const SizedBox(height: 20),
         PremiumButton(
           text: l10n.cancel,
           onPressed: _handleCancel,
@@ -579,7 +701,6 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
 
   Widget _buildDesktopButtons() {
     final l10n = AppLocalizations.of(context)!;
-
     return Row(
       children: [
         Expanded(
@@ -592,12 +713,13 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
             textColor: Colors.grey[600],
           ),
         ),
-        SizedBox(width: context.cardPadding),
+        const SizedBox(width: 20),
         Expanded(
           child: Consumer<ExpensesProvider>(
             builder: (context, provider, child) {
               return PremiumButton(
                 text: l10n.addExpense,
+                focusNode: _saveFocusNode,
                 onPressed: provider.isLoading ? null : _handleSubmit,
                 isLoading: provider.isLoading,
                 height: context.buttonHeight / 1.5,

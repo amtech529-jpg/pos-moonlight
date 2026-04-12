@@ -176,8 +176,10 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
   }
 
   Widget _buildContent() {
-    return SingleChildScrollView(
-      child: Padding(
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: SingleChildScrollView(
+        child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -217,8 +219,9 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildOrderInfoSection() {
     final l10n = AppLocalizations.of(context)!;

@@ -8,7 +8,7 @@ class PurchaseItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PurchaseItem
-        fields = ['product', 'product_name', 'category_name', 'quantity', 'unit_cost', 'total_cost', 'description']
+        fields = ['product', 'product_name', 'category_name', 'quantity', 'unit_cost', 'retail_price', 'total_cost', 'description']
 
 class PurchaseSerializer(serializers.ModelSerializer):
     items = PurchaseItemSerializer(many=True)
@@ -50,6 +50,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 product=product,
                 quantity=quantity,
                 unit_cost=unit_cost,
+                retail_price=item.get('retail_price', 0), # ✅ Added
                 total_cost=total_cost,
                 description=item.get('description', '')
             )
@@ -89,6 +90,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 product=product,
                 quantity=quantity,
                 unit_cost=unit_cost,
+                retail_price=item.get('retail_price', 0), # ✅ Added
                 total_cost=total_cost,
                 description=item.get('description', '')
             )

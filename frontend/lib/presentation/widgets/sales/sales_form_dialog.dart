@@ -99,7 +99,10 @@ class _SalesFormDialogState extends State<SalesFormDialog> {
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.cardPadding,
+        vertical: context.smallPadding * 0.7,
+      ),
       decoration: BoxDecoration(
         color: AppTheme.primaryMaroon,
         borderRadius: BorderRadius.only(

@@ -299,7 +299,10 @@ class _CheckoutDialogState extends State<CheckoutDialog>
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
-      padding: EdgeInsets.all(context.cardPadding),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.cardPadding,
+        vertical: context.smallPadding * 1.5,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [AppTheme.primaryMaroon, AppTheme.secondaryMaroon],

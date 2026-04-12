@@ -29,6 +29,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
   final TextEditingController _areaController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   // Focus Nodes
   final _nameFocusNode = FocusNode();
@@ -42,6 +43,9 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
   final _cityChipsFirstFocusNode = FocusNode();
   final _areaChipsFirstFocusNode = FocusNode();
   final _ageFocusNode = FocusNode();
+  final _saveFocusNode = FocusNode();
+  final _dateFocusNode = FocusNode();
+  final _genderFocusNode = FocusNode();
 
   String _selectedGender = 'M';
   DateTime _selectedJoiningDate = DateTime.now();
@@ -78,6 +82,18 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
+    
+    // Add scroll auto-visibility listeners
+    _nameFocusNode.addListener(() => _scrollToFocus(_nameFocusNode));
+    _cnicFocusNode.addListener(() => _scrollToFocus(_cnicFocusNode));
+    _phoneFocusNode.addListener(() => _scrollToFocus(_phoneFocusNode));
+    _designationFocusNode.addListener(() => _scrollToFocus(_designationFocusNode));
+    _salaryFocusNode.addListener(() => _scrollToFocus(_salaryFocusNode));
+    _incentiveFocusNode.addListener(() => _scrollToFocus(_incentiveFocusNode));
+    _genderFocusNode.addListener(() => _scrollToFocus(_genderFocusNode));
+    _ageFocusNode.addListener(() => _scrollToFocus(_ageFocusNode));
+    _saveFocusNode.addListener(() => _scrollToFocus(_saveFocusNode));
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -109,7 +125,34 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
     _cityChipsFirstFocusNode.dispose();
     _areaChipsFirstFocusNode.dispose();
     _ageFocusNode.dispose();
+    _saveFocusNode.dispose();
+    _dateFocusNode.dispose();
+    _genderFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToFocus(FocusNode node) {
+    if (node.hasFocus) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (!mounted) return;
+        _scrollController.animateTo(
+          _scrollController.position.pixels, // Dummy to check if it's already visible might be complex
+          // Better use Scrollable.ensureVisible
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+        // Using context from the node's widget is better
+        if (node.context != null) {
+          Scrollable.ensureVisible(
+            node.context!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            alignment: 0.5, // Center the focused widget
+          );
+        }
+      });
+    }
   }
 
   void _validateForm() {
@@ -394,6 +437,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
         setState(() {
           _selectedJoiningDate = date;
         });
+        _salaryFocusNode.requestFocus();
       },
     );
   }
@@ -603,6 +647,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
 
   Widget _buildFormContent() {
     return SingleChildScrollView(
+      controller: _scrollController,
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Form(
@@ -762,7 +807,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
           prefixIcon: Icons.work_outline,
           focusNode: _designationFocusNode,
           textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_salaryFocusNode),
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_dateFocusNode),
           enabled: !_isCreating,
           validator: (value) {
             if (value?.isEmpty ?? true) {
@@ -772,18 +817,45 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
           },
         ),
         SizedBox(height: context.cardPadding),
-        GestureDetector(
-          onTap: _isCreating ? null : () => _selectDate(context),
-          child: AbsorbPointer(
-            child: PremiumTextField(
-              label: l10n.joiningDateRequired,
-              hint: l10n.selectJoiningDate,
-              controller: TextEditingController(
-                  text:
-                  '${_selectedJoiningDate.day.toString().padLeft(2, '0')}/${_selectedJoiningDate.month.toString().padLeft(2, '0')}/${_selectedJoiningDate.year}'),
-              prefixIcon: Icons.calendar_today,
-              enabled: !_isCreating,
-            ),
+        Focus(
+          focusNode: _dateFocusNode,
+          onKeyEvent: (node, event) {
+            if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+              _selectDate(context);
+              _salaryFocusNode.requestFocus();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: Builder(
+            builder: (context) {
+              final isFocused = Focus.of(context).hasFocus;
+              return GestureDetector(
+                onTap: _isCreating ? null : () => _selectDate(context),
+                child: AbsorbPointer(
+                  child: PremiumTextField(
+                    label: l10n.joiningDateRequired,
+                    hint: l10n.selectJoiningDate,
+                    controller: TextEditingController(
+                        text:
+                        '${_selectedJoiningDate.day.toString().padLeft(2, '0')}/${_selectedJoiningDate.month.toString().padLeft(2, '0')}/${_selectedJoiningDate.year}'),
+                    prefixIcon: Icons.calendar_today,
+                    enabled: !_isCreating,
+                    containerDecoration: isFocused ? BoxDecoration(
+                      borderRadius: BorderRadius.circular(context.borderRadius()),
+                      border: Border.all(color: AppTheme.accentGold, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.accentGold.withOpacity(0.3),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ) : null,
+                  ),
+                ),
+              );
+            }
           ),
         ),
         SizedBox(height: context.cardPadding),
@@ -818,7 +890,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
           keyboardType: TextInputType.number,
           focusNode: _incentiveFocusNode,
           textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_ageFocusNode),
+          onSubmitted: (_) => FocusScope.of(context).requestFocus(_genderFocusNode),
           enabled: !_isCreating,
           validator: (value) {
             if (value != null && value.isNotEmpty) {
@@ -834,6 +906,8 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
           label: l10n.genderRequired,
           hint: context.shouldShowCompactLayout ? l10n.selectGender : l10n.selectGender,
           prefixIcon: Icons.person_pin_rounded,
+          focusNode: _genderFocusNode,
+          focusColor: AppTheme.accentGold,
           items: [
             DropdownItem<String>(value: 'M', label: l10n.male),
             DropdownItem<String>(value: 'F', label: l10n.female),
@@ -846,6 +920,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
             setState(() {
               _selectedGender = value!;
             });
+            FocusScope.of(context).requestFocus(_ageFocusNode);
           },
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -863,6 +938,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
           keyboardType: TextInputType.number,
           focusNode: _ageFocusNode,
           textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _saveFocusNode.requestFocus(),
           enabled: !_isCreating,
           validator: (value) {
             if (value?.isEmpty ?? true) {
@@ -993,6 +1069,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
           builder: (context, provider, child) {
             return PremiumButton(
               text: l10n.addLabor,
+              focusNode: _saveFocusNode,
               onPressed: (_isCreating || provider.isLoading) ? null : _handleSubmit,
               isLoading: _isCreating || provider.isLoading,
               height: context.buttonHeight,
@@ -1001,7 +1078,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
             );
           },
         ),
-        SizedBox(height: context.cardPadding),
+        const SizedBox(height: 20),
         PremiumButton(
           text: l10n.cancel,
           onPressed: _isCreating ? null : _handleCancel,
@@ -1029,13 +1106,14 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
             textColor: Colors.grey[600],
           ),
         ),
-        SizedBox(width: context.cardPadding),
+        const SizedBox(width: 20),
         Expanded(
           flex: 2,
           child: Consumer<LaborProvider>(
             builder: (context, provider, child) {
               return PremiumButton(
                 text: l10n.addLabor,
+                focusNode: _saveFocusNode,
                 onPressed: (_isCreating || provider.isLoading) ? null : _handleSubmit,
                 isLoading: _isCreating || provider.isLoading,
                 height: context.buttonHeight / 1.5,
