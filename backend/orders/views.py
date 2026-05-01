@@ -228,6 +228,7 @@ def create_order(request):
                 'errors': {'detail': str(e)}
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    print("CREATE ORDER VALIDATION FAILED:", serializer.errors)
     return Response({
         'success': False,
         'message': 'Order creation failed.',

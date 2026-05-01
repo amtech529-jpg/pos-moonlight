@@ -11,7 +11,7 @@ from .models import OrderItem
 from .serializers import (
     OrderItemSerializer,
     OrderItemCreateSerializer,
-    OrderItemListSerializer,
+    OrderItemListSerializer,    
     OrderItemUpdateSerializer,
     OrderItemDetailSerializer,
     OrderItemStatsSerializer,

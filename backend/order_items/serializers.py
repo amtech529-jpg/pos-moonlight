@@ -172,13 +172,14 @@ class OrderItemCreateSerializer(serializers.ModelSerializer):
         # Check if enough stock is available - skip for partner rentals
         if not data.get('rented_from_partner', False):
             # Use date-aware availability check
+            start_date_for_stock = order.dispatch_date or order.event_date
             available_for_dates = product.get_available_quantity_for_dates(
-                start_date=order.event_date,
+                start_date=start_date_for_stock,
                 end_date=order.return_date or order.event_date
             )
             if available_for_dates < quantity:
                 raise serializers.ValidationError({
-                    'quantity': f'Not enough stock for these dates ({order.event_date} to {order.return_date or order.event_date}). Available: {available_for_dates}, Requested: {quantity}'
+                    'quantity': f'Not enough stock for these dates ({start_date_for_stock} to {order.return_date or order.event_date}). Available: {available_for_dates}, Requested: {quantity}'
                 })
         
         # If rate not provided, use product price
@@ -241,7 +242,7 @@ class OrderItemUpdateSerializer(serializers.ModelSerializer):
                     product = self.instance.product
                     
                     # Check if dates are available before checking stock
-                    start_date = order.event_date
+                    start_date = order.dispatch_date or order.event_date
                     end_date = order.return_date or order.event_date
                     
                     logger.info(f"Checking stock for product {product.id} between {start_date} and {end_date}")
@@ -324,8 +325,9 @@ class OrderItemListSerializer(serializers.ModelSerializer):
         try:
             if obj.product is None:
                 return None
+            start_date = obj.order.dispatch_date or obj.order.event_date
             return obj.product.get_available_quantity_for_dates(
-                start_date=obj.order.event_date,
+                start_date=start_date,
                 end_date=obj.order.return_date or obj.order.event_date,
                 exclude_order_id=obj.order.id,
             )

@@ -590,7 +590,7 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
           final newProduct = await productProvider.addProduct(
             name: _items[i].productName!,
             detail: _items[i].description ?? 'Auto-created during purchase',
-            price: _items[i].retailPrice > 0 ? _items[i].retailPrice : _items[i].unitCost,
+            price: _items[i].retailPrice, // Always use retailPrice for rent rate, even if 0
             costPrice: _items[i].unitCost,
             quantity: 0, // Backend purchase view will increase the stock
             categoryId: _items[i].categoryId!,
@@ -604,10 +604,10 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
             _showError("Item #${i + 1}: Failed to create product. $err");
             return;
           }
-        } else if (_items[i].retailPrice > 0) {
+        } else {
            await productProvider.updateProduct(
             id: _items[i].product!,
-            price: _items[i].retailPrice,
+            price: _items[i].retailPrice, // Always sync the rent rate
             costPrice: _items[i].unitCost,
           );
         }

@@ -97,6 +97,11 @@ class Order(models.Model):
         blank=True,
         help_text="Date of the event"
     )
+    dispatch_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date items leave the inventory"
+    )
     return_date = models.DateField(
         null=True,
         blank=True,

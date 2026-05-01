@@ -40,6 +40,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
   final _eventNameController = TextEditingController();
   final _eventLocationController = TextEditingController();
   final _eventDateController = TextEditingController();
+  final _dispatchDateController = TextEditingController();
   final _returnDateController = TextEditingController();
   final _partnerRateController = TextEditingController();
   final _unitPriceController = TextEditingController();
@@ -52,11 +53,12 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
   final _unitPriceFocusNode = FocusNode();
   final _notesFocusNode = FocusNode();
   final _partnerRateFocusNode = FocusNode();
-  final _eventNameFocusNode = FocusNode();
-  final _eventLocationFocusNode = FocusNode();
-  final _customerFocusNode = FocusNode();
-  final _eventDateFocusNode = FocusNode();
-  final _returnDateFocusNode = FocusNode();
+  final FocusNode _eventNameFocusNode = FocusNode();
+  final FocusNode _eventLocationFocusNode = FocusNode();
+  final FocusNode _customerFocusNode = FocusNode();
+  final FocusNode _eventDateFocusNode = FocusNode();
+  final FocusNode _dispatchDateFocusNode = FocusNode();
+  final FocusNode _returnDateFocusNode = FocusNode();
   final _nextButtonFocusNode = FocusNode();
   late List<FocusNode> _statusFocusNodes;
 
@@ -65,6 +67,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
   OrderStatus _selectedStatus = OrderStatus.PENDING;
   DateTime? _selectedDeliveryDate;
   DateTime? _selectedEventDate;
+  DateTime? _selectedDispatchDate;
   DateTime? _selectedReturnDate;
   bool _rentedFromPartner = false;
 
@@ -132,6 +135,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
       _eventNameFocusNode,
       _eventLocationFocusNode,
       _eventDateFocusNode,
+      _dispatchDateFocusNode,
       _returnDateFocusNode,
       _notesFocusNode,
       ..._statusFocusNodes,
@@ -181,6 +185,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     _eventNameController.dispose();
     _eventLocationController.dispose();
     _eventDateController.dispose();
+    _dispatchDateController.dispose();
     _returnDateController.dispose();
     _partnerRateController.dispose();
     _unitPriceController.dispose();
@@ -195,6 +200,8 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     _eventLocationFocusNode.dispose();
     _customerFocusNode.dispose();
     _eventDateFocusNode.dispose();
+    _dispatchDateFocusNode.dispose();
+    _returnDateFocusNode.dispose();
     _returnDateFocusNode.dispose();
     _nextButtonFocusNode.dispose();
     for (var node in _statusFocusNodes) {
@@ -318,6 +325,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
         eventName: _eventNameController.text.trim(),
         eventLocation: _eventLocationController.text.trim(),
         eventDate: _selectedEventDate,
+        dispatchDate: _selectedDispatchDate ?? _selectedEventDate,
         returnDate: _selectedReturnDate,
         status: _selectedStatus.name.toUpperCase(),
       );
@@ -749,9 +757,36 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                               hint: 'Select Date',
                               controller: _eventDateController,
                               prefixIcon: Icons.calendar_today_rounded,
-                              focusNode: FocusNode(), // Dummy focus node to prevent internal focus stealing
+                              focusNode: FocusNode(), // Dummy focus node
                               enabled: true,
                               validator: (value) => value == null || value.isEmpty ? "Required" : null,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: context.smallPadding),
+                    Expanded(
+                      child: Focus(
+                        focusNode: _dispatchDateFocusNode,
+                        onKeyEvent: (node, event) {
+                          if (event is KeyDownEvent && 
+                              (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
+                            _selectDispatchDate(context);
+                            return KeyEventResult.handled;
+                          }
+                          return KeyEventResult.ignored;
+                        },
+                        child: GestureDetector(
+                          onTap: () => _selectDispatchDate(context),
+                          child: AbsorbPointer(
+                            child: PremiumTextField(
+                              label: 'Dispatch Date',
+                              hint: 'Select Date',
+                              controller: _dispatchDateController,
+                              prefixIcon: Icons.local_shipping_rounded,
+                              focusNode: FocusNode(), // Dummy focus node
+                              enabled: true,
                             ),
                           ),
                         ),
@@ -1998,6 +2033,44 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
       setState(() {
         _selectedEventDate = date;
         _eventDateController.text = '${date.day}/${date.month}/${date.year}';
+        if (_selectedDispatchDate == null) {
+          _selectedDispatchDate = date;
+          _dispatchDateController.text = '${date.day}/${date.month}/${date.year}';
+        }
+      });
+      _dispatchDateFocusNode.requestFocus();
+    }
+  }
+
+  Future<void> _selectDispatchDate(BuildContext context) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedDispatchDate ?? _selectedEventDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.primaryMaroon,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black87,
+            ),
+            dialogBackgroundColor: Colors.white,
+            textTheme: const TextTheme(
+              bodyLarge: TextStyle(color: Colors.black87),
+              bodyMedium: TextStyle(color: Colors.black87),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (date != null) {
+      setState(() {
+        _selectedDispatchDate = date;
+        _dispatchDateController.text = '${date.day}/${date.month}/${date.year}';
       });
       _returnDateFocusNode.requestFocus();
     }

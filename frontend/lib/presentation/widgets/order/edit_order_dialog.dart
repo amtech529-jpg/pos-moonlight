@@ -18,6 +18,7 @@ import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import '../globals/custom_date_picker.dart';
+import '../product/add_product_dialog.dart';
 
 class LocalOrderItem {
   final String? id;
@@ -83,6 +84,7 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
   OrderStatus _selectedStatus = OrderStatus.PENDING;
   DateTime? _selectedDeliveryDate;
   DateTime? _eventDate;
+  DateTime? _dispatchDate;
   DateTime? _returnDate;
   cp.Customer? _customer;
 
@@ -108,6 +110,7 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
     _selectedStatus = widget.order.status;
     _selectedDeliveryDate = widget.order.expectedDeliveryDate;
     _eventDate = widget.order.eventDate;
+    _dispatchDate = widget.order.dispatchDate;
     _returnDate = widget.order.returnDate;
 
     _loadExistingItems();
@@ -541,6 +544,7 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
           status: _selectedStatus.name.toUpperCase(),
           expectedDeliveryDate: _selectedDeliveryDate,
           eventDate: _eventDate,
+          dispatchDate: _dispatchDate ?? _eventDate,
           returnDate: _returnDate,
         );
 
@@ -725,6 +729,25 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                 );
               },
             ),
+          )
+        else if (_searchController.text.isNotEmpty && !_isSearching)
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            child: PremiumButton(
+              text: 'Add Products',
+              icon: Icons.add_rounded,
+              width: 180,
+              height: 40,
+              onPressed: () async {
+                final result = await showDialog<ProductModel>(
+                  context: context,
+                  builder: (context) => const AddProductDialog(),
+                );
+                if (result != null) {
+                  _addProduct(result);
+                }
+              },
+            ),
           ),
       ],
     );
@@ -863,7 +886,21 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade200)),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF2196F3))),
                 ),
-                onChanged: (v) => setState(() => item.quantity = int.tryParse(v) ?? 0),
+                onChanged: (v) {
+                  setState(() {
+                    int newQty = int.tryParse(v) ?? 0;
+                    item.quantity = newQty;
+                    
+                    if (item.rentedFromPartner) {
+                      final maxInternalStock = (item.currentStock != null && item.currentStock! > 0) ? item.currentStock! : 0;
+                      if (newQty > maxInternalStock) {
+                        item.partnerQuantity = newQty - maxInternalStock;
+                      } else {
+                        item.partnerQuantity = 0;
+                      }
+                    }
+                  });
+                },
               ),
             ),
           ),
@@ -988,6 +1025,35 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                       Text(
                         _eventDate == null ? 'Select Date' : '${_eventDate!.day}/${_eventDate!.month}/${_eventDate!.year}',
                         style: TextStyle(color: _eventDate == null ? Colors.grey : Colors.black, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Dispatch Date', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: () async {
+                  await context.showSyncfusionDateTimePicker(
+                    initialDate: _dispatchDate ?? _eventDate ?? DateTime.now(),
+                    initialTime: TimeOfDay.now(),
+                    title: 'Select Dispatch Date',
+                    onDateTimeSelected: (date, time) {
+                      setState(() => _dispatchDate = date);
+                    },
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(10), color: Colors.grey.shade50),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.local_shipping, size: 18, color: Color(0xFF8B2252)),
+                      const SizedBox(width: 10),
+                      Text(
+                        _dispatchDate == null ? 'Select Date' : '${_dispatchDate!.day}/${_dispatchDate!.month}/${_dispatchDate!.year}',
+                        style: TextStyle(color: _dispatchDate == null ? Colors.grey : Colors.black, fontSize: 13, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),

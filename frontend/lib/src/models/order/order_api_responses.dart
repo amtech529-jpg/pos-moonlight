@@ -249,6 +249,7 @@ class OrderCreateRequest {
   final String? eventName;
   final String? eventLocation;
   final DateTime? eventDate;
+  final DateTime? dispatchDate;
   final DateTime? returnDate;
   final String description;
   final String status;
@@ -262,6 +263,7 @@ class OrderCreateRequest {
     this.eventName,
     this.eventLocation,
     this.eventDate,
+    this.dispatchDate,
     this.returnDate,
     required this.description,
     required this.status,
@@ -277,6 +279,7 @@ class OrderCreateRequest {
       'event_name': eventName,
       'event_location': eventLocation,
       'event_date': eventDate?.toIso8601String().split('T')[0],
+      'dispatch_date': dispatchDate?.toIso8601String().split('T')[0],
       'return_date': returnDate?.toIso8601String().split('T')[0],
       'description': description,
       'status': OrderStatusConverter.toBackend(status),
@@ -289,6 +292,7 @@ class OrderUpdateRequest {
   final double advancePayment;
   final DateTime? expectedDeliveryDate;
   final DateTime? eventDate;
+  final DateTime? dispatchDate;
   final DateTime? returnDate;
   final String description;
   final String status;
@@ -297,6 +301,7 @@ class OrderUpdateRequest {
     required this.advancePayment, 
     this.expectedDeliveryDate, 
     this.eventDate,
+    this.dispatchDate,
     this.returnDate,
     required this.description, 
     required this.status
@@ -307,6 +312,7 @@ class OrderUpdateRequest {
       'advance_payment': advancePayment,
       'expected_delivery_date': expectedDeliveryDate?.toIso8601String().split('T')[0],
       'event_date': eventDate?.toIso8601String().split('T')[0],
+      'dispatch_date': dispatchDate?.toIso8601String().split('T')[0],
       'return_date': returnDate?.toIso8601String().split('T')[0],
       'description': description,
       'status': OrderStatusConverter.toBackend(status),

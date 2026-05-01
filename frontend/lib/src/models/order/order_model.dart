@@ -26,6 +26,7 @@ class OrderModel {
   final String? eventName;
   final String? eventLocation;
   final DateTime? eventDate;
+  final DateTime? dispatchDate;
   final DateTime? returnDate;
 
   // Enhanced Sales Integration Fields
@@ -74,6 +75,7 @@ class OrderModel {
     this.eventName,
     this.eventLocation,
     this.eventDate,
+    this.dispatchDate,
     this.returnDate,
   });
 
@@ -117,10 +119,11 @@ class OrderModel {
       orderSummary: json['order_summary'] as Map<String, dynamic>? ?? {},
       deliveryStatus: json['delivery_status'] as String? ?? 'No delivery date set',
       returnStatus: json['return_status'] as String? ?? 'NOT_STARTED',
-      eventName: json['event_name'] as String?,
-      eventLocation: json['event_location'] as String?,
-      eventDate: json['event_date'] != null ? DateTime.parse(json['event_date'] as String) : null,
-      returnDate: json['return_date'] != null ? DateTime.parse(json['return_date'] as String) : null,
+      eventName: json['event_name']?.toString(),
+      eventLocation: json['event_location']?.toString(),
+      eventDate: json['event_date'] != null ? DateTime.tryParse(json['event_date'].toString()) : null,
+      dispatchDate: json['dispatch_date'] != null ? DateTime.tryParse(json['dispatch_date'].toString()) : null,
+      returnDate: json['return_date'] != null ? DateTime.tryParse(json['return_date'].toString()) : null,
     );
   }
 
@@ -157,6 +160,7 @@ class OrderModel {
       'event_name': eventName,
       'event_location': eventLocation,
       'event_date': eventDate?.toIso8601String().split('T')[0],
+      'dispatch_date': dispatchDate?.toIso8601String().split('T')[0],
       'return_date': returnDate?.toIso8601String().split('T')[0],
     };
   }
@@ -225,6 +229,7 @@ class OrderModel {
     String? eventName,
     String? eventLocation,
     DateTime? eventDate,
+    DateTime? dispatchDate,
     DateTime? returnDate,
   }) {
     return OrderModel(
@@ -259,6 +264,7 @@ class OrderModel {
       eventName: eventName ?? this.eventName,
       eventLocation: eventLocation ?? this.eventLocation,
       eventDate: eventDate ?? this.eventDate,
+      dispatchDate: dispatchDate ?? this.dispatchDate,
       returnDate: returnDate ?? this.returnDate,
     );
   }

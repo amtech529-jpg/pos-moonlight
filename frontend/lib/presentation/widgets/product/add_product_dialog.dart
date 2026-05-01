@@ -543,8 +543,8 @@ class _AddProductDialogState extends State<AddProductDialog>
                   },
                   fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
                     return PremiumTextField(
-                      label: '${l10n.product} ${l10n.name}',
-                      hint: isCompact ? '${l10n.enterEmail} ${l10n.name}' : '${l10n.enterEmail} ${l10n.product} ${l10n.name}',
+                      label: l10n.productName,
+                      hint: l10n.enterProductName,
                       controller: controller,
                       focusNode: focusNode,
                       prefixIcon: Icons.label_outlined,
@@ -589,10 +589,8 @@ class _AddProductDialogState extends State<AddProductDialog>
             SizedBox(height: context.cardPadding),
 
             PremiumTextField(
-              label: '${l10n.product} ${l10n.detail}',
-              hint: isCompact
-                  ? '${l10n.enterEmail} ${l10n.details}'
-                  : '${l10n.enterEmail} ${l10n.product} ${l10n.description}',
+              label: l10n.productDetails,
+              hint: l10n.enterProductDetails,
               controller: _detailController,
               focusNode: _detailFocusNode,
               prefixIcon: Icons.description_outlined,
@@ -608,10 +606,8 @@ class _AddProductDialogState extends State<AddProductDialog>
             SizedBox(height: context.cardPadding),
 
             PremiumTextField(
-              label: l10n.price,
-              hint: isCompact
-                  ? '${l10n.enterEmail} ${l10n.price}'
-                  : '${l10n.enterEmail} ${l10n.price} (PKR)',
+              label: 'Rent Rate (Price)',
+              hint: l10n.enterPrice,
               controller: _priceController,
               focusNode: _priceFocusNode,
               prefixIcon: Icons.attach_money_rounded,
@@ -636,9 +632,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                 Expanded(
                   child: PremiumTextField(
                     label: l10n.quantity,
-                    hint: isCompact
-                        ? '${l10n.enterEmail} ${l10n.qty}'
-                        : '${l10n.enterEmail} ${l10n.quantity}',
+                    hint: l10n.enterQuantity,
                     controller: _quantityController,
                     focusNode: _quantityFocusNode,
                     selectAllOnFocus: true,
@@ -1030,7 +1024,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                       },
                     ),
                     const SizedBox(height: 4),
-                    const Text(" * Type a new category name to create automatically.", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    // Removed auto-creation text as strict dropdown selection is now enforced.
                   ],
                 );
               },

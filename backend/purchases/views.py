@@ -71,8 +71,8 @@ def purchase_list(request):
                             product = item.product
                             product.update_quantity(product.quantity + item.quantity)
                             # ✅ Update selling price and cost price if provided
-                            if item.retail_price > 0:
-                                product.price = item.retail_price
+                            # Always update retail_price (rent rate) even if 0
+                            product.price = item.retail_price
                             if item.unit_cost > 0:
                                 product.cost_price = item.unit_cost
                             product.save()
@@ -173,8 +173,8 @@ def purchase_detail(request, pk):
                         product.update_quantity(product.quantity + int(quantity))
                         # ✅ Update selling price and cost price if provided
                         new_retail = float(item_data.get('retail_price', 0))
-                        if new_retail > 0:
-                            product.price = new_retail
+                        # Always sync the rent rate
+                        product.price = new_retail
                         if unit_cost > 0:
                             product.cost_price = unit_cost
                         product.save()

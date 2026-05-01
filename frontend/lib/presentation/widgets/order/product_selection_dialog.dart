@@ -12,6 +12,7 @@ import '../globals/text_field.dart';
 import '../globals/drop_down.dart';
 import '../../../src/providers/vendor_provider.dart';
 import '../../../src/models/vendor/vendor_model.dart';
+import '../product/add_product_dialog.dart';
 
 class ProductSelectionDialog extends StatefulWidget {
   final List<String>? excludeProductIds;
@@ -615,6 +616,23 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
                               fontSize: context.bodyFontSize,
                               color: Colors.grey[600],
                             ),
+                          ),
+                          SizedBox(height: context.cardPadding),
+                          PremiumButton(
+                            text: 'Add Products',
+                            icon: Icons.add_rounded,
+                            width: 180,
+                            height: 45,
+                            onPressed: () async {
+                              final result = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => const AddProductDialog(),
+                              );
+                              if (result == true && mounted) {
+                                // Product was added, reload
+                                Provider.of<ProductProvider>(context, listen: false).loadProducts();
+                              }
+                            },
                           ),
                         ],
                       ],
