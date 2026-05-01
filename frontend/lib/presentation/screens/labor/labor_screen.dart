@@ -25,6 +25,7 @@ class LaborPage extends StatefulWidget {
 class _LaborPageState extends State<LaborPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -43,6 +44,7 @@ class _LaborPageState extends State<LaborPage> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -50,7 +52,7 @@ class _LaborPageState extends State<LaborPage> {
     final now = DateTime.now();
     final laborService = LaborService();
     
-    setState(() => _isLoading = true); // Need to add _isLoading to state if not there
+    setState(() => _isLoading = true);
     
     try {
       final response = await laborService.generateSalarySlips(
@@ -184,20 +186,16 @@ class _LaborPageState extends State<LaborPage> {
     setState(() => _isLoading = true);
     
     try {
-      // Get slips for this labor, order by year/month desc
       final response = await laborService.getSalarySlips(
         laborId: labor.id,
         page: 1,
         pageSize: 1,
       );
       
-      DebugHelper.printInfo('LaborScreen', 'Print Slip: laborId=${labor.id}, success=${response.success}, count=${response.data?.slips.length}');
-
       if (response.success && response.data != null && response.data!.slips.isNotEmpty) {
         await SalarySlipPdfService.previewAndPrintSlip(response.data!.slips.first);
       } else {
         if (mounted) {
-          DebugHelper.printError('LaborScreen', 'No slip found for labor: ${labor.name}');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('No salary slips found for this employee. Process salaries first.'),
@@ -222,157 +220,45 @@ class _LaborPageState extends State<LaborPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3E9E7), // Matched with the creamy background
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Employee Management",
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF333333),
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      "Manage and track all employee details",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF666666),
-                      ),
-                    ),
-                  ],
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => const AddLaborDialog(),
-                    ).then((_) {
-                      final provider = context.read<LaborProvider>();
-                      provider.refreshLabors();
-                      provider.loadStatistics();
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF222222),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    "+ Add Now",
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // Stats row (4 cards as per screenshot)
-            Consumer<LaborProvider>(
-              builder: (context, provider, child) {
-                final stats = provider.statistics;
-                return Row(
-                  children: [
-                    _buildSummaryCard("Total Employees", "${stats?.totalLabors ?? 0}"),
-                    const SizedBox(width: 16),
-                    _buildSummaryCard(
-                      "Total Salary Budget", 
-                      "Rs. ${NumberFormat('#,##0').format(stats?.salaryStatistics.totalSalaryCost ?? 0.0)}", 
-                      count: "${stats?.totalLabors ?? 0}",
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const SalaryScreen()),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 16),
-                    _buildSummaryCard("Active Employees", "${stats?.activeLabors ?? 0}"),
-                    const SizedBox(width: 16),
-                    _buildSummaryCard("Inactive Employees", "${stats?.inactiveLabors ?? 0}"),
-                  ],
-                );
-              }
-            ),
-            const SizedBox(height: 32),
-
-            // Action Row: Search, Filter, Add Employee
-            Row(
-              children: [
-                // Search Bar
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    height: 87,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: TextField(
-                            focusNode: _searchFocusNode,
-                            controller: _searchController,
-                            cursorColor: Colors.black,
-                            textAlignVertical: TextAlignVertical.center,
-                            style: const TextStyle(fontSize: 15, color: Colors.black),
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: _searchFocusNode.hasFocus 
-                                  ? const Color(0xFFD9D9D9).withOpacity(0.7) 
-                                  : const Color(0xFFE8E8E8),
-                              hintText: "Search employee id or name",
-                              hintStyle: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 16, fontWeight: FontWeight.w500),
-                              prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFBBBBBB), size: 24),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                            ),
-                            onChanged: (value) => context.read<LaborProvider>().searchLabors(value),
-                          ),
+      backgroundColor: const Color(0xFFF3E9E7),
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Employee Management",
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF333333),
                         ),
                       ),
-                    ),
+                      SizedBox(height: 4),
+                      Text(
+                        "Manage and track all employee details",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF666666),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-
-                const SizedBox(width: 16),
-                // Add Employee Button
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
+                  ElevatedButton(
+                    onPressed: () {
                       showDialog(
                         context: context,
                         builder: (context) => const AddLaborDialog(),
@@ -382,12 +268,62 @@ class _LaborPageState extends State<LaborPage> {
                         provider.loadStatistics();
                       });
                     },
-                    borderRadius: BorderRadius.circular(15),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF222222),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      "+ Add Now",
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+
+              // Stats row
+              Consumer<LaborProvider>(
+                builder: (context, provider, child) {
+                  final stats = provider.statistics;
+                  return Row(
+                    children: [
+                      _buildSummaryCard("Total Employees", "${stats?.totalLabors ?? 0}"),
+                      const SizedBox(width: 16),
+                      _buildSummaryCard(
+                        "Total Salary Budget", 
+                        "Rs. ${NumberFormat('#,##0').format(stats?.salaryStatistics.totalSalaryCost ?? 0.0)}", 
+                        count: "${stats?.totalLabors ?? 0}",
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const SalaryScreen()),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 16),
+                      _buildSummaryCard("Active Employees", "${stats?.activeLabors ?? 0}"),
+                      const SizedBox(width: 16),
+                      _buildSummaryCard("Inactive Employees", "${stats?.inactiveLabors ?? 0}"),
+                    ],
+                  );
+                }
+              ),
+              const SizedBox(height: 32),
+
+              // Action Row
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
                     child: Container(
                       height: 87,
-                      width: 180,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1ABC9C), // Emerald/Green color from screenshot
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: [
                           BoxShadow(
@@ -397,156 +333,218 @@ class _LaborPageState extends State<LaborPage> {
                           ),
                         ],
                       ),
-                      child: const Center(
-                        child: Text(
-                          "+ Add Employee",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: TextField(
+                              focusNode: _searchFocusNode,
+                              controller: _searchController,
+                              cursorColor: Colors.black,
+                              textAlignVertical: TextAlignVertical.center,
+                              style: const TextStyle(fontSize: 15, color: Colors.black),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: _searchFocusNode.hasFocus 
+                                    ? const Color(0xFFD9D9D9).withOpacity(0.7) 
+                                    : const Color(0xFFE8E8E8),
+                                hintText: "Search employee id or name",
+                                hintStyle: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 16, fontWeight: FontWeight.w500),
+                                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFBBBBBB), size: 24),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                              ),
+                              onChanged: (value) => context.read<LaborProvider>().searchLabors(value),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
 
-            const SizedBox(height: 48),
-
-            // Employee Table
-            Consumer<LaborProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                
-                return Column(
-                  children: [
-                    // Table Header strip
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF2F2F2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        children: [
-                          Expanded(flex: 2, child: Text("Emp ID", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
-                          Expanded(flex: 2, child: Text("Name", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
-                          Expanded(flex: 2, child: Text("Role", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
-                          Expanded(flex: 2, child: Text("Salary", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
-                          Expanded(flex: 2, child: Text("Advances", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
-                          Expanded(flex: 2, child: Text("Balance", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
-                          Expanded(flex: 2, child: Text("City", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
-                          Expanded(flex: 2, child: Text("Status", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)), textAlign: TextAlign.center)),
-                          Expanded(flex: 2, child: Text("Action", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)), textAlign: TextAlign.center)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (provider.labors.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: Center(child: Text("No employees found")),
-                      )
-                    else
-                      ListView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        itemCount: provider.labors.length,
-                        itemBuilder: (context, index) {
-                          final labor = provider.labors[index];
-                          return _buildEmployeeRow(
-                            context,
-                            labor,
-                          );
-                        },
-                      ),
-                  ],
-                );
-              }
-            ),
-
-            const SizedBox(height: 32),
-
-            // Bottom Buttons
-            Row(
-              children: [
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _isLoading ? null : _processSalaries,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _isLoading ? Colors.grey : const Color(0xFF1ABC9C),
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF1ABC9C).withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.flash_on, color: Colors.white, size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            _isLoading ? "Processing..." : "Run Monthly Payroll",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                  const SizedBox(width: 16),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => const AddLaborDialog(),
+                        ).then((_) {
+                          final provider = context.read<LaborProvider>();
+                          provider.refreshLabors();
+                          provider.loadStatistics();
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(15),
+                      child: Container(
+                        height: 87,
+                        width: 180,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1ABC9C), 
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 24),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SalaryScreen()),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFBD0D1D), width: 1.5),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.history_rounded, color: Color(0xFFBD0D1D), size: 18),
-                          const SizedBox(width: 8),
-                          const Text(
-                            "View Payroll History",
+                          ],
+                        ),
+                        child: const Center(
+                          child: Text(
+                            "+ Add Employee",
                             style: TextStyle(
-                              color: Color(0xFFBD0D1D),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+
+              const SizedBox(height: 48),
+
+              // Employee Table
+              Consumer<LaborProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  return Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF2F2F2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          children: [
+                            Expanded(flex: 2, child: Text("Emp ID", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
+                            Expanded(flex: 2, child: Text("Name", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
+                            Expanded(flex: 2, child: Text("Role", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
+                            Expanded(flex: 2, child: Text("Salary", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
+                            Expanded(flex: 2, child: Text("Advances", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
+                            Expanded(flex: 2, child: Text("Balance", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
+                            Expanded(flex: 2, child: Text("City", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)))),
+                            Expanded(flex: 2, child: Text("Status", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)), textAlign: TextAlign.center)),
+                            Expanded(flex: 2, child: Text("Action", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF888888)), textAlign: TextAlign.center)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (provider.labors.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Center(child: Text("No employees found")),
+                        )
+                      else
+                        ListView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          shrinkWrap: true,
+                          itemCount: provider.labors.length,
+                          itemBuilder: (context, index) {
+                            final labor = provider.labors[index];
+                            return _buildEmployeeRow(context, labor);
+                          },
+                        ),
+                    ],
+                  );
+                }
+              ),
+
+              const SizedBox(height: 32),
+
+              // Bottom Buttons
+              Row(
+                children: [
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _isLoading ? null : _processSalaries,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _isLoading ? Colors.grey : const Color(0xFF1ABC9C),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF1ABC9C).withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.flash_on, color: Colors.white, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              _isLoading ? "Processing..." : "Run Monthly Payroll",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SalaryScreen()),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFBD0D1D), width: 1.5),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.history_rounded, color: Color(0xFFBD0D1D), size: 18),
+                            const SizedBox(width: 8),
+                            const Text(
+                              "View Payroll History",
+                              style: TextStyle(
+                                color: Color(0xFFBD0D1D),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -637,8 +635,6 @@ class _LaborPageState extends State<LaborPage> {
       ),
     );
   }
-
-
 
   Widget _buildEmployeeRow(BuildContext context, LaborModel labor) {
     final statusColor = labor.isActive ? const Color(0xFF2ECC71) : const Color(0xFFFF9F43);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sizer/sizer.dart';
 import '../../../src/theme/app_theme.dart';
 import 'package:file_picker/file_picker.dart';
@@ -17,11 +18,18 @@ class _BackupSecurityScreenState extends State<BackupSecurityScreen> {
   List<Map<String, dynamic>> _backups = [];
   bool _isLoading = false;
   final Dio _dio = Dio();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadBackups();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBackups() async {
@@ -35,6 +43,194 @@ class _BackupSecurityScreenState extends State<BackupSecurityScreen> {
       }
     } catch (e) {
       _showError('Failed to load backups: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _showExcelExportOptionsDialog() {
+    final Map<String, String> availableModules = {
+      'sales': 'Invoices & Financials',
+      'labors': 'Employees & HR Records',
+      'products': 'Inventory & Categories',
+      'customers': 'Customer Directory',
+      'purchases': 'Purchase Management',
+      'orders': 'Orders & Rental History',
+      'expenses': 'Expense Management',
+    };
+    List<String> selectedModules = [];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              titlePadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 0.0),
+              title: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF27AE60), // Excel Green
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.table_view_outlined, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text('Excel Export Options', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              content: SizedBox(
+                width: 450, // Force a bit more width
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        title: const Text('Full Data Export', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('Export all readable records to Excel'),
+                        leading: const Icon(Icons.description, color: Colors.green),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _createReadableBackup();
+                        },
+                      ),
+                      const Divider(),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Selective Export', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                      ),
+                      ...availableModules.entries.map((entry) {
+                        return CheckboxListTile(
+                          title: Text(entry.value, style: const TextStyle(fontSize: 14)),
+                          value: selectedModules.contains(entry.key),
+                          onChanged: (bool? value) {
+                            setDialogState(() {
+                              if (value == true) {
+                                selectedModules.add(entry.key);
+                              } else {
+                                selectedModules.remove(entry.key);
+                              }
+                            });
+                          },
+                          activeColor: Colors.green,
+                          dense: true,
+                        );
+                      }).toList(),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _createReadableBackup();
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.green[700],
+                  ),
+                  child: const Text(
+                    'Full Export',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: selectedModules.isEmpty 
+                    ? null 
+                    : () {
+                        Navigator.pop(context);
+                        _createReadableBackup(modules: selectedModules);
+                      },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey[300],
+                    disabledForegroundColor: Colors.grey[600],
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 1,
+                  ),
+                  child: const Text(
+                    'Export Selected',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 13
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _createReadableBackup({List<String>? modules}) async {
+    setState(() => _isLoading = true);
+    try {
+      String url = '${ApiConfig.baseUrl}/backup/readable/';
+      if (modules != null && modules.isNotEmpty) {
+        url += '?modules=${modules.join(',')}';
+      }
+
+      final response = await _dio.get(
+        url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      
+      if (response.statusCode == 200) {
+        String fileName = 'Moonlight_Data_Export_${DateTime.now().toString().replaceAll(':', '-').split('.')[0]}.xlsx';
+
+        if (kIsWeb) {
+          await FilePicker.platform.saveFile(
+            fileName: fileName,
+            bytes: response.data,
+          );
+          _showSuccess('Excel data export downloaded successfully');
+        } else {
+          final result = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save Data Export (Excel)',
+            fileName: fileName,
+          );
+          
+          if (result != null) {
+            final file = File(result);
+            await file.writeAsBytes(response.data);
+            _showSuccess('Excel data export saved successfully');
+          }
+        }
+      }
+    } catch (e) {
+      _showError('Failed to create data export: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -63,16 +259,24 @@ class _BackupSecurityScreenState extends State<BackupSecurityScreen> {
         }
         fileName += '${DateTime.now().toString().replaceAll(':', '-').split('.')[0]}.json';
 
-        final result = await FilePicker.platform.saveFile(
-          dialogTitle: 'Save Backup',
-          fileName: fileName,
-        );
-        
-        if (result != null) {
-          final file = File(result);
-          await file.writeAsBytes(response.data);
-          _showSuccess('Backup created and saved successfully');
-          _loadBackups();
+        if (kIsWeb) {
+          await FilePicker.platform.saveFile(
+            fileName: fileName,
+            bytes: response.data,
+          );
+          _showSuccess('Backup downloaded successfully');
+        } else {
+          final result = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save Backup',
+            fileName: fileName,
+          );
+          
+          if (result != null) {
+            final file = File(result);
+            await file.writeAsBytes(response.data);
+            _showSuccess('Backup saved successfully');
+            _loadBackups(); // Refresh list
+          }
         }
       }
     } catch (e) {
@@ -430,17 +634,23 @@ class _BackupSecurityScreenState extends State<BackupSecurityScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 24),
-            _buildActionButtons(),
-            const SizedBox(height: 32),
-            _buildBackupsList(),
-          ],
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 24),
+              _buildActionButtons(),
+              const SizedBox(height: 32),
+              _buildBackupsList(),
+            ],
+          ),
         ),
       ),
     );
@@ -468,28 +678,38 @@ class _BackupSecurityScreenState extends State<BackupSecurityScreen> {
       children: [
         Expanded(
           child: _buildActionCard(
-            title: "Create Backup",
-            subtitle: "Download current database",
-            icon: Icons.backup,
+            title: "System Backup",
+            subtitle: "For Data Recovery (JSON)",
+            icon: Icons.settings_backup_restore,
             color: AppTheme.primaryMaroon,
             onTap: _isLoading ? null : _showBackupOptionsDialog,
           ),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: 16),
         Expanded(
           child: _buildActionCard(
-            title: "Restore Backup",
-            subtitle: "Upload and restore from file",
-            icon: Icons.restore,
+            title: "Excel Export",
+            subtitle: "Human Readable (.xlsx)",
+            icon: Icons.table_view,
+            color: Colors.green,
+            onTap: _isLoading ? null : _showExcelExportOptionsDialog,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _buildActionCard(
+            title: "Restore Data",
+            subtitle: "Upload recovery file",
+            icon: Icons.upload_file,
             color: Colors.orange,
             onTap: _isLoading ? null : _restoreBackup,
           ),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: 16),
         Expanded(
           child: _buildActionCard(
             title: "Refresh List",
-            subtitle: "Reload backup files",
+            subtitle: "Reload backups",
             icon: Icons.refresh,
             color: Colors.blue,
             onTap: _isLoading ? null : _loadBackups,

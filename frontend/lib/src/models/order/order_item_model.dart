@@ -15,6 +15,7 @@ class OrderItemModel {
   final bool rentedFromPartner;
   final String? partnerId;
   final double? partnerRate;
+  final int? partnerQuantity;
 
   // Product details
   final String? productColor;
@@ -54,6 +55,7 @@ class OrderItemModel {
     this.rentedFromPartner = false,
     this.partnerId,
     this.partnerRate,
+    this.partnerQuantity,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
@@ -87,6 +89,7 @@ class OrderItemModel {
       rentedFromPartner: json['rented_from_partner'] as bool? ?? false,
       partnerId: json['partner']?.toString(),
       partnerRate: _parseDouble(json['partner_rate']),
+      partnerQuantity: json['partner_quantity'] as int?,
     );
   }
 
@@ -120,6 +123,7 @@ class OrderItemModel {
       'rented_from_partner': rentedFromPartner,
       'partner': partnerId,
       'partner_rate': partnerRate,
+      'partner_quantity': partnerQuantity,
     };
   }
 
@@ -158,6 +162,7 @@ class OrderItemModel {
     bool? rentedFromPartner,
     String? partnerId,
     double? partnerRate,
+    int? partnerQuantity,
     double? rate,
     int? days,
   }) {
@@ -185,6 +190,7 @@ class OrderItemModel {
       rentedFromPartner: rentedFromPartner ?? this.rentedFromPartner,
       partnerId: partnerId ?? this.partnerId,
       partnerRate: partnerRate ?? this.partnerRate,
+      partnerQuantity: partnerQuantity ?? this.partnerQuantity,
     );
   }
 

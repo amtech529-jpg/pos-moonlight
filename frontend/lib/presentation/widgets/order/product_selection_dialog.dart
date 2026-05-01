@@ -43,6 +43,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
   final _partnerRateFocusNode = FocusNode();
   final _eventNameFocusNode = FocusNode();
   final _eventLocationFocusNode = FocusNode();
+  final _submitFocusNode = FocusNode();
 
   String _searchQuery = '';
   List<ProductModel> _filteredProducts = [];
@@ -60,6 +61,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  final _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -89,6 +91,24 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
     );
 
     _animationController.forward();
+    
+    // Add scroll listeners to focus nodes
+    final allNodes = [
+      _unitPriceFocusNode,
+      _quantityFocusNode,
+      _notesFocusNode,
+      _partnerRateFocusNode,
+      _submitFocusNode,
+    ];
+    
+    for (var node in allNodes) {
+      node.addListener(() {
+        if (mounted) setState(() {});
+        if (node.hasFocus) {
+          _scrollToField(node);
+        }
+      });
+    }
   }
 
   @override
@@ -120,7 +140,33 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
     _unitPriceFocusNode.dispose();
     _quantityFocusNode.dispose();
     _partnerRateFocusNode.dispose();
+    _submitFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToField(FocusNode node) {
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (node.context != null && node.hasFocus) {
+        Scrollable.ensureVisible(
+          node.context!,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.5, // Scroll to center for fields
+          alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        );
+        
+        // If it's the submit button, ensure it's at the bottom
+        if (node == _submitFocusNode) {
+          Scrollable.ensureVisible(
+            node.context!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            alignment: 1.0, // Force to bottom for button
+          );
+        }
+      }
+    });
   }
 
   Future<void> _loadProducts() async {
@@ -200,6 +246,8 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
       _selectedProduct = product;
       _unitPriceController.text = product.price.toStringAsFixed(2);
     });
+    // Auto focus quantity field after selection
+    _quantityFocusNode.requestFocus();
   }
 
   void _addToOrder() {
@@ -220,44 +268,27 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
       
       List<Map<String, dynamic>> selectedItems = [];
       
-      // Smart Splitting Logic
-      // If Partner Rental is ON and requested quantity > available own stock
-      if (_rentedFromPartner && totalQuantity > availableQty) {
-        // Step 1: Use ALL available own stock first (if any)
-        if (availableQty > 0) {
-          selectedItems.add({
-            'product': _selectedProduct!,
-            'quantity': availableQty,
-            'unitPrice': unitPrice,
-            'customizationNotes': customizationNotes.isNotEmpty ? customizationNotes : null,
-            'rentedFromPartner': false,
-            'partnerId': null,
-            'partnerRate': null,
-          });
+      int partnerQty = 0;
+      if (_rentedFromPartner) {
+        if (totalQuantity > availableQty && availableQty > 0) {
+          partnerQty = totalQuantity - availableQty;
+        } else if (availableQty <= 0) {
+          partnerQty = totalQuantity;
+        } else {
+          partnerQty = totalQuantity;
         }
-
-        // Step 2: Take ONLY the remaining amount from Partner
-        selectedItems.add({
-          'product': _selectedProduct!,
-          'quantity': totalQuantity - availableQty,
-          'unitPrice': unitPrice,
-          'customizationNotes': customizationNotes.isNotEmpty ? customizationNotes : null,
-          'rentedFromPartner': true,
-          'partnerId': _selectedPartnerId,
-          'partnerRate': double.tryParse(_partnerRateController.text),
-        });
-      } else {
-        // Normal Case: All from one source
-        selectedItems.add({
-          'product': _selectedProduct!,
-          'quantity': totalQuantity,
-          'unitPrice': unitPrice,
-          'customizationNotes': customizationNotes.isNotEmpty ? customizationNotes : null,
-          'rentedFromPartner': _rentedFromPartner,
-          'partnerId': _selectedPartnerId,
-          'partnerRate': double.tryParse(_partnerRateController.text),
-        });
       }
+
+      selectedItems.add({
+        'product': _selectedProduct!,
+        'quantity': totalQuantity,
+        'unitPrice': unitPrice,
+        'customizationNotes': customizationNotes.isNotEmpty ? customizationNotes : null,
+        'rentedFromPartner': _rentedFromPartner,
+        'partnerId': _selectedPartnerId,
+        'partnerRate': double.tryParse(_partnerRateController.text),
+        'partnerQuantity': partnerQty > 0 ? partnerQty : null,
+      });
 
       _animationController.reverse().then((_) {
         if (mounted) Navigator.of(context).pop(selectedItems);
@@ -327,11 +358,11 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
                   ),
                   maxHeight: ResponsiveBreakpoints.responsive(
                     context,
-                    tablet: 85.h,
-                    small: 80.h,
-                    medium: 75.h,
-                    large: 70.h,
-                    ultrawide: 65.h,
+                    tablet: 95.h,
+                    small: 90.h,
+                    medium: 90.h,
+                    large: 85.h,
+                    ultrawide: 80.h,
                   ),
                 ),
                 margin: EdgeInsets.all(context.mainPadding),
@@ -432,13 +463,12 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
   }
 
   Widget _buildFormContent() {
-    final ScrollController _contentScrollController = ScrollController();
     return Scrollbar(
-      controller: _contentScrollController,
+      controller: _scrollController,
       thumbVisibility: true,
       trackVisibility: true,
       child: SingleChildScrollView(
-        controller: _contentScrollController,
+        controller: _scrollController,
         child: Padding(
           padding: EdgeInsets.all(context.smallPadding),
           child: Form(
@@ -596,11 +626,11 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
               return SizedBox(
                 height: ResponsiveBreakpoints.responsive(
                   context,
-                  tablet: 40.h,
-                  small: 35.h,
-                  medium: 30.h,
-                  large: 25.h,
-                  ultrawide: 20.h,
+                  tablet: 50.h,
+                  small: 45.h,
+                  medium: 40.h,
+                  large: 35.h,
+                  ultrawide: 30.h,
                 ),
                 child: ListView.builder(
                   shrinkWrap: true,
@@ -939,10 +969,12 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
             prefixIcon: Icons.description_outlined,
             focusNode: _notesFocusNode,
             maxLines: 3,
-            textInputAction: _rentedFromPartner ? TextInputAction.next : TextInputAction.done,
+            textInputAction: TextInputAction.next,
             onSubmitted: (_) {
               if (_rentedFromPartner) {
                 FocusScope.of(context).requestFocus(_partnerRateFocusNode);
+              } else {
+                FocusScope.of(context).requestFocus(_submitFocusNode);
               }
             },
             validator: (value) {
@@ -1143,6 +1175,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
           height: context.buttonHeight,
           icon: Icons.add_rounded,
           backgroundColor: AppTheme.primaryMaroon,
+          focusNode: _submitFocusNode,
         ),
         SizedBox(height: context.cardPadding),
         PremiumButton(
@@ -1151,7 +1184,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
           isOutlined: true,
           height: context.buttonHeight,
           backgroundColor: Colors.grey[600],
-          textColor: Colors.grey[600],
+          textColor: Colors.black,
         ),
       ],
     );
@@ -1169,7 +1202,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
             isOutlined: true,
             height: context.buttonHeight / 1.5,
             backgroundColor: Colors.grey[600],
-            textColor: Colors.grey[600],
+            textColor: Colors.black,
           ),
         ),
         SizedBox(width: context.cardPadding),
@@ -1182,6 +1215,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
             height: context.buttonHeight / 1.5,
             icon: Icons.add_rounded,
             backgroundColor: AppTheme.primaryMaroon,
+            focusNode: _submitFocusNode,
           ),
         ),
       ],
@@ -1297,6 +1331,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
             prefixIcon: Icons.payments_outlined,
             focusNode: _partnerRateFocusNode,
             textInputAction: TextInputAction.done,
+            onSubmitted: (_) => FocusScope.of(context).requestFocus(_submitFocusNode),
             validator: (value) {
               if (_rentedFromPartner && (value?.isEmpty ?? true)) {
                 return 'Please enter partner rate';

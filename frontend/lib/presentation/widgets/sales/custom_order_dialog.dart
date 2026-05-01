@@ -154,11 +154,7 @@ class _CreateCustomOrderDialogState extends State<CreateCustomOrderDialog>
         context: context,
         barrierDismissible: false,
         builder: (context) => OrderSuccessDialog(
-          saleId: saleId, // ✅ Now passed correctly
-          invoiceNumber: invoiceNumber, // ✅ Now passed correctly
-          totalPrice: _totalAmount,
-          advanceAmount: _advanceAmount,
-          deliveryDate: _selectedDeliveryDate,
+          sale: provider.sales.first,
         ),
       );
     });

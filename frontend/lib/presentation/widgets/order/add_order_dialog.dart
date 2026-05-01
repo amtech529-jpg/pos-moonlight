@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
 import '../../../l10n/app_localizations.dart';
@@ -27,6 +28,8 @@ class AddOrderDialog extends StatefulWidget {
 class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
+  final _scrollController2 = ScrollController();
+  final _scrollController3 = ScrollController();
 
   // Controllers
   final _customerController = TextEditingController();
@@ -51,6 +54,9 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
   final _partnerRateFocusNode = FocusNode();
   final _eventNameFocusNode = FocusNode();
   final _eventLocationFocusNode = FocusNode();
+  final _customerFocusNode = FocusNode();
+  final _eventDateFocusNode = FocusNode();
+  final _returnDateFocusNode = FocusNode();
   final _nextButtonFocusNode = FocusNode();
   late List<FocusNode> _statusFocusNodes;
 
@@ -119,13 +125,53 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
 
     _advancePaymentController.addListener(_updateRemainingAmount);
     _statusFocusNodes = _orderStatuses.map((_) => FocusNode()).toList();
+    
+    // Add auto-scroll listeners
+    final allNodes = [
+      _customerFocusNode,
+      _eventNameFocusNode,
+      _eventLocationFocusNode,
+      _eventDateFocusNode,
+      _returnDateFocusNode,
+      _notesFocusNode,
+      ..._statusFocusNodes,
+      _nextButtonFocusNode,
+    ];
+    
+    for (var node in allNodes) {
+      node.addListener(() {
+        if (mounted) setState(() {});
+        if (node.hasFocus) {
+          _scrollToField(node);
+        }
+      });
+    }
+
     _animationController.forward();
+  }
+
+  void _scrollToField(FocusNode node) {
+    if (_scrollController.hasClients) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        final context = node.context;
+        if (context != null) {
+          Scrollable.ensureVisible(
+            context,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            alignment: 0.5,
+          );
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
     _scrollController.dispose();
+    _scrollController2.dispose();
+    _scrollController3.dispose();
     _pageController.dispose();
     _customerController.dispose();
     _descriptionController.dispose();
@@ -147,6 +193,9 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     _partnerRateFocusNode.dispose();
     _eventNameFocusNode.dispose();
     _eventLocationFocusNode.dispose();
+    _customerFocusNode.dispose();
+    _eventDateFocusNode.dispose();
+    _returnDateFocusNode.dispose();
     _nextButtonFocusNode.dispose();
     for (var node in _statusFocusNodes) {
       node.dispose();
@@ -168,6 +217,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
       _selectedCustomer = customer;
       if (customer != null) {
         _customerController.text = customer.name;
+        _eventNameFocusNode.requestFocus();
       }
     });
   }
@@ -197,6 +247,13 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
   }
 
   void _nextStep() {
+    if (_currentStep == 0) {
+      if (!_formKey.currentState!.validate()) {
+        _showErrorSnackbar("Please fill all required event details!");
+        return;
+      }
+    }
+    
     if (_currentStep < 2) {
       setState(() {
         _currentStep++;
@@ -604,6 +661,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                     return PremiumDropdownField<Customer>(
                       label: '${l10n.customer} *',
                       hint: l10n.selectCustomer,
+                      focusNode: _customerFocusNode,
                       items: customerProvider.customers
                           .map((customer) => DropdownItem<Customer>(
                           value: customer,
@@ -644,24 +702,27 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                   children: [
                     Expanded(
                       child: PremiumTextField(
-                        label: 'Event Name',
+                        label: 'Event Name *',
                         hint: 'e.g. Wedding of X',
                         controller: _eventNameController,
                         prefixIcon: Icons.festival_rounded,
                         focusNode: _eventNameFocusNode,
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => FocusScope.of(context).requestFocus(_eventLocationFocusNode),
+                        validator: (value) => value == null || value.isEmpty ? "Event name is required" : null,
                       ),
                     ),
                     SizedBox(width: context.smallPadding),
                     Expanded(
                       child: PremiumTextField(
-                        label: 'Event Location',
+                        label: 'Event Location *',
                         hint: 'Venue / Hall Name',
                         controller: _eventLocationController,
                         prefixIcon: Icons.location_on_rounded,
                         focusNode: _eventLocationFocusNode,
-                        textInputAction: TextInputAction.done,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => _eventDateFocusNode.requestFocus(),
+                        validator: (value) => value == null || value.isEmpty ? "Location is required" : null,
                       ),
                     ),
                   ],
@@ -670,90 +731,56 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                 Row(
                   children: [
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () async {
-                          final date = await showDatePicker(
-                            context: context,
-                            initialDate: _selectedEventDate ?? DateTime.now(),
-                            firstDate: DateTime.now().subtract(const Duration(days: 30)),
-                            lastDate: DateTime.now().add(const Duration(days: 365)),
-                            builder: (context, child) {
-                              return Theme(
-                                data: ThemeData.light().copyWith(
-                                  colorScheme: const ColorScheme.light(
-                                    primary: AppTheme.primaryMaroon,
-                                    onPrimary: Colors.white,
-                                    surface: Colors.white,
-                                    onSurface: Colors.black87,
-                                  ),
-                                  dialogBackgroundColor: Colors.white,
-                                  textTheme: const TextTheme(
-                                    bodyLarge: TextStyle(color: Colors.black87),
-                                    bodyMedium: TextStyle(color: Colors.black87),
-                                  ),
-                                ),
-                                child: child!,
-                              );
-                            },
-                          );
-                          if (date != null) {
-                            setState(() {
-                              _selectedEventDate = date;
-                              _eventDateController.text = '${date.day}/${date.month}/${date.year}';
-                            });
+                      child: Focus(
+                        focusNode: _eventDateFocusNode,
+                        onKeyEvent: (node, event) {
+                          if (event is KeyDownEvent && 
+                              (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
+                            _selectEventDate(context);
+                            return KeyEventResult.handled;
                           }
+                          return KeyEventResult.ignored;
                         },
-                        child: AbsorbPointer(
-                          child: PremiumTextField(
-                            label: 'Event Date',
-                            hint: 'Select Date',
-                            controller: _eventDateController,
-                            prefixIcon: Icons.calendar_today_rounded,
+                        child: GestureDetector(
+                          onTap: () => _selectEventDate(context),
+                          child: AbsorbPointer(
+                            child: PremiumTextField(
+                              label: 'Event Date *',
+                              hint: 'Select Date',
+                              controller: _eventDateController,
+                              prefixIcon: Icons.calendar_today_rounded,
+                              focusNode: FocusNode(), // Dummy focus node to prevent internal focus stealing
+                              enabled: true,
+                              validator: (value) => value == null || value.isEmpty ? "Required" : null,
+                            ),
                           ),
                         ),
                       ),
                     ),
                     SizedBox(width: context.smallPadding),
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () async {
-                          final date = await showDatePicker(
-                            context: context,
-                            initialDate: _selectedReturnDate ?? (_selectedEventDate?.add(const Duration(days: 1)) ?? DateTime.now().add(const Duration(days: 1))),
-                            firstDate: _selectedEventDate ?? DateTime.now(),
-                            lastDate: DateTime.now().add(const Duration(days: 365)),
-                            builder: (context, child) {
-                              return Theme(
-                                data: ThemeData.light().copyWith(
-                                  colorScheme: const ColorScheme.light(
-                                    primary: AppTheme.primaryMaroon,
-                                    onPrimary: Colors.white,
-                                    surface: Colors.white,
-                                    onSurface: Colors.black87,
-                                  ),
-                                  dialogBackgroundColor: Colors.white,
-                                  textTheme: const TextTheme(
-                                    bodyLarge: TextStyle(color: Colors.black87),
-                                    bodyMedium: TextStyle(color: Colors.black87),
-                                  ),
-                                ),
-                                child: child!,
-                              );
-                            },
-                          );
-                          if (date != null) {
-                            setState(() {
-                              _selectedReturnDate = date;
-                              _returnDateController.text = '${date.day}/${date.month}/${date.year}';
-                            });
+                      child: Focus(
+                        focusNode: _returnDateFocusNode,
+                        onKeyEvent: (node, event) {
+                          if (event is KeyDownEvent && 
+                              (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
+                            _selectReturnDate(context);
+                            return KeyEventResult.handled;
                           }
+                          return KeyEventResult.ignored;
                         },
-                        child: AbsorbPointer(
-                          child: PremiumTextField(
-                            label: 'Return Date',
-                            hint: 'Select Date',
-                            controller: _returnDateController,
-                            prefixIcon: Icons.event_available_rounded,
+                        child: GestureDetector(
+                          onTap: () => _selectReturnDate(context),
+                          child: AbsorbPointer(
+                            child: PremiumTextField(
+                              label: 'Return Date *',
+                              hint: 'Select Date',
+                              controller: _returnDateController,
+                              prefixIcon: Icons.event_available_rounded,
+                              focusNode: FocusNode(), // Dummy focus node
+                              enabled: true,
+                              validator: (value) => value == null || value.isEmpty ? "Required" : null,
+                            ),
                           ),
                         ),
                       ),
@@ -824,9 +851,13 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     final l10n = AppLocalizations.of(context)!;
 
     return Scrollbar(
+      controller: _scrollController2,
       thumbVisibility: true,
       trackVisibility: true,
+      thickness: 8,
+      radius: const Radius.circular(4),
       child: SingleChildScrollView(
+        controller: _scrollController2,
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),
           child: Column(
@@ -989,9 +1020,13 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     final l10n = AppLocalizations.of(context)!;
 
     return Scrollbar(
+      controller: _scrollController3,
       thumbVisibility: true,
       trackVisibility: true,
+      thickness: 8,
+      radius: const Radius.circular(4),
       child: SingleChildScrollView(
+        controller: _scrollController3,
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),
           child: Column(
@@ -1095,17 +1130,20 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                       valueColor: Colors.orange[800]),
                 ],
 
+/*
                 if (_selectedDeliveryDate != null) ...[
                   _buildSummaryRow(l10n.dueDate,
                       '${_selectedDeliveryDate!.day.toString().padLeft(2, '0')}/${_selectedDeliveryDate!.month.toString().padLeft(2, '0')}/${_selectedDeliveryDate!.year}',
                       Icons.calendar_today),
                 ],
+*/
               ],
             ),
           ),
 
           SizedBox(height: context.cardPadding),
 
+/*
           // Delivery Information
           _buildFormCard(
             child: Column(
@@ -1172,6 +1210,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
               ],
             ),
           ),
+*/
         ],
       ),
     ),
@@ -1374,13 +1413,23 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
           vertical: context.smallPadding * 0.7,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.15) : AppTheme.lightGray.withOpacity(0.1),
+          color: isSelected 
+              ? color.withOpacity(0.15) 
+              : (focusNode.hasFocus ? const Color(0xFFFFD700).withOpacity(0.15) : AppTheme.lightGray.withOpacity(0.1)),
           borderRadius: BorderRadius.circular(context.borderRadius()),
           border: Border.all(
-            color: isSelected ? color : (focusNode.hasFocus ? color : AppTheme.lightGray.withOpacity(0.3)),
-            width: isSelected || focusNode.hasFocus ? 2 : 1,
+            color: focusNode.hasFocus 
+                ? const Color(0xFFFFD700) 
+                : (isSelected ? color : AppTheme.lightGray.withOpacity(0.3)),
+            width: focusNode.hasFocus ? 4.0 : (isSelected ? 2.5 : 1.0),
           ),
-          boxShadow: focusNode.hasFocus ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8)] : null,
+          boxShadow: focusNode.hasFocus ? [
+            BoxShadow(
+              color: const Color(0xFFFFD700).withOpacity(0.6),
+              blurRadius: 15,
+              spreadRadius: 3,
+            )
+          ] : (isSelected ? [BoxShadow(color: color.withOpacity(0.2), blurRadius: 4)] : null),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1388,15 +1437,15 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
             Icon(
               _getStatusIcon(status),
               size: context.iconSize('medium'),
-              color: isSelected ? color : AppTheme.charcoalGray.withOpacity(0.5),
+              color: focusNode.hasFocus ? const Color(0xFFDAA520) : (isSelected ? color : AppTheme.charcoalGray.withOpacity(0.5)),
             ),
             SizedBox(width: context.smallPadding),
             Text(
               _getStatusText(status),
               style: TextStyle(
                 fontSize: context.bodyFontSize,
-                fontWeight: isSelected || focusNode.hasFocus ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected || focusNode.hasFocus ? color : AppTheme.charcoalGray.withOpacity(0.7),
+                fontWeight: focusNode.hasFocus || isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: focusNode.hasFocus ? const Color(0xFF8B4513) : (isSelected ? color : AppTheme.charcoalGray.withOpacity(0.7)),
               ),
             ),
           ],
@@ -1492,7 +1541,9 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                       border: Border.all(color: Colors.amber),
                     ),
                     child: Text(
-                      'Rented from Partner',
+                      item.partnerQuantity != null && item.partnerQuantity! > 0
+                          ? 'Rented from Partner: ${item.partnerQuantity}'
+                          : 'Rented from Partner',
                       style: TextStyle(
                         fontSize: context.captionFontSize,
                         color: Colors.amber[800],
@@ -1712,8 +1763,8 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                 onPressed: _previousStep,
                 isOutlined: true,
                 height: context.buttonHeight,
-                backgroundColor: AppTheme.lightGray,
-                textColor: AppTheme.lightGray,
+                backgroundColor: Colors.black,
+                textColor: Colors.black,
                 icon: Icons.arrow_back,
               ),
             ),
@@ -1827,6 +1878,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
         final rentedFromPartner = result['rentedFromPartner'] as bool? ?? false;
         final partnerId = result['partnerId'] as String?;
         final partnerRate = result['partnerRate'] as double?;
+        final partnerQuantity = result['partnerQuantity'] as int?;
 
         // Calculate rental days for pricing logic
         int effectiveDays = 1;
@@ -1848,6 +1900,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
               lineTotal: currentQty * currentRate * effectiveDays,
               totalValue: currentQty * currentRate * effectiveDays,
               customizationNotes: customizationNotes ?? _orderItems[existingItemIndex].customizationNotes,
+              partnerQuantity: partnerQuantity,
             );
           });
         } else {
@@ -1878,6 +1931,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
             rentedFromPartner: rentedFromPartner,
             partnerId: partnerId,
             partnerRate: partnerRate,
+            partnerQuantity: partnerQuantity,
           );
           setState(() {
             _orderItems.add(newOrderItem);
@@ -1913,5 +1967,73 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     _totalAmount = _orderItems.fold(0.0, (sum, item) => sum + item.lineTotal);
     _totalAmountController.text = _totalAmount.toStringAsFixed(2);
     _updateRemainingAmount();
+  }
+
+  Future<void> _selectEventDate(BuildContext context) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedEventDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.primaryMaroon,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black87,
+            ),
+            dialogBackgroundColor: Colors.white,
+            textTheme: const TextTheme(
+              bodyLarge: TextStyle(color: Colors.black87),
+              bodyMedium: TextStyle(color: Colors.black87),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (date != null) {
+      setState(() {
+        _selectedEventDate = date;
+        _eventDateController.text = '${date.day}/${date.month}/${date.year}';
+      });
+      _returnDateFocusNode.requestFocus();
+    }
+  }
+
+  Future<void> _selectReturnDate(BuildContext context) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedReturnDate ?? (_selectedEventDate?.add(const Duration(days: 1)) ?? DateTime.now().add(const Duration(days: 1))),
+      firstDate: _selectedEventDate ?? DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.primaryMaroon,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black87,
+            ),
+            dialogBackgroundColor: Colors.white,
+            textTheme: const TextTheme(
+              bodyLarge: TextStyle(color: Colors.black87),
+              bodyMedium: TextStyle(color: Colors.black87),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (date != null) {
+      setState(() {
+        _selectedReturnDate = date;
+        _returnDateController.text = '${date.day}/${date.month}/${date.year}';
+      });
+      _notesFocusNode.requestFocus();
+    }
   }
 }

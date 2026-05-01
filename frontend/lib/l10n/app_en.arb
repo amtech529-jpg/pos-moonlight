@@ -1604,7 +1604,7 @@
   "addNewExpense": "Add New Expense",
   "recordNewExpenseEntry": "Record a new expense entry",
   "enterExpense": "Enter expense",
-  "enterExpenseTypeCategory": "Enter expense type/category",
+  "enterExpenseTypeCategory": "Expense Name",
   "pleaseEnterExpenseType": "Please enter expense type",
   "expenseMinLength": "Expense must be at least 2 characters",
   "enterExpenseDescription": "Enter expense description/details",

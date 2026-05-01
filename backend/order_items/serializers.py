@@ -1,8 +1,11 @@
+import logging
 from rest_framework import serializers
 from django.db.models import Q
 from .models import OrderItem
 from products.models import Product
 from orders.models import Order
+
+logger = logging.getLogger(__name__)
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -23,6 +26,9 @@ class OrderItemSerializer(serializers.ModelSerializer):
     product_display_info = serializers.JSONField(read_only=True)
     partner_name = serializers.ReadOnlyField(source='partner.name')
     
+    partner_rate = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=0.00)
+    partner_quantity = serializers.IntegerField(required=False, allow_null=True, default=0)
+
     class Meta:
         model = OrderItem
         fields = (
@@ -47,7 +53,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'rented_from_partner',
             'partner',
             'partner_name',
-            'partner_rate'
+            'partner_rate',
+            'partner_quantity'
         )
         read_only_fields = (
             'id', 'order_id', 'product_id', 'product_name', 'product_color',
@@ -88,6 +95,9 @@ class OrderItemCreateSerializer(serializers.ModelSerializer):
     order = serializers.UUIDField(write_only=True, help_text="Order UUID")
     product = serializers.UUIDField(write_only=True, help_text="Product UUID")
     
+    partner_rate = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=0.00)
+    partner_quantity = serializers.IntegerField(required=False, allow_null=True, default=0)
+
     class Meta:
         model = OrderItem
         fields = (
@@ -99,7 +109,8 @@ class OrderItemCreateSerializer(serializers.ModelSerializer):
             'customization_notes',
             'rented_from_partner',
             'partner',
-            'partner_rate'
+            'partner_rate',
+            'partner_quantity'
         )
 
     def validate_order(self, value):
@@ -193,6 +204,9 @@ class OrderItemCreateSerializer(serializers.ModelSerializer):
 class OrderItemUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating order items"""
     
+    partner_rate = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=0.00)
+    partner_quantity = serializers.IntegerField(required=False, allow_null=True, default=0)
+
     class Meta:
         model = OrderItem
         fields = (
@@ -202,7 +216,8 @@ class OrderItemUpdateSerializer(serializers.ModelSerializer):
             'customization_notes',
             'rented_from_partner',
             'partner',
-            'partner_rate'
+            'partner_rate',
+            'partner_quantity'
         )
 
     def validate_quantity(self, value):
@@ -212,26 +227,59 @@ class OrderItemUpdateSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        """Cross-field validation for updates"""
-        quantity = data.get('quantity', self.instance.quantity)
-        rented_from_partner = data.get('rented_from_partner', self.instance.rented_from_partner)
-        
-        # Check stock availability for the quantity change (only for non-partner items)
-        if quantity > self.instance.quantity and not rented_from_partner:
-            quantity_difference = quantity - self.instance.quantity
-            if self.instance.product and self.instance.order:
-                order = self.instance.order
-                available_for_dates = self.instance.product.get_available_quantity_for_dates(
-                    start_date=order.event_date,
-                    end_date=order.return_date or order.event_date,
-                    exclude_order_id=order.id # Exclude current order's existing quantity of this item
-                )
-                if available_for_dates < quantity_difference:
-                    raise serializers.ValidationError({
-                        'quantity': f'Not enough stock for these dates. Available: {available_for_dates}, Additional needed: {quantity_difference}'
-                    })
-        
-        return data
+        """Cross-field validation for updates with robust error handling"""
+        try:
+            quantity = data.get('quantity', self.instance.quantity)
+            rented_from_partner = data.get('rented_from_partner', self.instance.rented_from_partner)
+            
+            # Check stock availability for the quantity change (only for non-partner items)
+            if quantity > self.instance.quantity and not rented_from_partner:
+                quantity_difference = quantity - self.instance.quantity
+                
+                if self.instance.product and self.instance.order:
+                    order = self.instance.order
+                    product = self.instance.product
+                    
+                    # Check if dates are available before checking stock
+                    start_date = order.event_date
+                    end_date = order.return_date or order.event_date
+                    
+                    logger.info(f"Checking stock for product {product.id} between {start_date} and {end_date}")
+                    
+                    if start_date:
+                        try:
+                            available_for_dates = product.get_available_quantity_for_dates(
+                                start_date=start_date,
+                                end_date=end_date,
+                                exclude_order_id=order.id
+                            )
+                            if available_for_dates < quantity_difference:
+                                raise serializers.ValidationError({
+                                    'quantity': f'Not enough stock for these dates. Available: {available_for_dates}, Additional needed: {quantity_difference}'
+                                })
+                        except Exception as e:
+                            logger.error(f"Stock calculation failed: {str(e)}")
+                            # Fallback to current available quantity if date-based check fails
+                            if product.quantity_available < quantity_difference:
+                                raise serializers.ValidationError({
+                                    'quantity': f'Stock check failed, and current stock is low. Needed: {quantity_difference}'
+                                })
+                    else:
+                        # Fallback if no dates set: just check current available quantity
+                        if product.quantity_available < quantity_difference:
+                             raise serializers.ValidationError({
+                                'quantity': f'Not enough stock. Available: {product.quantity_available}, Additional needed: {quantity_difference}'
+                            })
+                elif not self.instance.product:
+                    logger.warning(f"OrderItem {self.instance.id} has no product attached.")
+            
+            return data
+        except serializers.ValidationError:
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in OrderItemUpdateSerializer.validate: {str(e)}")
+            # For 500 error debugging, we want to know what happened
+            raise serializers.ValidationError({"detail": f"Internal validation error: {str(e)}"})
 
     def validate_rate(self, value):
         """Validate rate field"""
@@ -263,12 +311,27 @@ class OrderItemListSerializer(serializers.ModelSerializer):
     product_fabric = serializers.CharField(source='product.fabric', read_only=True)
     remaining_to_sell = serializers.IntegerField(source='remaining_quantity_to_sell', read_only=True)
     has_been_sold = serializers.BooleanField(read_only=True)
-    
+    current_stock = serializers.SerializerMethodField()
+
     # Alternative field names for customization_notes for backward compatibility
     notes = serializers.CharField(source='customization_notes', read_only=True)
     description = serializers.CharField(source='customization_notes', read_only=True)
     comment = serializers.CharField(source='customization_notes', read_only=True)
     remarks = serializers.CharField(source='customization_notes', read_only=True)
+
+    def get_current_stock(self, obj):
+        """Return available stock for the product, excluding current order."""
+        try:
+            if obj.product is None:
+                return None
+            return obj.product.get_available_quantity_for_dates(
+                start_date=obj.order.event_date,
+                end_date=obj.order.return_date or obj.order.event_date,
+                exclude_order_id=obj.order.id,
+            )
+        except Exception:
+            # Fallback to simple quantity if date-based check fails
+            return obj.product.quantity_available if obj.product else None
     
     class Meta:
         model = OrderItem
@@ -292,6 +355,7 @@ class OrderItemListSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'remaining_to_sell', 'has_been_sold',
+            'current_stock',
             'rented_from_partner', 'partner', 'partner_rate'
         )
 
@@ -311,8 +375,7 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'order',
-            'productId', # For compatibility
-            'productName', # For compatibility
+            'product',
             'product_name',
             'quantity',
             'rate',

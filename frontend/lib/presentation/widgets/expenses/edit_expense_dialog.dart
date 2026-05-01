@@ -7,8 +7,10 @@ import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
 import '../../../src/models/expenses/expenses_model.dart';
 import '../../../src/models/labor/labor_model.dart';
+import '../../../src/models/vendor/vendor_model.dart';
 import '../../../src/providers/expenses_provider.dart';
 import '../../../src/providers/labor_provider.dart';
+import '../../../src/services/vendor/vendor_service.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
@@ -35,6 +37,7 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
   final _descriptionFocusNode = FocusNode();
   final _amountFocusNode = FocusNode();
   final _categoryFocusNode = FocusNode();
+  final _vehicleNumberFocusNode = FocusNode();
   final _recurringFocusNode = FocusNode();
   final _deductibleFocusNode = FocusNode();
   final _laborFocusNode = FocusNode();
@@ -48,6 +51,13 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
   bool _isSalaryDeductible = false;
   String? _selectedLaborId;
   String? _selectedCategory;
+  // Transport fields
+  String? _selectedTransportVendorId;
+  late TextEditingController _vehicleNumberController;
+  List<VendorModel> _vendors = [];
+  bool _isLoadingVendors = false;
+
+  bool get _isTransport => _selectedCategory == 'Transport';
 
 
   late AnimationController _animationController;
@@ -67,10 +77,13 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
     _isSalaryDeductible = widget.expense.isSalaryDeductible;
     _selectedLaborId = widget.expense.deductibleLaborId;
     _selectedCategory = widget.expense.category;
+    _selectedTransportVendorId = widget.expense.transportVendorId;
+    _vehicleNumberController = TextEditingController(text: widget.expense.vehicleNumber ?? '');
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<LaborProvider>().loadLabors();
+        _loadVendors();
       }
     });
 
@@ -90,16 +103,30 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
     _expenseController.dispose();
     _descriptionController.dispose();
     _amountController.dispose();
+    _vehicleNumberController.dispose();
     _expenseFocusNode.dispose();
     _descriptionFocusNode.dispose();
     _amountFocusNode.dispose();
     _categoryFocusNode.dispose();
+    _vehicleNumberFocusNode.dispose();
     _recurringFocusNode.dispose();
     _deductibleFocusNode.dispose();
     _laborFocusNode.dispose();
     _dateFocusNode.dispose();
     _saveFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadVendors() async {
+    setState(() => _isLoadingVendors = true);
+    try {
+      final res = await VendorService().getVendors();
+      if (res.success && res.data != null && mounted) {
+        setState(() => _vendors = res.data!.vendors);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingVendors = false);
+    }
   }
 
   void _handleUpdate() async {
@@ -111,13 +138,15 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
         expense: _expenseController.text.trim(),
         description: _descriptionController.text.trim(),
         amount: double.parse(_amountController.text.trim()),
-        withdrawalBy: '', // Default value since it's removed from UI
+        withdrawalBy: '',
         date: _selectedDate,
         time: _selectedTime,
         isRecurring: _isRecurring,
         isSalaryDeductible: _isSalaryDeductible,
         deductibleLaborId: _isSalaryDeductible ? _selectedLaborId : null,
         category: _selectedCategory,
+        transportVendorId: _isTransport ? _selectedTransportVendorId : null,
+        vehicleNumber: _isTransport ? _vehicleNumberController.text.trim() : null,
       );
 
       if (mounted) {
@@ -325,54 +354,13 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
               controller: _expenseController,
               focusNode: _expenseFocusNode,
               prefixIcon: Icons.category_outlined,
-              onSubmitted: (_) => _descriptionFocusNode.requestFocus(),
+              onSubmitted: (_) => _categoryFocusNode.requestFocus(),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return l10n.pleaseEnterExpenseType;
                 }
                 if (value!.length < 2) {
                   return l10n.expenseMinLength;
-                }
-                return null;
-              },
-            ),
-            SizedBox(height: context.cardPadding),
-
-            PremiumTextField(
-              label: l10n.description,
-              hint: context.shouldShowCompactLayout ? l10n.enterDescription : l10n.enterExpenseDescription,
-              controller: _descriptionController,
-              focusNode: _descriptionFocusNode,
-              prefixIcon: Icons.description_outlined,
-              maxLines: 3,
-              onSubmitted: (_) => _amountFocusNode.requestFocus(),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return l10n.pleaseEnterDescription;
-                }
-                if (value!.length < 5) {
-                  return l10n.descriptionMinLength;
-                }
-                return null;
-              },
-            ),
-            SizedBox(height: context.cardPadding),
-
-            PremiumTextField(
-              label: l10n.amount,
-              hint: context.shouldShowCompactLayout ? l10n.enterAmount : l10n.enterAmountPKR,
-              controller: _amountController,
-              focusNode: _amountFocusNode,
-              prefixIcon: Icons.attach_money_rounded,
-              keyboardType: TextInputType.number,
-              onSubmitted: (_) => _categoryFocusNode.requestFocus(),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return l10n.pleaseEnterAmount;
-                }
-                final amount = double.tryParse(value!);
-                if (amount == null || amount <= 0) {
-                  return l10n.pleaseEnterValidAmount;
                 }
                 return null;
               },
@@ -404,8 +392,17 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
                     onChanged: (category) {
                       setState(() {
                         _selectedCategory = category;
+                        if (category != 'Transport') {
+                          _selectedTransportVendorId = null;
+                          _vehicleNumberController.clear();
+                        }
                       });
-                      _recurringFocusNode.requestFocus();
+                      // Focus flow: Transport → vehicle, else → description
+                      if (category == 'Transport') {
+                        _vehicleNumberFocusNode.requestFocus();
+                      } else {
+                        _descriptionFocusNode.requestFocus();
+                      }
                     },
                     validator: (value) {
                       if (value == null) {
@@ -419,6 +416,96 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
             ),
             SizedBox(height: context.cardPadding),
 
+            // ── Transport-only fields ──────────────────────────────
+            if (_isTransport) ...[
+              PremiumTextField(
+                label: 'Vehicle Number (Optional)',
+                hint: 'e.g. ABC-123',
+                controller: _vehicleNumberController,
+                focusNode: _vehicleNumberFocusNode,
+                prefixIcon: Icons.directions_car_rounded,
+                textInputAction: TextInputAction.next,
+                onSubmitted: (_) => _descriptionFocusNode.requestFocus(),
+              ),
+              SizedBox(height: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Transport Vendor / Driver', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
+                  SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.grey.shade50,
+                    ),
+                    child: _isLoadingVendors
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          )
+                        : DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _selectedTransportVendorId,
+                              isExpanded: true,
+                              hint: const Text('Select Driver / Transport Vendor', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                              style: const TextStyle(fontSize: 13, color: Colors.black, fontWeight: FontWeight.w600),
+                              items: [
+                                const DropdownMenuItem<String>(value: null, child: Text('None', style: TextStyle(color: Colors.grey))),
+                                ..._vendors.map((v) => DropdownMenuItem<String>(
+                                  value: v.id,
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.person_pin_rounded, size: 16, color: Color(0xFF8B2252)),
+                                      const SizedBox(width: 8),
+                                      Expanded(child: Text(v.displayName, overflow: TextOverflow.ellipsis)),
+                                    ],
+                                  ),
+                                )),
+                              ],
+                              onChanged: (v) {
+                                setState(() => _selectedTransportVendorId = v);
+                                _descriptionFocusNode.requestFocus();
+                              },
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+              SizedBox(height: context.cardPadding),
+            ],
+
+            PremiumTextField(
+              label: l10n.description,
+              hint: context.shouldShowCompactLayout ? l10n.enterDescription : l10n.enterExpenseDescription,
+              controller: _descriptionController,
+              focusNode: _descriptionFocusNode,
+              prefixIcon: Icons.description_outlined,
+              maxLines: 3,
+              onSubmitted: (_) => _amountFocusNode.requestFocus(),
+            ),
+            SizedBox(height: context.cardPadding),
+
+            PremiumTextField(
+              label: l10n.amount,
+              hint: context.shouldShowCompactLayout ? l10n.enterAmount : l10n.enterAmountPKR,
+              controller: _amountController,
+              focusNode: _amountFocusNode,
+              prefixIcon: Icons.attach_money_rounded,
+              keyboardType: TextInputType.number,
+              onSubmitted: (_) => _recurringFocusNode.requestFocus(),
+              validator: (value) {
+                if (value?.isEmpty ?? true) {
+                  return l10n.pleaseEnterAmount;
+                }
+                final amount = double.tryParse(value!);
+                if (amount == null || amount <= 0) {
+                  return l10n.pleaseEnterValidAmount;
+                }
+                return null;
+              },
+            ),
             SizedBox(height: context.cardPadding),
 
             Focus(

@@ -14,6 +14,7 @@ class ImportExportScreen extends StatefulWidget {
 
 class _ImportExportScreenState extends State<ImportExportScreen> {
   late ImportExportProvider _provider;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -25,6 +26,7 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
   @override
   void dispose() {
     _provider.removeListener(_onProviderChange);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -69,30 +71,35 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
     }
   }
 
-  @override
   Widget build(BuildContext context) {
     return Consumer<ImportExportProvider>(
       builder: (context, provider, child) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left Column: Import Data
-                  Expanded(
-                    child: _buildImportSection(context, provider),
-                  ),
-                  const SizedBox(width: 32),
-                  // Right Column: Export & Templates
-                  Expanded(
-                    child: _buildExportSection(context, provider),
-                  ),
-                ],
-              ),
-            ],
+        return Scrollbar(
+          controller: _scrollController,
+          thumbVisibility: true,
+          trackVisibility: true,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left Column: Import Data
+                    Expanded(
+                      child: _buildImportSection(context, provider),
+                    ),
+                    const SizedBox(width: 32),
+                    // Right Column: Export & Templates
+                    Expanded(
+                      child: _buildExportSection(context, provider),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },

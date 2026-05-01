@@ -22,6 +22,7 @@ class _ViewCustomerDetailsDialogState extends State<ViewCustomerDetailsDialog>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  final _scrollController = ScrollController();
 
   final CustomerService _customerService = CustomerService();
   CustomerModel? _fullCustomerDetails;
@@ -149,6 +150,7 @@ class _ViewCustomerDetailsDialogState extends State<ViewCustomerDetailsDialog>
   @override
   void dispose() {
     _animationController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -414,36 +416,44 @@ class _ViewCustomerDetailsDialogState extends State<ViewCustomerDetailsDialog>
       );
     }
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: EdgeInsets.all(context.cardPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildCustomerProfileCard(),
-            SizedBox(height: context.cardPadding),
-            _buildContactInfoCard(),
-            SizedBox(height: context.cardPadding),
-            _buildLocationCard(),
-            SizedBox(height: context.cardPadding),
-            _buildStatusAndTypeCard(),
-            SizedBox(height: context.cardPadding),
-            _buildVerificationCard(),
-            if (_fullCustomerDetails!.businessName != null || _fullCustomerDetails!.taxNumber != null) ...[
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      trackVisibility: true,
+      thickness: 8,
+      radius: const Radius.circular(8),
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        child: Padding(
+          padding: EdgeInsets.all(context.cardPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildCustomerProfileCard(),
+              if (_fullCustomerDetails!.businessName != null) ...[
+                SizedBox(height: context.cardPadding),
+                _buildBusinessInfoCard(),
+              ],
               SizedBox(height: context.cardPadding),
-              _buildBusinessInfoCard(),
-            ],
-            if (_fullCustomerDetails!.notes != null && _fullCustomerDetails!.notes!.isNotEmpty) ...[
+              _buildContactInfoCard(),
               SizedBox(height: context.cardPadding),
-              _buildNotesCard(),
+              _buildLocationCard(),
+              SizedBox(height: context.cardPadding),
+              _buildStatusAndTypeCard(),
+              SizedBox(height: context.cardPadding),
+              _buildVerificationCard(),
+              if (_fullCustomerDetails!.notes != null && _fullCustomerDetails!.notes!.isNotEmpty) ...[
+                SizedBox(height: context.cardPadding),
+                _buildNotesCard(),
+              ],
+              SizedBox(height: context.cardPadding),
+              _buildActivityCard(),
+              SizedBox(height: context.cardPadding),
+              _buildQuickActionsCard(),
+              SizedBox(height: context.mainPadding),
+              _buildCloseButton(),
             ],
-            SizedBox(height: context.cardPadding),
-            _buildActivityCard(),
-            SizedBox(height: context.cardPadding),
-            _buildQuickActionsCard(),
-            SizedBox(height: context.mainPadding),
-            _buildCloseButton(),
-          ],
+          ),
         ),
       ),
     );
@@ -724,7 +734,6 @@ class _ViewCustomerDetailsDialogState extends State<ViewCustomerDetailsDialog>
       title: 'Business Information',
       value: [
         if (_fullCustomerDetails!.businessName != null) 'Name: ${_fullCustomerDetails!.businessName}',
-        if (_fullCustomerDetails!.taxNumber != null) 'Tax Number: ${_fullCustomerDetails!.taxNumber}',
       ].join('\n'),
       icon: Icons.business,
       color: Colors.indigo,

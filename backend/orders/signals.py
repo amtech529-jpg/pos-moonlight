@@ -470,7 +470,7 @@ def validate_status_progression(sender, instance, **kwargs):
                 # Define valid status transitions
                 valid_transitions = {
                     'PENDING': ['CONFIRMED', 'CANCELLED'],
-                    'CONFIRMED': ['READY', 'CANCELLED'],
+                    'CONFIRMED': ['READY', 'DELIVERED', 'CANCELLED'],  # Allow direct CONFIRMED → DELIVERED
                     'READY': ['DELIVERED', 'CANCELLED'],
                     'DELIVERED': [],  # Terminal state
                     'CANCELLED': []   # Terminal state
@@ -533,8 +533,8 @@ def sync_order_reservations(order):
     
     try:
         if order.status in RESERVATION_STATUSES and order.is_active:
-            # Get current active items that are not partner rentals
-            items = order.order_items.filter(is_active=True, product__isnull=False, rented_from_partner=False)
+            # Get current active items that have a product attached
+            items = order.order_items.filter(is_active=True, product__isnull=False)
             
             # Keep track of products we've processed to avoid duplicate reservations
             processed_products = set()
@@ -550,11 +550,18 @@ def sync_order_reservations(order):
                 existing = StockReservation.objects.filter(sale_id=reservation_id, product=item.product).first()
                 was_confirmed = existing.is_confirmed if existing else False
                 
+                # Calculate internal quantity (portion not rented from partner)
+                internal_qty = item.quantity - (item.partner_quantity or 0)
+                
+                # If everything is from partner, skip reservation
+                if internal_qty <= 0:
+                    continue
+
                 reservation, created = StockReservation.objects.update_or_create(
                     product=item.product,
                     sale_id=reservation_id,
                     defaults={
-                        'quantity_reserved': item.quantity,
+                        'quantity_reserved': internal_qty,
                         'reserved_until': timezone.now() + timedelta(days=3650), # 10 years (far future)
                         'start_date': order.event_date or timezone.now().date(), # Use order date
                         'end_date': order.return_date or order.event_date or timezone.now().date(), # When it's free

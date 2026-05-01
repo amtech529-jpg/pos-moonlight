@@ -111,7 +111,7 @@ class _TallyReturnDialogState extends State<TallyReturnDialog> with SingleTicker
         returnId: widget.rentalReturn.id,
         items: itemsData,
         damageCharges: _tallyItems.fold<double>(0.0, (sum, item) => sum + item.damageCharge),
-        responsibility: _responsibility,
+        responsibility: _tallyItems.any((item) => item.damaged > 0 || item.missing > 0) ? _responsibility : 'NONE',
         notes: _notesController.text.trim(),
       );
 
@@ -194,17 +194,19 @@ class _TallyReturnDialogState extends State<TallyReturnDialog> with SingleTicker
                                 SizedBox(height: context.cardPadding),
                                 _buildItemsList(),
                                 SizedBox(height: context.cardPadding),
-                                 PremiumDropdownField<String>(
-                                   label: 'Responsibility (ذمہ داری)',
-                                   hint: 'Select Responsibility',
-                                   prefixIcon: Icons.person_pin_rounded,
-                                   value: _responsibility,
-                                   items: _responsibilityChoices.map((c) => DropdownItem(value: c, label: c)).toList(),
-                                   onChanged: (val) {
-                                     if (val != null) setState(() => _responsibility = val);
-                                   },
-                                 ),
-                                 SizedBox(height: context.cardPadding),
+                                if (_tallyItems.any((item) => item.damaged > 0 || item.missing > 0)) ...[
+                                  PremiumDropdownField<String>(
+                                    label: 'Responsibility (ذمہ داری)',
+                                    hint: 'Select Responsibility',
+                                    prefixIcon: Icons.person_pin_rounded,
+                                    value: _responsibility,
+                                    items: _responsibilityChoices.map((c) => DropdownItem(value: c, label: c)).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) setState(() => _responsibility = val);
+                                    },
+                                  ),
+                                  SizedBox(height: context.cardPadding),
+                                ],
                                  PremiumTextField(
                                    label: 'Return Notes (تفصیل)',
                                    controller: _notesController,
@@ -284,26 +286,46 @@ class _TallyReturnDialogState extends State<TallyReturnDialog> with SingleTicker
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(item.productName, style: TextStyle(fontWeight: FontWeight.bold)),
-              if (item.isPartnerItem) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryMaroon.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.inventory_2_outlined, size: 18, color: AppTheme.primaryMaroon),
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
+                Expanded(
                   child: Text(
-                    'Partner Item',
-                    style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 10),
+                    item.productName.isEmpty ? 'Unknown Item' : item.productName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 16, 
+                      color: AppTheme.primaryMaroon,
+                    ),
                   ),
                 ),
+                if (item.isPartnerItem) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Text(
+                      'Partner Item',
+                      style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 10),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
+          const SizedBox(height: 8),
           Text('Sent: ${item.qtySent}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
           SizedBox(height: 8),
           Row(

@@ -2,90 +2,97 @@ import 'package:flutter/material.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
+import 'package:intl/intl.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../../../src/providers/sales_provider.dart'; // ✅ CHANGED: Use SalesProvider
+import '../../../src/providers/sales_provider.dart';
 import '../../../src/theme/app_theme.dart';
-import '../globals/text_button.dart'; // ✅ Using PremiumButton
+import '../../../src/models/sales/sale_model.dart';
+import '../globals/text_button.dart';
 
 class OrderSuccessDialog extends StatefulWidget {
-  final String saleId; // ✅ Required for printing
-  final String invoiceNumber; // ✅ Required for display
-  final double totalPrice;
-  final double advanceAmount;
-  final DateTime deliveryDate;
+  final SaleModel sale;
 
   const OrderSuccessDialog({
     super.key,
-    required this.saleId,
-    required this.invoiceNumber,
-    required this.totalPrice,
-    required this.advanceAmount,
-    required this.deliveryDate,
+    required this.sale,
   });
 
   @override
   State<OrderSuccessDialog> createState() => _OrderSuccessDialogState();
 }
 
-class _OrderSuccessDialogState extends State<OrderSuccessDialog> {
-  bool _isPrinting = false; // ✅ State for loading spinner
+class _OrderSuccessDialogState extends State<OrderSuccessDialog> with SingleTickerProviderStateMixin {
+  bool _isPrinting = false;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
 
-  // ✅ UPDATED PRINT FUNCTION
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
   Future<void> _handlePrintOrder(BuildContext context) async {
-    final l10n = AppLocalizations.of(context)!;
-    debugPrint("🖨️ [OrderSuccessDialog] Print Receipt requested for ${widget.invoiceNumber}");
+    debugPrint("🖨️ [OrderSuccessDialog] Print Receipt requested for ${widget.sale.invoiceNumber}");
 
     setState(() => _isPrinting = true);
 
     try {
-      // Use SalesProvider instead of InvoiceProvider
       final salesProvider = Provider.of<SalesProvider>(context, listen: false);
-
-      debugPrint(" [OrderSuccessDialog] Calling SalesProvider.generateReceiptPdf with saleId: ${widget.saleId}");
-
-      // Call the new function in SalesProvider
-      final success = await salesProvider.generateReceiptPdf(widget.saleId);
-
-      debugPrint(" [OrderSuccessDialog] generateReceiptPdf result: $success");
+      final success = await salesProvider.generateReceiptPdf(widget.sale.id);
 
       if (mounted) {
         if (success) {
-          debugPrint(" [OrderSuccessDialog] Print successful");
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Row(
                 children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 10),
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 10),
                   Text("Receipt sent to printer/saved"),
                 ],
               ),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 3),
+              duration: Duration(seconds: 3),
             ),
           );
         } else {
-          debugPrint(" [OrderSuccessDialog] Print failed");
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Row(
                 children: [
-                  const Icon(Icons.error, color: Colors.white),
-                  const SizedBox(width: 10),
+                  Icon(Icons.error, color: Colors.white),
+                  SizedBox(width: 10),
                   Text("Failed to generate receipt"),
                 ],
               ),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 3),
+              duration: Duration(seconds: 3),
             ),
           );
         }
       }
     } catch (e) {
-      debugPrint(" [OrderSuccessDialog] Print error: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -109,82 +116,101 @@ class _OrderSuccessDialogState extends State<OrderSuccessDialog> {
     }
   }
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
   void _handleDone(BuildContext context) {
-    // Only pop once. The CheckoutDialog already closed itself before opening this dialog.
     Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isUpdate = widget.sale.updatedAt.difference(widget.sale.createdAt).inSeconds > 5;
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: ResponsiveBreakpoints.responsive(
-            context,
-            tablet: 85.w,
-            small: 75.w,
-            medium: 65.w,
-            large: 55.w,
-            ultrawide: 45.w,
-          ),
-        ),
-        decoration: BoxDecoration(
-          color: AppTheme.pureWhite,
-          borderRadius: BorderRadius.circular(context.borderRadius('large')),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: context.shadowBlur('heavy'),
-              offset: Offset(0, context.cardPadding),
+      elevation: 0,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: ResponsiveBreakpoints.responsive(
+                context,
+                tablet: 85.w,
+                small: 75.w,
+                medium: 65.w,
+                large: 50.w,
+                ultrawide: 40.w,
+              ),
+              maxHeight: 90.h,
             ),
-          ],
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildSuccessHeader(context),
-              _buildSuccessContent(context),
-            ],
+            decoration: BoxDecoration(
+              color: AppTheme.pureWhite,
+              borderRadius: BorderRadius.circular(context.borderRadius('large')),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 30,
+                  offset: const Offset(0, 15),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(context.borderRadius('large')),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildSuccessHeader(context, isUpdate),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(context.cardPadding),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildOrderSummaryCard(context),
+                          SizedBox(height: context.cardPadding),
+                          _buildItemsList(context),
+                          SizedBox(height: context.cardPadding),
+                          _buildPaymentInfo(context),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _buildFooter(context, isUpdate),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSuccessHeader(BuildContext context) {
+  Widget _buildSuccessHeader(BuildContext context, bool isUpdate) {
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
       padding: EdgeInsets.all(context.cardPadding),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Colors.green, Colors.greenAccent],
-        ),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(context.borderRadius('large')),
-          topRight: Radius.circular(context.borderRadius('large')),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isUpdate 
+            ? [const Color(0xFF2196F3), const Color(0xFF00BCD4)] // Blue theme for updates
+            : [const Color(0xFF00B09B), const Color(0xFF96C93D)], // Green theme for new
         ),
       ),
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(context.smallPadding),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.pureWhite.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(context.borderRadius()),
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.check_circle_rounded,
-              color: AppTheme.pureWhite,
-              size: 40, // ✅ Fixed Large Size
+              isUpdate ? Icons.sync_rounded : Icons.check_circle_outline_rounded,
+              color: Colors.white,
+              size: 40,
             ),
           ),
           SizedBox(width: context.cardPadding),
@@ -193,36 +219,52 @@ class _OrderSuccessDialogState extends State<OrderSuccessDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  l10n.saleCompleted,
-                  style: TextStyle(
-                    fontSize: 24, // ✅ Fixed Large Size
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.pureWhite,
+                  isUpdate ? "Order Updated" : l10n.saleCompleted,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
                   ),
                 ),
                 Text(
-                  l10n.transactionProcessedSuccessfully,
+                  isUpdate 
+                    ? "Changes have been synchronized with the backend"
+                    : l10n.transactionProcessedSuccessfully,
                   style: TextStyle(
-                    fontSize: 16, // ✅ Fixed Large Size
-                    color: AppTheme.pureWhite.withOpacity(0.9),
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSuccessContent(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.all(context.cardPadding),
-      child: Column(
-        children: [
-          _buildOrderSummaryCard(context),
-          SizedBox(height: context.cardPadding),
-          _buildActionButtons(context),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Text(
+                "REAL-TIME",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: Colors.white, blurRadius: 4, spreadRadius: 1),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -230,351 +272,231 @@ class _OrderSuccessDialogState extends State<OrderSuccessDialog> {
 
   Widget _buildOrderSummaryCard(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final sale = widget.sale;
 
     return Container(
       padding: EdgeInsets.all(context.cardPadding),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.05),
+        color: Colors.grey.withOpacity(0.05),
         borderRadius: BorderRadius.circular(context.borderRadius()),
-        border: Border.all(color: Colors.green.withOpacity(0.3)),
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
       ),
       child: Column(
         children: [
-          // ✅ Invoice Number (Real)
-          _buildSummaryRow(
-            context,
-            l10n.invoiceNumber,
-            widget.invoiceNumber,
-            valueColor: Colors.purple,
-            fontSize: 18,
-          ),
-          SizedBox(height: 12),
-
-          // ✅ Total Amount
-          _buildSummaryRow(
-            context,
-            l10n.totalAmount,
-            'PKR ${widget.totalPrice.toStringAsFixed(0)}',
-            valueColor: Colors.green,
-            isHighlight: true,
-            fontSize: 26, // ✅ Extra Big for Visibility
-          ),
-
-          if (widget.advanceAmount > 0 && widget.advanceAmount < widget.totalPrice) ...[
-            SizedBox(height: 12),
-            _buildSummaryRow(
-              context,
-              l10n.amountPaid,
-              'PKR ${widget.advanceAmount.toStringAsFixed(0)}',
-              valueColor: Colors.blue,
-              fontSize: 18,
-            ),
-            SizedBox(height: 12),
-            _buildSummaryRow(
-              context,
-              l10n.remaining,
-              'PKR ${(widget.totalPrice - widget.advanceAmount).toStringAsFixed(0)}',
-              valueColor: Colors.orange,
-              fontSize: 18,
-            ),
-          ],
-
-          SizedBox(height: 12),
-          _buildSummaryRow(
-            context,
-            '${l10n.date}:',
-            '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-            fontSize: 16,
-          ),
+          _buildInfoRow(context, l10n.invoiceNumber, sale.formattedInvoiceNumber, isBold: true, color: Colors.blue.shade700),
+          const Divider(height: 20),
+          _buildInfoRow(context, l10n.customer, sale.customerName),
+          _buildInfoRow(context, "Date", DateFormat('dd MMM yyyy, hh:mm a').format(sale.createdAt)),
+          _buildInfoRow(context, "Status", sale.statusDisplay, color: sale.statusColor),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryRow(
-      BuildContext context,
-      String label,
-      String value, {
-        Color? valueColor,
-        bool isHighlight = false,
-        double fontSize = 16, // ✅ Default bigger font
-      }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildItemsList(BuildContext context) {
+    final sale = widget.sale;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: isHighlight ? FontWeight.w600 : FontWeight.w500,
-            color: AppTheme.charcoalGray,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: isHighlight ? FontWeight.w800 : FontWeight.w600, // Thicker font
-            color: valueColor ?? AppTheme.charcoalGray,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButtons(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Row(
-      children: [
-        // ✅ Print Receipt Button using PremiumButton
-        Expanded(
-          child: PremiumButton(
-            text: _isPrinting ? "Printing..." : l10n.printReceipt,
-            onPressed: _isPrinting ? null : () => _handlePrintOrder(context),
-            icon: _isPrinting ? null : Icons.print_rounded,
-            backgroundColor: Colors.blue,
-            isLoading: _isPrinting,
-            height: 60, // ✅ Taller button for easier tapping
-          ),
-        ),
-        SizedBox(width: context.cardPadding),
-
-        // ✅ New Sale Button using PremiumButton
-        Expanded(
-          child: PremiumButton(
-            text: l10n.newSale,
-            onPressed: () => _handleDone(context),
-            icon: Icons.add_shopping_cart_rounded,
-            backgroundColor: Colors.green,
-            height: 60, // ✅ Taller button
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// --------------------------------------------------------------------------
-// KEPT EXISTING CLASSES BELOW AS REQUESTED
-// --------------------------------------------------------------------------
-
-class ConfirmationDialog extends StatelessWidget {
-  final String title;
-  final String message;
-  final String? confirmText;
-  final String? cancelText;
-  final VoidCallback onConfirm;
-  final VoidCallback? onCancel;
-  final Color? confirmColor;
-  final IconData? icon;
-
-  const ConfirmationDialog({
-    super.key,
-    required this.title,
-    required this.message,
-    this.confirmText,
-    this.cancelText,
-    required this.onConfirm,
-    this.onCancel,
-    this.confirmColor,
-    this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: ResponsiveBreakpoints.responsive(
-            context,
-            tablet: 80.w,
-            small: 70.w,
-            medium: 60.w,
-            large: 50.w,
-            ultrawide: 40.w,
-          ),
-        ),
-        decoration: BoxDecoration(
-          color: AppTheme.pureWhite,
-          borderRadius: BorderRadius.circular(context.borderRadius('large')),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: context.shadowBlur('heavy'),
-              offset: Offset(0, context.cardPadding),
+        Row(
+          children: [
+            const Icon(Icons.shopping_bag_outlined, size: 20, color: Colors.blueGrey),
+            const SizedBox(width: 8),
+            Text(
+              "Order Items (${sale.totalItems})",
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.blueGrey,
+              ),
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildHeader(context),
-            _buildContent(context),
-            _buildActions(context, l10n),
-          ],
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(context.borderRadius()),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: sale.saleItems.length,
+            separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade100),
+            itemBuilder: (context, index) {
+              final item = sale.saleItems[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.productName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          if (item.customizationNotes != null && item.customizationNotes!.isNotEmpty)
+                            Text(
+                              item.customizationNotes!,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                                fontStyle: FontStyle.italic,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        "x${item.quantity}",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        "PKR ${item.lineTotal.toStringAsFixed(0)}",
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildPaymentInfo(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sale = widget.sale;
+
     return Container(
       padding: EdgeInsets.all(context.cardPadding),
       decoration: BoxDecoration(
-        color: (confirmColor ?? AppTheme.primaryMaroon).withOpacity(0.1),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(context.borderRadius('large')),
-          topRight: Radius.circular(context.borderRadius('large')),
-        ),
+        color: Colors.blue.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(context.borderRadius()),
+        border: Border.all(color: Colors.blue.withOpacity(0.1)),
       ),
-      child: Row(
+      child: Column(
         children: [
-          if (icon != null) ...[
-            Container(
-              padding: EdgeInsets.all(context.smallPadding),
-              decoration: BoxDecoration(
-                color: (confirmColor ?? AppTheme.primaryMaroon).withOpacity(0.2),
-                borderRadius: BorderRadius.circular(context.borderRadius()),
-              ),
-              child: Icon(
-                icon,
-                color: confirmColor ?? AppTheme.primaryMaroon,
-                size: ResponsiveBreakpoints.responsive(
-                  context,
-                  tablet: 14.sp,
-                  small: 13.sp,
-                  medium: 12.sp,
-                  large: 11.sp,
-                  ultrawide: 10.sp,
-                ),
-              ),
-            ),
-            SizedBox(width: context.cardPadding),
-          ],
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: ResponsiveBreakpoints.responsive(
-                  context,
-                  tablet: 11.sp,
-                  small: 10.sp,
-                  medium: 9.sp,
-                  large: 8.5.sp,
-                  ultrawide: 8.sp,
-                ),
-                fontWeight: FontWeight.w700,
-                color: AppTheme.charcoalGray,
-              ),
-            ),
+          _buildAmountRow(context, "Subtotal", sale.subtotal),
+          if (sale.overallDiscount > 0)
+            _buildAmountRow(context, "Discount", -sale.overallDiscount, color: Colors.orange.shade700),
+          if (sale.taxAmount > 0)
+            _buildAmountRow(context, "Tax", sale.taxAmount),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Divider(thickness: 1.5),
           ),
+          _buildAmountRow(context, l10n.totalAmount, sale.grandTotal, isLarge: true, color: Colors.black),
+          _buildAmountRow(context, "Amount Paid", sale.amountPaid, color: Colors.green.shade700),
+          if (sale.remainingAmount > 0)
+            _buildAmountRow(context, "Remaining", sale.remainingAmount, color: Colors.red.shade700, isBold: true),
         ],
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.all(context.cardPadding),
-      child: Text(
-        message,
-        style: TextStyle(
-          fontSize: ResponsiveBreakpoints.responsive(
-            context,
-            tablet: 9.sp,
-            small: 8.5.sp,
-            medium: 8.sp,
-            large: 7.5.sp,
-            ultrawide: 7.sp,
-          ),
-          color: Colors.grey[700],
-          height: 1.4,
-        ),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
+  Widget _buildFooter(BuildContext context, bool isUpdate) {
+    final l10n = AppLocalizations.of(context)!;
 
-  Widget _buildActions(BuildContext context, AppLocalizations l10n) {
-    return Padding(
+    return Container(
       padding: EdgeInsets.all(context.cardPadding),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
       child: Row(
         children: [
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade400),
-                borderRadius: BorderRadius.circular(context.borderRadius()),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onCancel ?? () => Navigator.of(context).pop(),
-                  borderRadius: BorderRadius.circular(context.borderRadius()),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      vertical: context.cardPadding / 1.5,
-                    ),
-                    child: Text(
-                      cancelText ?? l10n.cancel,
-                      style: TextStyle(
-                        fontSize: ResponsiveBreakpoints.responsive(
-                          context,
-                          tablet: 9.sp,
-                          small: 8.5.sp,
-                          medium: 8.sp,
-                          large: 7.5.sp,
-                          ultrawide: 7.sp,
-                        ),
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ),
+            child: PremiumButton(
+              text: _isPrinting ? "Printing..." : l10n.printReceipt,
+              onPressed: _isPrinting ? null : () => _handlePrintOrder(context),
+              icon: _isPrinting ? null : Icons.print_rounded,
+              backgroundColor: Colors.blue.shade600,
+              isLoading: _isPrinting,
+              height: 55,
             ),
           ),
           SizedBox(width: context.cardPadding),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: confirmColor ?? AppTheme.primaryMaroon,
-                borderRadius: BorderRadius.circular(context.borderRadius()),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onConfirm,
-                  borderRadius: BorderRadius.circular(context.borderRadius()),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      vertical: context.cardPadding / 1.5,
-                    ),
-                    child: Text(
-                      confirmText ?? l10n.confirm,
-                      style: TextStyle(
-                        fontSize: ResponsiveBreakpoints.responsive(
-                          context,
-                          tablet: 9.sp,
-                          small: 8.5.sp,
-                          medium: 8.sp,
-                          large: 7.5.sp,
-                          ultrawide: 7.sp,
-                        ),
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.pureWhite,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ),
+            child: PremiumButton(
+              text: isUpdate ? "Done" : l10n.newSale,
+              onPressed: () => _handleDone(context),
+              icon: isUpdate ? Icons.check_circle_rounded : Icons.add_shopping_cart_rounded,
+              backgroundColor: isUpdate ? Colors.blueGrey.shade600 : Colors.green.shade600,
+              height: 55,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(BuildContext context, String label, String value, {bool isBold = false, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
+              color: color ?? Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmountRow(BuildContext context, String label, double amount, {bool isLarge = false, bool isBold = false, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: isLarge ? 18 : 14,
+              fontWeight: isLarge ? FontWeight.w800 : (isBold ? FontWeight.w700 : FontWeight.w500),
+              color: isLarge ? Colors.black : Colors.grey.shade700,
+            ),
+          ),
+          Text(
+            "PKR ${amount.abs().toStringAsFixed(0)}",
+            style: TextStyle(
+              fontSize: isLarge ? 20 : 15,
+              fontWeight: isLarge ? FontWeight.w900 : FontWeight.w700,
+              color: color ?? Colors.black87,
             ),
           ),
         ],
@@ -583,50 +505,63 @@ class ConfirmationDialog extends StatelessWidget {
   }
 }
 
-class LoadingDialog extends StatelessWidget {
-  final String? message;
+class PremiumButton extends StatelessWidget {
+  final String text;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final Color backgroundColor;
+  final bool isLoading;
+  final double height;
 
-  const LoadingDialog({
+  const PremiumButton({
     super.key,
-    this.message,
+    required this.text,
+    this.onPressed,
+    this.icon,
+    required this.backgroundColor,
+    this.isLoading = false,
+    this.height = 50,
   });
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        padding: EdgeInsets.all(context.cardPadding),
-        decoration: BoxDecoration(
-          color: AppTheme.pureWhite,
-          borderRadius: BorderRadius.circular(context.borderRadius()),
+    return SizedBox(
+      height: height,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(
-              color: AppTheme.primaryMaroon,
-              strokeWidth: 3,
-            ),
-            SizedBox(height: context.cardPadding),
-            Text(
-              message ?? l10n.processing,
-              style: TextStyle(
-                fontSize: ResponsiveBreakpoints.responsive(
-                  context,
-                  tablet: 9.sp,
-                  small: 8.5.sp,
-                  medium: 8.sp,
-                  large: 7.5.sp,
-                  ultrawide: 7.sp,
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
                 ),
-                color: AppTheme.charcoalGray,
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 20),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

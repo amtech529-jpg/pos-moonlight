@@ -10,6 +10,7 @@ import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import '../../widgets/order/add_order_dialog.dart';
 import '../../widgets/order/view_order_dialog.dart';
 import '../../widgets/order/edit_order_dialog.dart';
+import '../../widgets/globals/confirmation_dialog.dart';
 import 'package:frontend/src/providers/customer_provider.dart';
 
 class OrderPage extends StatefulWidget {
@@ -247,13 +248,13 @@ class _OrderPageState extends State<OrderPage> {
               ),
               child: const Row(
                 children: [
-                  Expanded(flex: 1, child: Text("Quote ID", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-                  Expanded(flex: 2, child: Text("Client", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-                  Expanded(flex: 1, child: Text("Items", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)), textAlign: TextAlign.center)),
-                  Expanded(flex: 1, child: Text("Amount", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-                  Expanded(flex: 2, child: Text("Date", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-                  Expanded(flex: 1, child: Text("Status", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-                  Expanded(flex: 1, child: Text("Actions", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)), textAlign: TextAlign.center)),
+                  Expanded(flex: 2, child: Text("Quote ID", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+                  Expanded(flex: 4, child: Text("Client", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+                  Expanded(flex: 2, child: Text("Items", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)), textAlign: TextAlign.center)),
+                  Expanded(flex: 3, child: Text("Amount", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+                  Expanded(flex: 3, child: Text("Date", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+                  Expanded(flex: 2, child: Text("Status", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+                  Expanded(flex: 4, child: Text("Actions", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)), textAlign: TextAlign.center)),
                 ],
               ),
             ),
@@ -285,12 +286,15 @@ class _OrderPageState extends State<OrderPage> {
                   }
                   
                   final order = orders[index];
-                  return _buildOrderRow(
-                    context,
-                    order,
-                    order.orderSummary['total_items']?.toString() ?? "0",
-                    _getStatusColor(order.status),
-                    canEdit,
+                  return KeyedSubtree(
+                    key: ValueKey(order.id),
+                    child: _buildOrderRow(
+                      context,
+                      order,
+                      order.orderSummary['total_items']?.toString() ?? "0",
+                      _getStatusColor(order.status),
+                      canEdit,
+                    ),
                   );
                 },
               ),
@@ -343,30 +347,34 @@ class _OrderPageState extends State<OrderPage> {
       ),
       child: Row(
         children: [
-          Expanded(flex: 1, child: Text(id, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
-          Expanded(flex: 2, child: Text(client, style: const TextStyle(color: Color(0xFF666666), fontSize: 14))),
-          Expanded(flex: 1, child: Text(itemsCount, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14), textAlign: TextAlign.center)),
-          Expanded(flex: 1, child: Text(amount, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
-          Expanded(flex: 2, child: Text(date, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF666666)))),
+          Expanded(flex: 2, child: Text(id, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
+          Expanded(flex: 4, child: Text(client, style: const TextStyle(color: Color(0xFF666666), fontSize: 14))),
+          Expanded(flex: 2, child: Text(itemsCount, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14), textAlign: TextAlign.center)),
+          Expanded(flex: 3, child: Text(amount, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
+          Expanded(flex: 3, child: Text(date, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF666666)))),
           Expanded(
-            flex: 1,
+            flex: 2,
             child: Align(
               alignment: Alignment.centerLeft,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  status,
-                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    status,
+                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
+                    maxLines: 1,
+                  ),
                 ),
               ),
             ),
           ),
           Expanded(
-            flex: 1,
+            flex: 4,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -380,6 +388,12 @@ class _OrderPageState extends State<OrderPage> {
                   onTap: () => _viewOrder(context, order),
                   child: const Text("View", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFFE74C3C))),
                 ),
+                if (canEdit) const SizedBox(width: 14),
+                if (canEdit)
+                  InkWell(
+                    onTap: () => _deleteOrder(context, order),
+                    child: const Text("Delete", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Colors.red)),
+                  ),
               ],
             ),
           ),
@@ -404,6 +418,30 @@ class _OrderPageState extends State<OrderPage> {
     if (result == true) {
       // Refresh list if updated
       context.read<OrderProvider>().refreshData();
+    }
+  }
+
+  void _deleteOrder(BuildContext context, OrderModel order) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const ConfirmationDialog(
+        title: 'Delete Order',
+        message: 'Are you sure you want to delete this order? This action cannot be undone.',
+        actionText: 'Delete',
+        actionColor: Colors.red,
+      ),
+    );
+
+    if (confirm == true) {
+      if (!context.mounted) return;
+      final provider = Provider.of<OrderProvider>(context, listen: false);
+      final success = await provider.deleteOrder(order.id);
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order deleted successfully'), backgroundColor: Colors.green));
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(provider.errorMessage ?? 'Failed to delete order'), backgroundColor: Colors.red));
+      }
     }
   }
 }

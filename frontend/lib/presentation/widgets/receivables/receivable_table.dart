@@ -45,11 +45,13 @@ class ReceivablesTable extends StatelessWidget {
             ),
             child: _buildResponsiveHeaderRow(context),
           ),
-          Expanded(
-            child: Consumer<ReceivablesProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading) {
-                  return Center(
+          // No Expanded — vertical scroll is handled by parent screen's SingleChildScrollView
+          Consumer<ReceivablesProvider>(
+            builder: (context, provider, child) {
+              if (provider.isLoading) {
+                return Padding(
+                  padding: EdgeInsets.all(context.cardPadding * 2),
+                  child: Center(
                     child: SizedBox(
                       width: ResponsiveBreakpoints.responsive(
                         context,
@@ -72,22 +74,24 @@ class ReceivablesTable extends StatelessWidget {
                         strokeWidth: 3,
                       ),
                     ),
-                  );
-                }
-
-                if (provider.receivables.isEmpty) {
-                  return _buildEmptyState(context);
-                }
-
-                return ListView.builder(
-                  itemCount: provider.receivables.length,
-                  itemBuilder: (context, index) {
-                    final receivable = provider.receivables[index];
-                    return _buildResponsiveTableRow(context, receivable, index);
-                  },
+                  ),
                 );
-              },
-            ),
+              }
+
+              if (provider.receivables.isEmpty) {
+                return _buildEmptyState(context);
+              }
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: provider.receivables.length,
+                itemBuilder: (context, index) {
+                  final receivable = provider.receivables[index];
+                  return _buildResponsiveTableRow(context, receivable, index);
+                },
+              );
+            },
           ),
         ],
       ),

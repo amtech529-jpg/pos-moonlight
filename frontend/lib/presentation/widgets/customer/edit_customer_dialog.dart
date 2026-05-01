@@ -29,8 +29,8 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
   late TextEditingController _cityController;
   late TextEditingController _countryController;
   late TextEditingController _businessNameController;
-  late TextEditingController _taxNumberController;
   late TextEditingController _notesController;
+  final _scrollController = ScrollController();
 
   // Form state
   String _selectedCustomerType = 'INDIVIDUAL';
@@ -52,7 +52,6 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
   final _cityFocusNode = FocusNode();
   final _countryFocusNode = FocusNode();
   final _businessNameFocusNode = FocusNode();
-  final _taxNumberFocusNode = FocusNode();
   final _notesFocusNode = FocusNode();
   final _saveFocusNode = FocusNode();
 
@@ -78,7 +77,6 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
     _cityController = TextEditingController(text: widget.customer.city ?? '');
     _countryController = TextEditingController(text: widget.customer.country);
     _businessNameController = TextEditingController(text: widget.customer.businessName ?? '');
-    _taxNumberController = TextEditingController(text: widget.customer.taxNumber ?? '');
     _notesController = TextEditingController(text: widget.customer.description ?? '');
 
     // Initialize form state with existing customer data
@@ -86,7 +84,7 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
     _selectedStatus = widget.customer.status;
 
     // Show business fields if customer type is BUSINESS or if there's business data
-    final hasBusinessData = (widget.customer.businessName?.isNotEmpty ?? false) || (widget.customer.taxNumber?.isNotEmpty ?? false);
+    final hasBusinessData = (widget.customer.businessName?.isNotEmpty ?? false);
     _showBusinessFields = _selectedCustomerType.toUpperCase() == 'BUSINESS' || hasBusinessData;
 
     // If we have business data but customer type is not BUSINESS, update it
@@ -144,7 +142,6 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
     _addressController.text = customer.address ?? '';
     _cityController.text = customer.city ?? '';
     _businessNameController.text = customer.businessName ?? '';
-    _taxNumberController.text = customer.taxNumber ?? '';
     _notesController.text = customer.description ?? '';
 
     // Update form state
@@ -152,7 +149,7 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
     _selectedStatus = customer.status;
 
     // Show business fields if customer type is BUSINESS or if there's business data
-    final hasBusinessData = (customer.businessName?.isNotEmpty ?? false) || (customer.taxNumber?.isNotEmpty ?? false);
+    final hasBusinessData = (customer.businessName?.isNotEmpty ?? false);
     _showBusinessFields = _selectedCustomerType.toUpperCase() == 'BUSINESS' || hasBusinessData;
 
     // If we have business data but customer type is not BUSINESS, update it
@@ -175,7 +172,6 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
     _cityController.dispose();
     _countryController.dispose();
     _businessNameController.dispose();
-    _taxNumberController.dispose();
     _notesController.dispose();
     
     _nameFocusNode.dispose();
@@ -185,9 +181,9 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
     _cityFocusNode.dispose();
     _countryFocusNode.dispose();
     _businessNameFocusNode.dispose();
-    _taxNumberFocusNode.dispose();
     _notesFocusNode.dispose();
     _saveFocusNode.dispose();
+    _scrollController.dispose();
 
     // Clear selected customer from provider
     try {
@@ -206,7 +202,7 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
         _selectedCustomerType = newType;
 
         // Show business fields if customer type is BUSINESS or if there's existing business data
-        final hasBusinessData = (widget.customer.businessName?.isNotEmpty ?? false) || (widget.customer.taxNumber?.isNotEmpty ?? false);
+        final hasBusinessData = (widget.customer.businessName?.isNotEmpty ?? false);
         _showBusinessFields = newType.toUpperCase() == 'BUSINESS' || hasBusinessData;
       });
     }
@@ -235,7 +231,7 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
         customerType: _selectedCustomerType,
         status: _selectedStatus,
         businessName: _showBusinessFields && _businessNameController.text.trim().isNotEmpty ? _businessNameController.text.trim() : null,
-        taxNumber: _showBusinessFields && _taxNumberController.text.trim().isNotEmpty ? _taxNumberController.text.trim() : null,
+        taxNumber: null,
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
         phoneVerified: _phoneVerified,
         emailVerified: _emailVerified,
@@ -437,57 +433,68 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
   }
 
   Widget _buildFormContent() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: EdgeInsets.all(context.cardPadding),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Customer Type and Status Section
-              _buildTypeAndStatusSection(),
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      trackVisibility: true,
+      thickness: 8,
+      radius: const Radius.circular(8),
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        child: Padding(
+          padding: EdgeInsets.all(context.cardPadding),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Customer Type and Status Section
+                _buildTypeAndStatusSection(),
 
-              SizedBox(height: context.cardPadding),
+                SizedBox(height: context.cardPadding),
 
-              // Customer Statistics Section
-              _buildCustomerStatsSection(),
+                // Customer Statistics Section
+                _buildCustomerStatsSection(),
 
-              SizedBox(height: context.cardPadding),
+                SizedBox(height: context.cardPadding),
 
-              // Basic Information Section
-              _buildBasicInfoSection(),
+                // Business Information Section (conditionally shown)
+                if (_showBusinessFields) ...[
+                  _buildBusinessInfoSection(),
+                  SizedBox(height: context.cardPadding),
+                ],
 
-              SizedBox(height: context.cardPadding),
+                // Basic Information Section
+                _buildBasicInfoSection(),
 
-              // Contact Information Section
-              _buildContactInfoSection(),
+                SizedBox(height: context.cardPadding),
 
-              SizedBox(height: context.cardPadding),
+                // Contact Information Section
+                _buildContactInfoSection(),
 
-              // Verification Section
-              _buildVerificationSection(),
+                SizedBox(height: context.cardPadding),
 
-              SizedBox(height: context.cardPadding),
+                // Verification Section
+                _buildVerificationSection(),
 
-              // Business Information Section (conditionally shown)
-              if (_showBusinessFields) ...[_buildBusinessInfoSection(), SizedBox(height: context.cardPadding)],
+                SizedBox(height: context.cardPadding),
 
-              // Additional Information Section
-              _buildAdditionalInfoSection(),
+                // Additional Information Section
+                _buildAdditionalInfoSection(),
 
-              SizedBox(height: context.mainPadding),
+                SizedBox(height: context.mainPadding),
 
-              // Action Buttons
-              ResponsiveBreakpoints.responsive(
-                context,
-                tablet: _buildCompactButtons(),
-                small: _buildCompactButtons(),
-                medium: _buildDesktopButtons(),
-                large: _buildDesktopButtons(),
-                ultrawide: _buildDesktopButtons(),
-              ),
-            ],
+                // Action Buttons
+                ResponsiveBreakpoints.responsive(
+                  context,
+                  tablet: _buildCompactButtons(),
+                  small: _buildCompactButtons(),
+                  medium: _buildDesktopButtons(),
+                  large: _buildDesktopButtons(),
+                  ultrawide: _buildDesktopButtons(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1025,30 +1032,6 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
                     return null;
                   }
                 : null,
-          ),
-          SizedBox(height: context.cardPadding),
-
-          // Tax Number
-          PremiumTextField(
-            label: 'Tax/NTN Number',
-            hint: context.shouldShowCompactLayout ? 'Enter tax number' : 'Enter tax or NTN number (optional)',
-            controller: _taxNumberController,
-            prefixIcon: Icons.receipt_outlined,
-            validator: (value) {
-              if (value != null && value.isNotEmpty) {
-                if (value.length < 3) {
-                  return 'Tax number must be at least 3 characters';
-                }
-                if (value.length > 50) {
-                  return 'Tax number must be less than 50 characters';
-                }
-                // Basic format validation for Pakistani NTN
-                if (value.isNotEmpty && !RegExp(r'^[0-9-]+$').hasMatch(value)) {
-                  return 'Tax number should contain only numbers and hyphens';
-                }
-              }
-              return null;
-            },
           ),
         ],
       ),

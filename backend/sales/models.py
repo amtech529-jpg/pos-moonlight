@@ -1534,9 +1534,15 @@ class Sales(models.Model):
         logger = logging.getLogger(__name__)
 
         try:
+            # Get active items only
+            active_items = self.sale_items.filter(is_active=True)
+            
             # Calculate subtotal
-            total_subtotal = sum(item.line_total for item in self.sale_items.all())
+            total_subtotal = sum(item.line_total for item in active_items)
             self.subtotal = total_subtotal
+            
+            # Calculate total items count (sum of quantities)
+            self.total_items = sum(item.quantity for item in active_items)
 
             # Calculate tax and grand total
             taxable_amount = self.subtotal - self.overall_discount
@@ -1565,10 +1571,10 @@ class Sales(models.Model):
             self.update_payment_status()
 
             # Define fields to update
-            update_fields = ['subtotal', 'tax_amount', 'grand_total', 'remaining_amount', 'is_fully_paid']
+            update_fields = ['subtotal', 'total_items', 'tax_amount', 'grand_total', 'remaining_amount', 'is_fully_paid']
 
             self.save(update_fields=update_fields)
-            logger.info(f"✅ Recalculated totals for {self.invoice_number}: {self.grand_total}")
+            logger.info(f"✅ Recalculated totals for {self.invoice_number}: Grand Total {self.grand_total}, Items {self.total_items}")
 
         except Exception as e:
             logger.error(f"Failed to recalculate totals for sale {self.invoice_number}: {str(e)}")

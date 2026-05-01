@@ -5,6 +5,7 @@ from .views import (
     BackupListView,
     DeleteBackupView,
     DownloadBackupView,
+    ReadableBackupView,
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path('list/', BackupListView.as_view(), name='list-backups'),
     path('delete/<str:filename>/', DeleteBackupView.as_view(), name='delete-backup'),
     path('download/<str:filename>/', DownloadBackupView.as_view(), name='download-backup'),
+    path('readable/', ReadableBackupView.as_view(), name='readable-backup'),
 ]

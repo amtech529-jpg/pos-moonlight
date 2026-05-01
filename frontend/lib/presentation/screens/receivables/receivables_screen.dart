@@ -21,6 +21,7 @@ class ReceivablesPage extends StatefulWidget {
 
 class _ReceivablesPageState extends State<ReceivablesPage> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   
   // Local state for the current filter
   ReceivablesFilter _activeFilter = ReceivablesFilter();
@@ -28,6 +29,7 @@ class _ReceivablesPageState extends State<ReceivablesPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -87,38 +89,44 @@ class _ReceivablesPageState extends State<ReceivablesPage> {
 
     return Scaffold(
       backgroundColor: AppTheme.creamWhite,
-      body: Padding(
-        padding: EdgeInsets.all(context.mainPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ResponsiveBreakpoints.responsive(
-              context,
-              tablet: _buildTabletHeader(),
-              small: _buildMobileHeader(),
-              medium: _buildDesktopHeader(),
-              large: _buildDesktopHeader(),
-              ultrawide: _buildDesktopHeader(),
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          child: Padding(
+            padding: EdgeInsets.all(context.mainPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ResponsiveBreakpoints.responsive(
+                  context,
+                  tablet: _buildTabletHeader(),
+                  small: _buildMobileHeader(),
+                  medium: _buildDesktopHeader(),
+                  large: _buildDesktopHeader(),
+                  ultrawide: _buildDesktopHeader(),
+                ),
+                SizedBox(height: context.mainPadding),
+                Consumer<ReceivablesProvider>(
+                  builder: (context, provider, child) {
+                    return context.statsCardColumns == 2
+                        ? _buildMobileStatsGrid(provider)
+                        : _buildDesktopStatsRow(provider);
+                  },
+                ),
+                SizedBox(height: context.cardPadding * 0.5),
+                _buildSearchSection(),
+                SizedBox(height: context.cardPadding * 0.5),
+                ReceivablesTable(
+                  onEdit: _showEditReceivableDialog,
+                  onDelete: _showDeleteReceivableDialog,
+                  onViewDetails: _showViewDetailsDialog,
+                ),
+              ],
             ),
-            SizedBox(height: context.mainPadding),
-            Consumer<ReceivablesProvider>(
-              builder: (context, provider, child) {
-                return context.statsCardColumns == 2
-                    ? _buildMobileStatsGrid(provider)
-                    : _buildDesktopStatsRow(provider);
-              },
-            ),
-            SizedBox(height: context.cardPadding * 0.5),
-            _buildSearchSection(),
-            SizedBox(height: context.cardPadding * 0.5),
-            Expanded(
-              child: ReceivablesTable(
-                onEdit: _showEditReceivableDialog,
-                onDelete: _showDeleteReceivableDialog,
-                onViewDetails: _showViewDetailsDialog,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

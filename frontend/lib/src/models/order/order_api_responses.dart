@@ -288,17 +288,28 @@ class OrderCreateRequest {
 class OrderUpdateRequest {
   final double advancePayment;
   final DateTime? expectedDeliveryDate;
+  final DateTime? eventDate;
+  final DateTime? returnDate;
   final String description;
   final String status;
 
-  const OrderUpdateRequest({required this.advancePayment, this.expectedDeliveryDate, required this.description, required this.status});
+  const OrderUpdateRequest({
+    required this.advancePayment, 
+    this.expectedDeliveryDate, 
+    this.eventDate,
+    this.returnDate,
+    required this.description, 
+    required this.status
+  });
 
   Map<String, dynamic> toJson() {
     return {
       'advance_payment': advancePayment,
-      'expected_delivery_date': expectedDeliveryDate?.toIso8601String().split('T')[0], // Format as YYYY-MM-DD
+      'expected_delivery_date': expectedDeliveryDate?.toIso8601String().split('T')[0],
+      'event_date': eventDate?.toIso8601String().split('T')[0],
+      'return_date': returnDate?.toIso8601String().split('T')[0],
       'description': description,
-      'status': OrderStatusConverter.toBackend(status), // Convert to proper backend format
+      'status': OrderStatusConverter.toBackend(status),
     };
   }
 }

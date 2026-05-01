@@ -1,0 +1,27 @@
+[
+{
+  "model": "labors.labor",
+  "pk": "07d14e42-5ef5-494b-91c4-08839d49d689",
+  "fields": {
+    "name": "sherzaii",
+    "cnic": "33103-0334123-1",
+    "phone_number": "0340121201",
+    "caste": null,
+    "designation": "Eng",
+    "joining_date": "2026-04-12",
+    "salary": "30000.00",
+    "remaining_monthly_salary": "30000.00",
+    "current_month": 4,
+    "current_year": 2026,
+    "area": "Dha",
+    "city": "Islamabad",
+    "gender": "M",
+    "age": 22,
+    "fixed_incentive": "0.00",
+    "is_active": true,
+    "created_at": "2026-04-12T18:19:09.769Z",
+    "updated_at": "2026-04-12T18:19:09.769Z",
+    "created_by": 8
+  }
+}
+]

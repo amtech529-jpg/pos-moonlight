@@ -27,6 +27,7 @@ class CustomerLedgerScreen extends StatefulWidget {
 
 class _CustomerLedgerScreenState extends State<CustomerLedgerScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String? _selectedMonth;
   String _searchQuery = '';
 
@@ -49,6 +50,7 @@ class _CustomerLedgerScreenState extends State<CustomerLedgerScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -67,50 +69,65 @@ class _CustomerLedgerScreenState extends State<CustomerLedgerScreen> {
                       (e.referenceNumber?.toLowerCase().contains(q) ?? false);
                 }).toList();
 
-          return Column(
-            children: [
-              // ─── Header ─────────────────────────────────────────────────
-              _buildHeader(context),
-
-              // ─── Summary Cards ───────────────────────────────────────────
-              _buildSummaryCards(context, provider),
-
-              // ─── How it works legend ─────────────────────────────────────
-              _buildLegend(context),
-
-              // ─── Search + Month Filter Bar ───────────────────────────────
-              _buildFilterBar(context, provider),
-
-              // ─── Table Header ────────────────────────────────────────────
-              _buildTableHeader(context),
-
-              // ─── Table Rows ──────────────────────────────────────────────
-              Expanded(
-                child: provider.isLoading
-                    ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryMaroon))
-                    : filteredEntries.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.receipt_long_outlined, size: 48, color: Colors.grey[400]),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _searchQuery.isEmpty ? 'No transactions found' : 'No results for "$_searchQuery"',
-                                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                                ),
-                              ],
+          return Scrollbar(
+            controller: _scrollController,
+            thumbVisibility: true,
+            trackVisibility: true,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: Column(
+                children: [
+                  // ─── Header ─────────────────────────────────────────────────
+                  _buildHeader(context),
+    
+                  // ─── Summary Cards ───────────────────────────────────────────
+                  _buildSummaryCards(context, provider),
+    
+                  // ─── How it works legend ─────────────────────────────────────
+                  _buildLegend(context),
+    
+                  // ─── Search + Month Filter Bar ───────────────────────────────
+                  _buildFilterBar(context, provider),
+    
+                  // ─── Table Header ────────────────────────────────────────────
+                  _buildTableHeader(context),
+    
+                  // ─── Table Rows ──────────────────────────────────────────────
+                  if (provider.isLoading)
+                    const Center(child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: CircularProgressIndicator(color: AppTheme.primaryMaroon),
+                    ))
+                  else if (filteredEntries.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.receipt_long_outlined, size: 48, color: Colors.grey[400]),
+                            const SizedBox(height: 12),
+                            Text(
+                              _searchQuery.isEmpty ? 'No transactions found' : 'No results for "$_searchQuery"',
+                              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                             ),
-                          )
-                        : ListView.builder(
-                            itemCount: filteredEntries.length,
-                            padding: const EdgeInsets.only(bottom: 24),
-                            itemBuilder: (context, index) {
-                              return _buildLedgerRow(filteredEntries[index], context, index);
-                            },
-                          ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: filteredEntries.length,
+                      padding: const EdgeInsets.only(bottom: 24),
+                      itemBuilder: (context, index) {
+                        return _buildLedgerRow(filteredEntries[index], context, index);
+                      },
+                    ),
+                ],
               ),
-            ],
+            ),
           );
         },
       ),

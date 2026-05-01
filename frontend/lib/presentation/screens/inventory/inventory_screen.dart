@@ -25,6 +25,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
   String _selectedCategory = 'ALL';
   DateTime? _startDate;
   DateTime? _endDate;
+  final ScrollController _scrollController = ScrollController();
 
   Future<void> _selectDateRange() async {
     final DateTimeRange? picked = await showDateRangePicker(
@@ -97,6 +98,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -140,35 +142,41 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
       backgroundColor: const Color(0xFFF3E9E7), // Matches the pinkish background in screenshot
       body: RefreshIndicator(
         onRefresh: () => context.read<ProductProvider>().initialize(),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(canAdd),
-              const SizedBox(height: 32),
-              // Responsive Search and Filter Section
-              if (MediaQuery.of(context).size.width > 900)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 3, child: _buildSearchSection()),
-                    const SizedBox(width: 24),
-                    Expanded(flex: 2, child: _buildDateFilterSection()),
-                  ],
-                )
-              else
-                Column(
-                  children: [
-                    _buildSearchSection(),
-                    const SizedBox(height: 20),
-                    _buildDateFilterSection(),
-                  ],
-                ),
-              const SizedBox(height: 32),
-              _buildInventoryTable(context, canEdit, canDelete),
-            ],
+        child: Scrollbar(
+          controller: _scrollController,
+          thumbVisibility: true,
+          trackVisibility: true,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(canAdd),
+                const SizedBox(height: 32),
+                // Responsive Search and Filter Section
+                if (MediaQuery.of(context).size.width > 900)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: _buildSearchSection()),
+                      const SizedBox(width: 24),
+                      Expanded(flex: 2, child: _buildDateFilterSection()),
+                    ],
+                  )
+                else
+                  Column(
+                    children: [
+                      _buildSearchSection(),
+                      const SizedBox(height: 20),
+                      _buildDateFilterSection(),
+                    ],
+                  ),
+                const SizedBox(height: 32),
+                _buildInventoryTable(context, canEdit, canDelete),
+              ],
+            ),
           ),
         ),
       ),

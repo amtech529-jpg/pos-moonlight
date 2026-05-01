@@ -25,6 +25,7 @@ class LedgerModuleScreen extends StatefulWidget {
 class _LedgerModuleScreenState extends State<LedgerModuleScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
   DateTime _selectedDate = DateTime.now();
   final SalesService _salesService = SalesService();
 
@@ -55,6 +56,7 @@ class _LedgerModuleScreenState extends State<LedgerModuleScreen> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -112,15 +114,39 @@ class _LedgerModuleScreenState extends State<LedgerModuleScreen> {
         await LedgerExportService.openExportedFile(path);
         
         if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text("Ledger exported successfully"),
-              backgroundColor: Colors.green,
-              action: SnackBarAction(
-                label: "Re-open",
-                textColor: Colors.white,
-                onPressed: () => LedgerExportService.openExportedFile(path),
+              content: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Expanded(
+                    child: Text(
+                      "Ledger exported successfully",
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => LedgerExportService.openExportedFile(path!),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    child: const Text(
+                      "OPEN FILE",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(20),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
         }
@@ -235,20 +261,25 @@ class _LedgerModuleScreenState extends State<LedgerModuleScreen> {
           final totalCollected = totals['total_paid'] ?? 0.0;
           final totalOverdue = provider.totalOverdue;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title and Subtitle
-                const Text(
-                  "Ledger Module",
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF333333),
+          return Scrollbar(
+            controller: _scrollController,
+            thumbVisibility: true,
+            trackVisibility: true,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title and Subtitle
+                  const Text(
+                    "Ledger Module",
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF333333),
+                    ),
                   ),
-                ),
                 const SizedBox(height: 4),
                 const Text(
                   "Manage your Financial Record",
@@ -429,11 +460,12 @@ class _LedgerModuleScreenState extends State<LedgerModuleScreen> {
                   ),
               ],
             ),
-          );
-        },
-      ),
-    );
-  }
+          ),
+        );
+      },
+    ),
+  );
+}
 
   Widget _buildTableHeader() {
     return Container(

@@ -21,6 +21,7 @@ class ReturnManagementScreen extends StatefulWidget {
 class _ReturnManagementScreenState extends State<ReturnManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
   int _selectedMonths = 6; // Default to 6 months as per requirements
   DateTime? _startDate;
   DateTime? _endDate;
@@ -79,6 +80,7 @@ class _ReturnManagementScreenState extends State<ReturnManagementScreen> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -87,20 +89,25 @@ class _ReturnManagementScreenState extends State<ReturnManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent, // Inherit global pinkish/beige background
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            _buildHeader(),
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              _buildHeader(),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Stats row (5 cards for Return & Tally as per screenshot)
-            _buildStatsRow(),
+              // Stats row (5 cards for Return & Tally as per screenshot)
+              _buildStatsRow(),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
             // Search Bar Section
             _buildSearchSection(),
@@ -114,8 +121,9 @@ class _ReturnManagementScreenState extends State<ReturnManagementScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBottomSummaryGrid(Map<String, dynamic> stats) {
     return Container(

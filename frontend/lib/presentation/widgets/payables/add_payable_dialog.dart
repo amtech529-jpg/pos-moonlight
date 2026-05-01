@@ -77,6 +77,52 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
         _selectExpectedRepaymentDate();
       }
     });
+
+    // Add scroll listeners to all focus nodes
+    final allNodes = [
+      _creditorNameFocusNode,
+      _creditorPhoneFocusNode,
+      _creditorEmailFocusNode,
+      _amountBorrowedFocusNode,
+      _amountPaidFocusNode,
+      _reasonFocusNode,
+      _dateBorrowedFocusNode,
+      _expectedRepaymentDateFocusNode,
+      _submitButtonFocusNode,
+    ];
+    
+    for (var node in allNodes) {
+      node.addListener(() {
+        if (mounted) {
+          setState(() {});
+          if (node.hasFocus) _scrollToField(node);
+        }
+      });
+    }
+  }
+
+  void _scrollToField(FocusNode node) {
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (node.context != null && node.hasFocus && _scrollController.hasClients) {
+        Scrollable.ensureVisible(
+          node.context!,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.5,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        );
+        
+        // If it's the submit button, ensure it's at the bottom
+        if (node == _submitButtonFocusNode) {
+          Scrollable.ensureVisible(
+            node.context!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            alignment: 1.0,
+          );
+        }
+      }
+    });
   }
 
   @override
@@ -202,18 +248,19 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
       initialDate: _dateBorrowed,
       initialTime: const TimeOfDay(hour: 0, minute: 0),
       onDateTimeSelected: (date, time) {
-        if (date != _dateBorrowed) {
-          setState(() {
-            _dateBorrowed = date;
-            if (_expectedRepaymentDate.isBefore(_dateBorrowed.add(const Duration(days: 1)))) {
-              _expectedRepaymentDate = _dateBorrowed.add(const Duration(days: 30));
-            }
-          });
-          // Automatically move focus to the next date field
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) FocusScope.of(context).requestFocus(_expectedRepaymentDateFocusNode);
-          });
-        }
+        setState(() {
+          _dateBorrowed = date;
+          if (_expectedRepaymentDate.isBefore(_dateBorrowed.add(const Duration(days: 1)))) {
+            _expectedRepaymentDate = _dateBorrowed.add(const Duration(days: 30));
+          }
+        });
+        
+        // Always move focus to the next date field after picker closes
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted) {
+            FocusScope.of(context).requestFocus(_expectedRepaymentDateFocusNode);
+          }
+        });
       },
       title: l10n.selectBorrowedDate,
       minDate: DateTime.now().subtract(const Duration(days: 365)),
@@ -229,15 +276,16 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
       initialDate: _expectedRepaymentDate,
       initialTime: const TimeOfDay(hour: 0, minute: 0),
       onDateTimeSelected: (date, time) {
-        if (date != _expectedRepaymentDate) {
-          setState(() {
-            _expectedRepaymentDate = date;
-          });
-          // Automatically move focus to the Submit button
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) FocusScope.of(context).requestFocus(_submitButtonFocusNode);
-          });
-        }
+        setState(() {
+          _expectedRepaymentDate = date;
+        });
+        
+        // Always move focus to the Submit button after picker closes
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted) {
+            FocusScope.of(context).requestFocus(_submitButtonFocusNode);
+          }
+        });
       },
       title: l10n.selectExpectedRepaymentDate,
       minDate: _dateBorrowed.add(const Duration(days: 1)),
@@ -465,7 +513,10 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
             onSubmitted: (_) => FocusScope.of(context).requestFocus(_creditorEmailFocusNode),
             validator: (value) {
               if (value?.isEmpty ?? true) return l10n.pleaseEnterPhoneNumber;
-              if (!RegExp(r'^\+?[1-9]\d{1,14}$').hasMatch(value!)) return l10n.pleaseEnterAValidPhoneNumber;
+              // Relaxed regex to allow local numbers starting with 0 and international formats
+              if (!RegExp(r'^[0-9+]{10,15}$').hasMatch(value!.replaceAll(RegExp(r'[\s-]'), ''))) {
+                return l10n.pleaseEnterAValidPhoneNumber;
+              }
               return null;
             },
           ),
@@ -607,6 +658,19 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
                   focusNode: _dateBorrowedFocusNode,
                   textInputAction: TextInputAction.next,
                   onSubmitted: (_) => FocusScope.of(context).requestFocus(_expectedRepaymentDateFocusNode),
+                  containerDecoration: _dateBorrowedFocusNode.hasFocus 
+                    ? BoxDecoration(
+                        borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                        border: Border.all(color: const Color(0xFFFFD700), width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFFD700).withOpacity(0.3),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          )
+                        ],
+                      )
+                    : null,
                 ),
               ),
               SizedBox(width: context.cardPadding),
@@ -622,6 +686,19 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
                   focusNode: _expectedRepaymentDateFocusNode,
                   textInputAction: TextInputAction.next,
                   onSubmitted: (_) => FocusScope.of(context).requestFocus(_submitButtonFocusNode),
+                  containerDecoration: _expectedRepaymentDateFocusNode.hasFocus 
+                    ? BoxDecoration(
+                        borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                        border: Border.all(color: const Color(0xFFFFD700), width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFFD700).withOpacity(0.3),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          )
+                        ],
+                      )
+                    : null,
                 ),
               ),
             ],
@@ -719,8 +796,8 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
             onPressed: _handleCancel,
             isOutlined: true,
             height: context.buttonHeight,
-            backgroundColor: Colors.grey[600],
-            textColor: Colors.grey[600],
+            backgroundColor: Colors.black,
+            textColor: Colors.black,
           ),
         ],
       );
@@ -733,8 +810,8 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
               onPressed: _handleCancel,
               isOutlined: true,
               height: context.buttonHeight / 1.5,
-              backgroundColor: Colors.grey[600],
-              textColor: Colors.grey[600],
+              backgroundColor: Colors.black,
+              textColor: Colors.black,
             ),
           ),
           SizedBox(width: context.cardPadding),

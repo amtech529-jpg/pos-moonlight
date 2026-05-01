@@ -210,6 +210,8 @@ class ExpenseCreateRequest {
   final bool isRecurring;
   final bool isSalaryDeductible;
   final String? deductibleLaborId;
+  final String? transportVendorId;
+  final String? vehicleNumber;
 
   ExpenseCreateRequest({
     required this.expense,
@@ -223,14 +225,15 @@ class ExpenseCreateRequest {
     this.isRecurring = false,
     this.isSalaryDeductible = false,
     this.deductibleLaborId,
+    this.transportVendorId,
+    this.vehicleNumber,
   });
-
 
   Map<String, dynamic> toJson() {
     return {
       'expense': expense,
       'description': description,
-      'date': date.toIso8601String().split('T')[0], // YYYY-MM-DD format
+      'date': date.toIso8601String().split('T')[0],
       'time': time,
       'amount': amount,
       'withdrawal_by': withdrawalBy,
@@ -239,9 +242,10 @@ class ExpenseCreateRequest {
       'is_recurring': isRecurring,
       'is_salary_deductible': isSalaryDeductible,
       'deductible_labor': deductibleLaborId,
+      if (transportVendorId != null) 'transport_vendor': transportVendorId,
+      if (vehicleNumber != null && vehicleNumber!.isNotEmpty) 'vehicle_number': vehicleNumber,
     };
   }
-
 }
 
 class ExpenseUpdateRequest {
@@ -256,6 +260,8 @@ class ExpenseUpdateRequest {
   final bool isRecurring;
   final bool isSalaryDeductible;
   final String? deductibleLaborId;
+  final String? transportVendorId;
+  final String? vehicleNumber;
 
   ExpenseUpdateRequest({
     required this.expense,
@@ -269,14 +275,15 @@ class ExpenseUpdateRequest {
     this.isRecurring = false,
     this.isSalaryDeductible = false,
     this.deductibleLaborId,
+    this.transportVendorId,
+    this.vehicleNumber,
   });
-
 
   Map<String, dynamic> toJson() {
     return {
       'expense': expense,
       'description': description,
-      'date': date.toIso8601String().split('T')[0], // YYYY-MM-DD format
+      'date': date.toIso8601String().split('T')[0],
       'time': time,
       'amount': amount,
       'withdrawal_by': withdrawalBy,
@@ -285,9 +292,10 @@ class ExpenseUpdateRequest {
       'is_recurring': isRecurring,
       'is_salary_deductible': isSalaryDeductible,
       'deductible_labor': deductibleLaborId,
+      if (transportVendorId != null) 'transport_vendor': transportVendorId,
+      if (vehicleNumber != null && vehicleNumber!.isNotEmpty) 'vehicle_number': vehicleNumber,
     };
   }
-
 }
 
 class ExpenseDateRangeRequest {

@@ -270,40 +270,54 @@ class Product(models.Model):
 
     def get_available_quantity_for_dates(self, start_date, end_date, exclude_order_id=None):
         """
-        Calculate available quantity for a specific date range.
-        Consider all active orders that overlap with this range.
+        Calculate available quantity for a specific date range with robust error handling.
         """
         from order_items.models import OrderItem
         from django.db.models import Sum
+        import logging
+        logger = logging.getLogger(__name__)
 
-        if not self.is_rental:
-            return self.quantity - self.quantity_damaged
+        try:
+            if not self.is_rental:
+                return self.quantity - self.quantity_damaged
 
-        # Find overlapping orders
-        # Overlap filter: (event_date <= end_date) AND (return_date >= start_date)
-        overlapping_items = OrderItem.objects.filter(
-            product=self,
-            is_active=True,
-            order__is_active=True,
-            order__event_date__lte=end_date,
-            order__return_date__gte=start_date
-        ).exclude(
-            order__status__in=['CANCELLED', 'RETURNED']
-        )
+            # Find overlapping orders
+            # Overlap filter: (event_date <= end_date) AND (return_date >= start_date)
+            overlapping_items = OrderItem.objects.filter(
+                product=self,
+                is_active=True,
+                order__is_active=True,
+                order__event_date__lte=end_date,
+                order__return_date__gte=start_date
+            ).exclude(
+                order__status__in=['CANCELLED', 'RETURNED']
+            )
 
-        if exclude_order_id:
-            overlapping_items = overlapping_items.exclude(order_id=exclude_order_id)
+            if exclude_order_id:
+                overlapping_items = overlapping_items.exclude(order_id=exclude_order_id)
 
-        # Total quantity booked during this period from regular orders
-        total_booked = overlapping_items.aggregate(total=Sum('quantity'))['total'] or 0
-        
-        # Deduct items that are rented from partners (since they don't consume our stock)
-        partner_booked = overlapping_items.filter(rented_from_partner=True).aggregate(total=Sum('quantity'))['total'] or 0
-        booked_from_our_stock = total_booked - partner_booked
-
-        # Available = Total Stock - Damaged - Booked from our stock (dates)
-        available = self.quantity - self.quantity_damaged - booked_from_our_stock
-        return max(0, available)
+            from django.db.models import Sum, F, Case, When, IntegerField
+            
+            # The quantity booked from our own inventory is calculated as:
+            # - If rented_from_partner=True and partner_quantity>0: quantity - partner_quantity
+            # - If rented_from_partner=True and partner_quantity=0 (legacy data): 0
+            # - Else (not rented from partner): quantity
+            total_booked = overlapping_items.annotate(
+                own_qty=Case(
+                    When(rented_from_partner=True, partner_quantity__gt=0, then=F('quantity') - F('partner_quantity')),
+                    When(rented_from_partner=True, partner_quantity=0, then=0),
+                    default=F('quantity'),
+                    output_field=IntegerField(),
+                )
+            ).aggregate(total=Sum('own_qty'))['total'] or 0
+            
+            # Available = Total Stock - Damaged - Booked from our stock (dates)
+            available = self.quantity - self.quantity_damaged - total_booked
+            return max(0, available)
+        except Exception as e:
+            logger.error(f"Error calculating available stock for product {self.id}: {str(e)}")
+            # Fallback to current stock if complex calculation fails
+            return max(0, self.quantity - self.quantity_damaged)
 
     @property
     def stock_status(self):

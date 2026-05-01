@@ -147,6 +147,8 @@ class ExpenseService {
     bool isRecurring = false,
     bool isSalaryDeductible = false,
     String? deductibleLaborId,
+    String? transportVendorId,
+    String? vehicleNumber,
   }) async {
     try {
       final request = ExpenseCreateRequest(
@@ -161,6 +163,8 @@ class ExpenseService {
         isRecurring: isRecurring,
         isSalaryDeductible: isSalaryDeductible,
         deductibleLaborId: deductibleLaborId,
+        transportVendorId: transportVendorId,
+        vehicleNumber: vehicleNumber,
       );
 
 
@@ -219,6 +223,8 @@ class ExpenseService {
     bool isRecurring = false,
     bool isSalaryDeductible = false,
     String? deductibleLaborId,
+    String? transportVendorId,
+    String? vehicleNumber,
   }) async {
     try {
       final request = ExpenseUpdateRequest(
@@ -233,6 +239,8 @@ class ExpenseService {
         isRecurring: isRecurring,
         isSalaryDeductible: isSalaryDeductible,
         deductibleLaborId: deductibleLaborId,
+        transportVendorId: transportVendorId,
+        vehicleNumber: vehicleNumber,
       );
 
 

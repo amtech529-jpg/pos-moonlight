@@ -59,13 +59,18 @@ def generate_partner_payables(order, created_by=None):
                 'total': Decimal('0.00')
             }
         
+        # Get the actual quantity taken from partner (fallback to total quantity for legacy data)
+        actual_qty = getattr(item, 'partner_quantity', None)
+        if actual_qty is None or actual_qty <= 0:
+            actual_qty = item.quantity
+
         # Calculate payable amount using partner_rate (what we owe the partner)
         partner_rate = item.partner_rate or item.rate
-        item_total = Decimal(str(item.quantity)) * partner_rate * Decimal(str(item.days))
+        item_total = Decimal(str(actual_qty)) * partner_rate * Decimal(str(item.days))
         
         partner_groups[partner_id]['items'].append({
             'product_name': item.product_name or item.product.name,
-            'quantity': item.quantity,
+            'quantity': actual_qty,
             'rate': float(partner_rate),
             'days': item.days,
             'total': float(item_total),

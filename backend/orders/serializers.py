@@ -209,6 +209,25 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     days = 1
                     pricing_type = 'PER_DAY'
 
+                # Handle potential null values for partner fields
+                partner_qty = item.get('partner_quantity')
+                if partner_qty is None or partner_qty == '':
+                    partner_qty = 0
+                else:
+                    try:
+                        partner_qty = int(partner_qty)
+                    except (ValueError, TypeError):
+                        partner_qty = 0
+
+                partner_rate = item.get('partner_rate')
+                if partner_rate is None or partner_rate == '':
+                    partner_rate = Decimal('0.00')
+                else:
+                    try:
+                        partner_rate = Decimal(str(partner_rate))
+                    except (InvalidOperation, TypeError):
+                        partner_rate = Decimal('0.00')
+
                 OrderItem.objects.create(
                     order=order,
                     product=product,
@@ -220,7 +239,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     customization_notes=item.get('customization_notes', ''),
                     rented_from_partner=item.get('rented_from_partner', False),
                     partner_id=item.get('partner'),
-                    partner_rate=item.get('partner_rate')
+                    partner_rate=partner_rate,
+                    partner_quantity=partner_qty
                 )
             
             # Recalculate totals
@@ -264,6 +284,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
         fields = (
             'advance_payment',
             'expected_delivery_date',
+            'event_date',
+            'return_date',
             'description',
             'status'
         )
@@ -303,7 +325,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             # Validate logical status progression
             valid_transitions = {
                 'PENDING': ['CONFIRMED', 'CANCELLED'],
-                'CONFIRMED': ['READY', 'CANCELLED'],
+                'CONFIRMED': ['READY', 'DELIVERED', 'CANCELLED'],  # Allow direct skip to DELIVERED
                 'READY': ['DELIVERED', 'CANCELLED'],
                 'DELIVERED': [],  # Terminal state
                 'CANCELLED': []   # Terminal state
@@ -387,7 +409,11 @@ class OrderListSerializer(serializers.ModelSerializer):
                 'days': item.days,
                 'pricing_type': item.pricing_type,
                 'line_total': item.line_total,
-                'has_customization': bool(item.customization_notes)
+                'has_customization': bool(item.customization_notes),
+                'rented_from_partner': item.rented_from_partner,
+                'partner': str(item.partner_id) if item.partner_id else None,
+                'partner_rate': float(item.partner_rate) if item.partner_rate else None,
+                'partner_quantity': item.partner_quantity
             }
             for item in items
         ]
@@ -532,7 +558,11 @@ class OrderDetailSerializer(serializers.ModelSerializer):
                 'days': item.days,
                 'pricing_type': item.pricing_type,
                 'line_total': item.line_total,
-                'has_customization': bool(item.customization_notes)
+                'has_customization': bool(item.customization_notes),
+                'rented_from_partner': item.rented_from_partner,
+                'partner': str(item.partner_id) if item.partner_id else None,
+                'partner_rate': float(item.partner_rate) if item.partner_rate else None,
+                'partner_quantity': item.partner_quantity
             }
             for item in items
         ]

@@ -7,8 +7,10 @@ import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
 import '../../../src/models/expenses/expenses_model.dart';
 import '../../../src/models/labor/labor_model.dart';
+import '../../../src/models/vendor/vendor_model.dart';
 import '../../../src/providers/expenses_provider.dart';
 import '../../../src/providers/labor_provider.dart';
+import '../../../src/services/vendor/vendor_service.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
@@ -27,12 +29,14 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
   final _amountController = TextEditingController();
   final _expenseController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _scrollController = ScrollController();
   
   // Focus Nodes
   final _expenseFocusNode = FocusNode();
   final _descriptionFocusNode = FocusNode();
   final _amountFocusNode = FocusNode();
   final _categoryFocusNode = FocusNode();
+  final _vehicleNumberFocusNode = FocusNode();
   final _recurringFocusNode = FocusNode();
   final _deductibleFocusNode = FocusNode();
   final _laborFocusNode = FocusNode();
@@ -46,6 +50,13 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
   bool _isSalaryDeductible = false;
   String? _selectedLaborId;
   String? _selectedCategory;
+  // Transport fields
+  String? _selectedTransportVendorId;
+  final _vehicleNumberController = TextEditingController();
+  List<VendorModel> _vendors = [];
+  bool _isLoadingVendors = false;
+
+  bool get _isTransport => _selectedCategory == 'Transport';
 
 
   late AnimationController _animationController;
@@ -65,6 +76,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
       if (mounted) {
         context.read<LaborProvider>().loadLabors();
         _animationController.forward();
+        _loadVendors();
       }
     });
 
@@ -76,11 +88,68 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
     _descriptionFocusNode.addListener(focusListener);
     _amountFocusNode.addListener(focusListener);
     _categoryFocusNode.addListener(focusListener);
+    _vehicleNumberFocusNode.addListener(focusListener);
     _recurringFocusNode.addListener(focusListener);
     _deductibleFocusNode.addListener(focusListener);
     _laborFocusNode.addListener(focusListener);
     _dateFocusNode.addListener(focusListener);
     _saveFocusNode.addListener(focusListener);
+
+    // Add scroll listeners to all focus nodes
+    final allNodes = [
+      _expenseFocusNode,
+      _descriptionFocusNode,
+      _amountFocusNode,
+      _categoryFocusNode,
+      _recurringFocusNode,
+      _deductibleFocusNode,
+      _laborFocusNode,
+      _dateFocusNode,
+      _saveFocusNode,
+    ];
+    
+    for (var node in [
+      _expenseFocusNode,
+      _descriptionFocusNode,
+      _amountFocusNode,
+      _categoryFocusNode,
+      _vehicleNumberFocusNode,
+      _recurringFocusNode,
+      _deductibleFocusNode,
+      _laborFocusNode,
+      _dateFocusNode,
+      _saveFocusNode,
+    ]) {
+      node.addListener(() {
+        if (mounted && node.hasFocus) {
+          _scrollToField(node);
+        }
+      });
+    }
+  }
+
+  void _scrollToField(FocusNode node) {
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (node.context != null && node.hasFocus && _scrollController.hasClients) {
+        Scrollable.ensureVisible(
+          node.context!,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.5,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        );
+        
+        // If it's the save button, ensure it's at the bottom
+        if (node == _saveFocusNode) {
+          Scrollable.ensureVisible(
+            node.context!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            alignment: 1.0,
+          );
+        }
+      }
+    });
   }
 
   @override
@@ -89,16 +158,31 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
     _amountController.dispose();
     _expenseController.dispose();
     _descriptionController.dispose();
+    _vehicleNumberController.dispose();
     _expenseFocusNode.dispose();
     _descriptionFocusNode.dispose();
     _amountFocusNode.dispose();
     _categoryFocusNode.dispose();
+    _vehicleNumberFocusNode.dispose();
     _recurringFocusNode.dispose();
     _deductibleFocusNode.dispose();
     _laborFocusNode.dispose();
     _dateFocusNode.dispose();
     _saveFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadVendors() async {
+    setState(() => _isLoadingVendors = true);
+    try {
+      final res = await VendorService().getVendors();
+      if (res.success && res.data != null && mounted) {
+        setState(() => _vendors = res.data!.vendors);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingVendors = false);
+    }
   }
 
   void _handleSubmit() async {
@@ -111,13 +195,15 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
         expense: _expenseController.text.trim(),
         description: _descriptionController.text.trim(),
         amount: double.parse(_amountController.text.trim()),
-        withdrawalBy: '', // Default value since it's removed from UI
+        withdrawalBy: '',
         date: _selectedDate,
         time: _selectedTime,
         isRecurring: _isRecurring,
         isSalaryDeductible: _isSalaryDeductible,
         deductibleLaborId: _isSalaryDeductible ? _selectedLaborId : null,
         category: _selectedCategory,
+        transportVendorId: _isTransport ? _selectedTransportVendorId : null,
+        vehicleNumber: _isTransport ? _vehicleNumberController.text.trim() : null,
       );
 
       if (mounted) {
@@ -197,7 +283,13 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
           _selectedDate = date;
           _selectedTime = time;
         });
-        _saveFocusNode.requestFocus();
+        
+        // Always move focus to the save button
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted) {
+            FocusScope.of(context).requestFocus(_saveFocusNode);
+          }
+        });
       },
     );
   }
@@ -244,18 +336,21 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
 
   Widget _buildTabletLayout() {
     return SingleChildScrollView(
+      controller: _scrollController,
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: true)]),
     );
   }
 
   Widget _buildMobileLayout() {
     return SingleChildScrollView(
+      controller: _scrollController,
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: true)]),
     );
   }
 
   Widget _buildDesktopLayout() {
     return SingleChildScrollView(
+      controller: _scrollController,
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: false)]),
     );
   }
@@ -340,7 +435,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
               prefixIcon: Icons.category_outlined,
               focusNode: _expenseFocusNode,
               textInputAction: TextInputAction.next,
-              onSubmitted: (_) => FocusScope.of(context).requestFocus(_descriptionFocusNode),
+              onSubmitted: (_) => _categoryFocusNode.requestFocus(),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return l10n.pleaseEnterExpenseType;
@@ -353,6 +448,97 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
             ),
             SizedBox(height: context.cardPadding),
 
+            PremiumDropdownField<String>(
+              focusNode: _categoryFocusNode,
+              label: l10n.expenseCategory,
+              hint: l10n.selectCategory,
+              value: _selectedCategory,
+              prefixIcon: Icons.category_rounded,
+              items: ExpensesProvider.expenseCategories.map((category) => DropdownItem<String>(value: category, label: category)).toList(),
+              onChanged: (category) {
+                setState(() {
+                  _selectedCategory = category;
+                  if (category != 'Transport') {
+                    _selectedTransportVendorId = null;
+                    _vehicleNumberController.clear();
+                  }
+                });
+                // Focus flow: Transport → vehicle, else → description
+                if (category == 'Transport') {
+                  _vehicleNumberFocusNode.requestFocus();
+                } else {
+                  _descriptionFocusNode.requestFocus();
+                }
+              },
+              validator: (value) {
+                if (value == null) {
+                  return l10n.pleaseSelectCategory;
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 20),
+
+            // ── Transport-only fields ──────────────────────────────────────────
+            if (_isTransport) ...[
+              PremiumTextField(
+                label: 'Vehicle Number (Optional)',
+                hint: 'e.g. ABC-123',
+                controller: _vehicleNumberController,
+                focusNode: _vehicleNumberFocusNode,
+                prefixIcon: Icons.directions_car_rounded,
+                textInputAction: TextInputAction.next,
+                onSubmitted: (_) => _descriptionFocusNode.requestFocus(),
+              ),
+              SizedBox(height: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Transport Vendor / Driver', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
+                  SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.grey.shade50,
+                    ),
+                    child: _isLoadingVendors
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          )
+                        : DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _selectedTransportVendorId,
+                              isExpanded: true,
+                              hint: const Text('Select Driver / Transport Vendor', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                              style: const TextStyle(fontSize: 13, color: Colors.black, fontWeight: FontWeight.w600),
+                              items: [
+                                const DropdownMenuItem<String>(value: null, child: Text('None', style: TextStyle(color: Colors.grey))),
+                                ..._vendors.map((v) => DropdownMenuItem<String>(
+                                  value: v.id,
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.person_pin_rounded, size: 16, color: Color(0xFF8B2252)),
+                                      const SizedBox(width: 8),
+                                      Expanded(child: Text(v.displayName, overflow: TextOverflow.ellipsis)),
+                                    ],
+                                  ),
+                                )),
+                              ],
+                              onChanged: (v) {
+                                setState(() => _selectedTransportVendorId = v);
+                                _descriptionFocusNode.requestFocus();
+                              },
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+
             PremiumTextField(
               label: l10n.description,
               hint: isCompact ? l10n.enterDescription : l10n.enterExpenseDescription,
@@ -362,15 +548,6 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
               maxLines: 3,
               textInputAction: TextInputAction.next,
               onSubmitted: (_) => FocusScope.of(context).requestFocus(_amountFocusNode),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return l10n.pleaseEnterDescription;
-                }
-                if (value!.length < 5) {
-                  return l10n.descriptionMinLength;
-                }
-                return null;
-              },
             ),
             SizedBox(height: context.cardPadding),
 
@@ -382,7 +559,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
               keyboardType: TextInputType.number,
               focusNode: _amountFocusNode,
               textInputAction: TextInputAction.next,
-              onSubmitted: (_) => _categoryFocusNode.requestFocus(),
+              onSubmitted: (_) => _recurringFocusNode.requestFocus(),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return l10n.pleaseEnterAmount;
@@ -390,28 +567,6 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
                 final amount = double.tryParse(value!);
                 if (amount == null || amount <= 0) {
                   return l10n.pleaseEnterValidAmount;
-                }
-                return null;
-              },
-            ),
-            SizedBox(height: 20),
-
-            PremiumDropdownField<String>(
-              focusNode: _categoryFocusNode,
-              label: l10n.expenseCategory,
-              hint: l10n.selectCategory,
-              value: _selectedCategory,
-              prefixIcon: Icons.category_rounded,
-              items: ExpensesProvider.expenseCategories.map((category) => DropdownItem<String>(value: category, label: category)).toList(),
-              onChanged: (category) {
-                setState(() {
-                  _selectedCategory = category;
-                });
-                _recurringFocusNode.requestFocus();
-              },
-              validator: (value) {
-                if (value == null) {
-                  return l10n.pleaseSelectCategory;
                 }
                 return null;
               },
@@ -692,8 +847,8 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
           onPressed: _handleCancel,
           isOutlined: true,
           height: context.buttonHeight,
-          backgroundColor: Colors.grey[600],
-          textColor: Colors.grey[600],
+          backgroundColor: Colors.black,
+          textColor: Colors.black,
         ),
       ],
     );
@@ -709,8 +864,8 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
             onPressed: _handleCancel,
             isOutlined: true,
             height: context.buttonHeight / 1.5,
-            backgroundColor: Colors.grey[600],
-            textColor: Colors.grey[600],
+            backgroundColor: Colors.black,
+            textColor: Colors.black,
           ),
         ),
         const SizedBox(width: 20),

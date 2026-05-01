@@ -28,19 +28,23 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
   final _cityController = TextEditingController();
   final _countryController = TextEditingController();
   final _businessNameController = TextEditingController();
-  final _taxNumberController = TextEditingController();
   final _notesController = TextEditingController();
+  final _scrollController = ScrollController();
   
   // Focus Nodes
-  final _businessNameFocusNode = FocusNode();
-  final _notesFocusNode = FocusNode();
-  
-  // Quick Select Focus Nodes
-  final _cityChipsFirstFocusNode = FocusNode();
-  final _countryChipsFirstFocusNode = FocusNode();
+  final _nameFocusNode = FocusNode();
+  final _phoneFocusNode = FocusNode();
+  final _emailFocusNode = FocusNode();
+  final _addressFocusNode = FocusNode();
   final _cityFocusNode = FocusNode();
   final _countryFocusNode = FocusNode();
+  final _businessNameFocusNode = FocusNode();
+  final _notesFocusNode = FocusNode();
   final _saveFocusNode = FocusNode();
+
+  // Quick Select Focus Nodes (First chip nodes to help jump)
+  final _cityChipsFirstFocusNode = FocusNode();
+  final _countryChipsFirstFocusNode = FocusNode();
 
   // Form state
   String _selectedCustomerType = 'INDIVIDUAL';
@@ -90,15 +94,19 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
     _cityController.dispose();
     _countryController.dispose();
     _businessNameController.dispose();
-    _taxNumberController.dispose();
     _notesController.dispose();
+    _nameFocusNode.dispose();
+    _phoneFocusNode.dispose();
+    _emailFocusNode.dispose();
+    _addressFocusNode.dispose();
+    _cityFocusNode.dispose();
+    _countryFocusNode.dispose();
     _businessNameFocusNode.dispose();
     _notesFocusNode.dispose();
     _cityChipsFirstFocusNode.dispose();
     _countryChipsFirstFocusNode.dispose();
-    _cityFocusNode.dispose();
-    _countryFocusNode.dispose();
     _saveFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -112,7 +120,6 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
       // Preserve data when switching, only clear business-specific fields if needed
       if (!_showBusinessFields) {
         _businessNameController.clear();
-        _taxNumberController.clear();
       }
     });
   }
@@ -141,9 +148,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
         businessName: _showBusinessFields && _businessNameController.text.trim().isNotEmpty
             ? _businessNameController.text.trim()
             : null,
-        taxNumber: _showBusinessFields && _taxNumberController.text.trim().isNotEmpty
-            ? _taxNumberController.text.trim()
-            : null,
+        taxNumber: null,
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
@@ -365,50 +370,79 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
   }
 
   Widget _buildFormContent() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: EdgeInsets.all(context.cardPadding),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Customer Type Selection
-              _buildCustomerTypeSection(),
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      trackVisibility: true,
+      thickness: 8,
+      radius: const Radius.circular(8),
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        child: Padding(
+          padding: EdgeInsets.all(context.cardPadding),
+          child: Form(
+            key: _formKey,
+            child: FocusTraversalGroup(
+              policy: OrderedTraversalPolicy(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Customer Type Selection
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(1),
+                    child: _buildCustomerTypeSection(),
+                  ),
 
-              SizedBox(height: context.cardPadding),
+                  SizedBox(height: context.cardPadding),
 
-              // Basic Information Section
-              _buildBasicInfoSection(),
+                  // Business Information Section (conditionally shown)
+                  if (_showBusinessFields) ...[
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(1.5),
+                      child: _buildBusinessInfoSection(),
+                    ),
+                    SizedBox(height: context.cardPadding),
+                  ],
 
-              SizedBox(height: context.cardPadding),
+                  // Basic Information Section
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(2),
+                    child: _buildBasicInfoSection(),
+                  ),
 
-              // Contact Information Section
-              _buildContactInfoSection(),
+                  SizedBox(height: context.cardPadding),
 
-              // Business Information Section (conditionally shown)
-              if (_showBusinessFields) ...[
-                SizedBox(height: context.cardPadding),
-                _buildBusinessInfoSection(),
-              ],
+                  // Contact Information Section
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(3),
+                    child: _buildContactInfoSection(),
+                  ),
 
-              SizedBox(height: context.cardPadding),
+                  SizedBox(height: context.cardPadding),
 
-              // Additional Information Section
-              _buildAdditionalInfoSection(),
+                  // Additional Information Section
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(10),
+                    child: _buildAdditionalInfoSection(),
+                  ),
 
-              SizedBox(height: context.mainPadding),
+                  SizedBox(height: context.mainPadding),
 
-              // Action Buttons
-              ResponsiveBreakpoints.responsive(
-                context,
-                tablet: _buildCompactButtons(),
-                small: _buildCompactButtons(),
-                medium: _buildDesktopButtons(),
-                large: _buildDesktopButtons(),
-                ultrawide: _buildDesktopButtons(),
+                  // Action Buttons
+                  FocusTraversalOrder(
+                    order: const NumericFocusOrder(11),
+                    child: ResponsiveBreakpoints.responsive(
+                      context,
+                      tablet: _buildCompactButtons(),
+                      small: _buildCompactButtons(),
+                      medium: _buildDesktopButtons(),
+                      large: _buildDesktopButtons(),
+                      ultrawide: _buildDesktopButtons(),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -515,26 +549,35 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
       children: [
         _buildSectionTitle('Basic Information', Icons.info_outline),
         SizedBox(height: context.cardPadding),
-        PremiumTextField(
-          label: 'Full Name *',
-          hint: context.shouldShowCompactLayout
-              ? 'Enter name'
-              : 'Enter customer\'s full name',
-          controller: _nameController,
-          prefixIcon: Icons.person_outline,
-          textInputAction: TextInputAction.next,
-          validator: (value) {
-            if (value?.isEmpty ?? true) {
-              return 'Please enter customer name';
-            }
-            if (value!.length < 2) {
-              return 'Name must be at least 2 characters';
-            }
-            if (value.length > 100) {
-              return 'Name must be less than 100 characters';
-            }
-            return null;
-          },
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(2),
+          child: PremiumTextField(
+            key: const ValueKey('customer_name_field'),
+            label: 'Full Name *',
+            hint: context.shouldShowCompactLayout
+                ? 'Enter name'
+                : 'Enter customer\'s full name',
+            controller: _nameController,
+            focusNode: _nameFocusNode,
+            prefixIcon: Icons.person_outline,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+              _nameFocusNode.unfocus();
+              FocusScope.of(context).requestFocus(_phoneFocusNode);
+            },
+            validator: (value) {
+              if (value?.isEmpty ?? true) {
+                return 'Please enter customer name';
+              }
+              if (value!.length < 2) {
+                return 'Name must be at least 2 characters';
+              }
+              if (value.length > 100) {
+                return 'Name must be less than 100 characters';
+              }
+              return null;
+            },
+          ),
         ),
       ],
     );
@@ -548,58 +591,83 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
         SizedBox(height: context.cardPadding),
 
         // Phone Number
-        PremiumTextField(
-          label: 'Phone Number *',
-          hint: context.shouldShowCompactLayout
-              ? 'Enter phone'
-              : 'Enter phone number (e.g., +923001234567)',
-          controller: _phoneController,
-          prefixIcon: Icons.phone_outlined,
-          keyboardType: TextInputType.phone,
-          textInputAction: TextInputAction.next,
-          validator: (value) {
-            if (value?.isEmpty ?? true) {
-              return 'Please enter phone number';
-            }
-            if (value!.length < 10) {
-              return 'Please enter a valid phone number';
-            }
-            return null;
-          },
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(3),
+          child: PremiumTextField(
+            key: const ValueKey('customer_phone_field'),
+            label: 'Phone Number *',
+            hint: context.shouldShowCompactLayout
+                ? 'Enter phone'
+                : 'Enter phone number (e.g., +923001234567)',
+            controller: _phoneController,
+            focusNode: _phoneFocusNode,
+            prefixIcon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+              _phoneFocusNode.unfocus();
+              FocusScope.of(context).requestFocus(_emailFocusNode);
+            },
+            validator: (value) {
+              if (value?.isEmpty ?? true) {
+                return 'Please enter phone number';
+              }
+              if (value!.length < 10) {
+                return 'Please enter a valid phone number';
+              }
+              return null;
+            },
+          ),
         ),
         SizedBox(height: context.cardPadding),
 
         // Email
-        PremiumTextField(
-          label: 'Email Address',
-          hint: context.shouldShowCompactLayout
-              ? 'Enter email (optional)'
-              : 'Enter email address (optional)',
-          controller: _emailController,
-          prefixIcon: Icons.email_outlined,
-          keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.next,
-          validator: (value) {
-            if (value != null && value.isNotEmpty) {
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                return 'Please enter a valid email address';
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(4),
+          child: PremiumTextField(
+            label: 'Email Address',
+            hint: context.shouldShowCompactLayout
+                ? 'Enter email (optional)'
+                : 'Enter email address (optional)',
+            controller: _emailController,
+            focusNode: _emailFocusNode,
+            prefixIcon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+              _emailFocusNode.unfocus();
+              FocusScope.of(context).requestFocus(_addressFocusNode);
+            },
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  return 'Please enter a valid email address';
+                }
               }
-            }
-            return null;
-          },
+              return null;
+            },
+          ),
         ),
         SizedBox(height: context.cardPadding),
 
         // Address
-        PremiumTextField(
-          label: 'Address',
-          hint: context.shouldShowCompactLayout
-              ? 'Enter address'
-              : 'Enter complete address (optional)',
-          controller: _addressController,
-          prefixIcon: Icons.location_on_outlined,
-          textInputAction: TextInputAction.next,
-          maxLines: 2,
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(4.5),
+          child: PremiumTextField(
+            label: 'Address',
+            hint: context.shouldShowCompactLayout
+                ? 'Enter address'
+                : 'Enter complete address (optional)',
+            controller: _addressController,
+            focusNode: _addressFocusNode,
+            prefixIcon: Icons.location_on_outlined,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+            _addressFocusNode.unfocus();
+            FocusScope.of(context).requestFocus(_cityFocusNode);
+          },
+            maxLines: 2,
+          ),
         ),
         SizedBox(height: context.cardPadding),
 
@@ -644,29 +712,35 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PremiumTextField(
-          label: 'City',
-          hint: 'Enter city',
-          controller: _cityController,
-          prefixIcon: Icons.location_city_outlined,
-          focusNode: _cityFocusNode,
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_cityChipsFirstFocusNode),
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(5),
+          child: PremiumTextField(
+            label: 'City',
+            hint: 'Enter city',
+            controller: _cityController,
+            prefixIcon: Icons.location_city_outlined,
+            focusNode: _cityFocusNode,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).requestFocus(_cityChipsFirstFocusNode),
+          ),
         ),
         SizedBox(height: context.smallPadding),
-        Wrap(
-          spacing: context.smallPadding / 2,
-          runSpacing: context.smallPadding / 4,
-          children: _commonCities.take(4).toList().asMap().entries.map((entry) => _buildQuickSelectChip(
-            label: entry.value,
-            isSelected: _cityController.text == entry.value,
-            onTap: () {
-              setState(() => _cityController.text = entry.value);
-              // Move focus to Country field after selecting city
-              FocusScope.of(context).requestFocus(_countryFocusNode);
-            },
-            focusNode: entry.key == 0 ? _cityChipsFirstFocusNode : null,
-          )).toList(),
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(6),
+          child: Wrap(
+            spacing: context.smallPadding / 2,
+            runSpacing: context.smallPadding / 4,
+            children: _commonCities.take(4).toList().asMap().entries.map((entry) => _buildQuickSelectChip(
+              label: entry.value,
+              isSelected: _cityController.text == entry.value,
+              onTap: () {
+                setState(() => _cityController.text = entry.value);
+                // Move focus to Country field after selecting city
+                FocusScope.of(context).requestFocus(_countryFocusNode);
+              },
+              focusNode: entry.key == 0 ? _cityChipsFirstFocusNode : null,
+            )).toList(),
+          ),
         ),
       ],
     );
@@ -676,33 +750,35 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PremiumTextField(
-          label: 'Country',
-          hint: 'Enter country',
-          controller: _countryController,
-          prefixIcon: Icons.public_outlined,
-          focusNode: _countryFocusNode,
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_countryChipsFirstFocusNode),
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(7),
+          child: PremiumTextField(
+            label: 'Country',
+            hint: 'Enter country',
+            controller: _countryController,
+            prefixIcon: Icons.public_outlined,
+            focusNode: _countryFocusNode,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).requestFocus(_countryChipsFirstFocusNode),
+          ),
         ),
         SizedBox(height: context.smallPadding),
-        Wrap(
-          spacing: context.smallPadding / 2,
-          runSpacing: context.smallPadding / 4,
-          children: _commonCountries.take(4).toList().asMap().entries.map((entry) => _buildQuickSelectChip(
-            label: entry.value,
-            isSelected: _countryController.text == entry.value,
-            onTap: () {
-              setState(() => _countryController.text = entry.value);
-              // Move focus forward after selecting country
-              if (_showBusinessFields) {
-                FocusScope.of(context).requestFocus(_businessNameFocusNode);
-              } else {
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(8),
+          child: Wrap(
+            spacing: context.smallPadding / 2,
+            runSpacing: context.smallPadding / 4,
+            children: _commonCountries.take(4).toList().asMap().entries.map((entry) => _buildQuickSelectChip(
+              label: entry.value,
+              isSelected: _countryController.text == entry.value,
+              onTap: () {
+                setState(() => _countryController.text = entry.value);
+                // Move focus forward to Notes after selecting country
                 FocusScope.of(context).requestFocus(_notesFocusNode);
-              }
-            },
-            focusNode: entry.key == 0 ? _countryChipsFirstFocusNode : null,
-          )).toList(),
+              },
+              focusNode: entry.key == 0 ? _countryChipsFirstFocusNode : null,
+            )).toList(),
+          ),
         ),
       ],
     );
@@ -718,24 +794,32 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
           SizedBox(height: context.cardPadding),
 
           // Business Name
-          PremiumTextField(
-            label: 'Business Name *',
-            hint: context.shouldShowCompactLayout
-                ? 'Enter business name'
-                : 'Enter registered business name',
-            controller: _businessNameController,
-            prefixIcon: Icons.business_center_outlined,
-            focusNode: _businessNameFocusNode,
-            textInputAction: TextInputAction.next,
-            validator: _showBusinessFields ? (value) {
-              if (value?.isEmpty ?? true) {
-                return 'Business name is required for business customers';
-              }
-              if (value!.length > 200) {
-                return 'Business name must be less than 200 characters';
-              }
-              return null;
-            } : null,
+          FocusTraversalOrder(
+            order: const NumericFocusOrder(1.5),
+            child: PremiumTextField(
+              key: const ValueKey('customer_business_name_field'),
+              label: 'Business Name *',
+              hint: context.shouldShowCompactLayout
+                  ? 'Enter business name'
+                  : 'Enter registered business name',
+              controller: _businessNameController,
+              prefixIcon: Icons.business_center_outlined,
+              focusNode: _businessNameFocusNode,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) {
+                _businessNameFocusNode.unfocus();
+                FocusScope.of(context).requestFocus(_nameFocusNode);
+              },
+              validator: _showBusinessFields ? (value) {
+                if (value?.isEmpty ?? true) {
+                  return 'Business name is required for business customers';
+                }
+                if (value!.length > 200) {
+                  return 'Business name must be less than 200 characters';
+                }
+                return null;
+              } : null,
+            ),
           ),
         ],
       ),
@@ -801,59 +885,48 @@ class _AddCustomerDialogState extends State<AddCustomerDialog>
     final bool isSpecialLabel = label == 'Islamabad' || label == 'Pakistan';
     final Color activeColor = isSpecialLabel ? Colors.teal : AppTheme.accentGold;
     
-    return Focus(
+    return InkWell(
+      onTap: onTap,
       focusNode: focusNode,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.enter || 
-              event.logicalKey == LogicalKeyboardKey.space) {
-            onTap();
-            return KeyEventResult.handled;
-          }
-        }
-        return KeyEventResult.ignored;
-      },
+      borderRadius: BorderRadius.circular(context.borderRadius('small')),
       child: Builder(
         builder: (context) {
           final bool isFocused = Focus.of(context).hasFocus;
-          return InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(context.borderRadius('small')),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.smallPadding,
-                vertical: context.smallPadding / 2,
-              ),
-              decoration: BoxDecoration(
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.smallPadding,
+              vertical: context.smallPadding / 2,
+            ),
+            decoration: BoxDecoration(
+              color: isSelected 
+                  ? activeColor.withOpacity(0.15) 
+                  : (isFocused ? activeColor.withOpacity(0.05) : Colors.transparent),
+              borderRadius: BorderRadius.circular(context.borderRadius('small')),
+              border: Border.all(
                 color: isSelected 
-                    ? activeColor.withOpacity(0.15) 
-                    : (isFocused ? Colors.grey.withOpacity(0.05) : Colors.transparent),
-                borderRadius: BorderRadius.circular(context.borderRadius('small')),
-                border: Border.all(
-                  color: isSelected 
-                      ? activeColor 
-                      : (isFocused ? Colors.grey.shade400 : Colors.grey.shade300),
-                  width: isSelected ? 1.5 : 1,
-                ),
-                boxShadow: (isFocused && !isSelected) ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 2,
-                    spreadRadius: 0,
-                  )
-                ] : [],
+                    ? activeColor 
+                    : (isFocused ? activeColor.withOpacity(0.5) : Colors.grey.shade300),
+                width: (isSelected || isFocused) ? 1.5 : 1,
               ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: context.captionFontSize,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? activeColor : Colors.grey[700],
-                ),
+              boxShadow: (isFocused && !isSelected) ? [
+                BoxShadow(
+                  color: activeColor.withOpacity(0.2),
+                  blurRadius: 4,
+                  spreadRadius: 1,
+                )
+              ] : [],
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: context.captionFontSize,
+                fontWeight: (isSelected || isFocused) ? FontWeight.w700 : FontWeight.w500,
+                color: (isSelected || isFocused) ? activeColor : Colors.grey[700],
               ),
             ),
           );
-        }
+        },
       ),
     );
   }

@@ -75,24 +75,7 @@ class _PremiumTextFieldState extends State<PremiumTextField>
       end: AppTheme.primaryMaroon,
     ).animate(_animationController);
 
-    _focusNode.addListener(() {
-      if (mounted) {
-        setState(() {
-          _isFocused = _focusNode.hasFocus;
-        });
-        if (_isFocused) {
-          _animationController.forward();
-          if (widget.selectAllOnFocus && widget.controller != null) {
-            widget.controller!.selection = TextSelection(
-              baseOffset: 0,
-              extentOffset: widget.controller!.text.length,
-            );
-          }
-        } else {
-          _animationController.reverse();
-        }
-      }
-    });
+    _focusNode.addListener(_onFocusChange);
 
     if (widget.onKeyEvent != null) {
       _focusNode.onKeyEvent = (node, event) {
@@ -101,8 +84,54 @@ class _PremiumTextFieldState extends State<PremiumTextField>
     }
   }
 
+  void _onFocusChange() {
+    if (mounted) {
+      setState(() {
+        _isFocused = _focusNode.hasFocus;
+      });
+      if (_isFocused) {
+        _animationController.forward();
+        if (widget.selectAllOnFocus && widget.controller != null) {
+          widget.controller!.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: widget.controller!.text.length,
+          );
+        }
+      } else {
+        _animationController.reverse();
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(PremiumTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.focusNode != oldWidget.focusNode) {
+      // Remove listener from old node
+      if (oldWidget.focusNode == null) {
+        _focusNode.removeListener(_onFocusChange);
+        _focusNode.dispose();
+      } else {
+        oldWidget.focusNode!.removeListener(_onFocusChange);
+      }
+
+      // Set new node and add listener
+      _focusNode = widget.focusNode ?? FocusNode();
+      _focusNode.addListener(_onFocusChange);
+      
+      // Update focused state immediately
+      _isFocused = _focusNode.hasFocus;
+      if (_isFocused) {
+        _animationController.forward();
+      } else {
+        _animationController.reverse();
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
     _animationController.dispose();
     if (widget.focusNode == null) {
       _focusNode.dispose();

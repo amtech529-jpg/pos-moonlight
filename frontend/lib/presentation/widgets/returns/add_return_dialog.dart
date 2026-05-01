@@ -246,7 +246,7 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
 
       final success = await provider.createReturn(
         orderId: _selectedOrder!.id,
-        responsibility: _responsibility,
+        responsibility: _returnItems.any((item) => item.damaged > 0 || item.missing > 0) ? _responsibility : 'NONE',
         damageCharges: totalDamageCharges,
         notes: _notesController.text.trim(),
         items: itemsData,
@@ -511,17 +511,53 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  item.originalItem.productName,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: context.bodyFontSize,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryMaroon.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.inventory_2_outlined, size: 18, color: AppTheme.primaryMaroon),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    item.originalItem.productName.isEmpty ? 'Unknown Item' : item.originalItem.productName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppTheme.primaryMaroon,
+                    ),
                   ),
                 ),
-              ),
+                if (item.originalItem.rentedFromPartner) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Text(
+                      'Partner Item',
+                      style: TextStyle(
+                        color: Colors.blue.shade700,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          SizedBox(height: context.smallPadding),
+          Row(
+            children: [
+              const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -537,25 +573,6 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
                   ),
                 ),
               ),
-              if (item.originalItem.rentedFromPartner) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Text(
-                    'Partner Item',
-                    style: TextStyle(
-                      color: Colors.blue.shade700,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
           SizedBox(height: context.smallPadding),
@@ -691,17 +708,19 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PremiumDropdownField<String>(
-          label: 'Responsibility (ذمہ داری)',
-          hint: 'Select Responsibility',
-          prefixIcon: Icons.person_pin_rounded,
-          value: _responsibility,
-          items: _responsibilityChoices.map((c) => DropdownItem(value: c, label: c)).toList(),
-          onChanged: (val) {
-            if (val != null) setState(() => _responsibility = val);
-          },
-        ),
-        SizedBox(height: context.cardPadding),
+        if (_returnItems.any((item) => item.damaged > 0 || item.missing > 0)) ...[
+          PremiumDropdownField<String>(
+            label: 'Responsibility (ذمہ داری)',
+            hint: 'Select Responsibility',
+            prefixIcon: Icons.person_pin_rounded,
+            value: _responsibility,
+            items: _responsibilityChoices.map((c) => DropdownItem(value: c, label: c)).toList(),
+            onChanged: (val) {
+              if (val != null) setState(() => _responsibility = val);
+            },
+          ),
+          SizedBox(height: context.cardPadding),
+        ],
         PremiumTextField(
           label: 'Overall Notes (تفصیل)',
           controller: _notesController,

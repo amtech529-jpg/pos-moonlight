@@ -1168,7 +1168,6 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
       child: Container(
         width: 500,
         constraints: BoxConstraints(maxHeight: 80.h),
-        padding: const EdgeInsets.symmetric(vertical: 32),
         child: Form(
           key: _formKey,
           child: Scrollbar(
@@ -1179,7 +1178,7 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
               behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
               child: SingleChildScrollView(
                 controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 0),
+                padding: const EdgeInsets.all(32),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,

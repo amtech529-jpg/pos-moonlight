@@ -21,6 +21,7 @@ class _ToolsInventoryScreenState extends State<ToolsInventoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final ProductService _productService = ProductService();
+  final ScrollController _scrollController = ScrollController();
 
   List<ProductModel> _tools = [];
   bool _isLoading = true;
@@ -123,6 +124,7 @@ class _ToolsInventoryScreenState extends State<ToolsInventoryScreen> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -163,179 +165,185 @@ class _ToolsInventoryScreenState extends State<ToolsInventoryScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3E9E7),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            const Text(
-              "Tool & Consumes Inventory",
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF333333),
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              const Text(
+                "Tool & Consumes Inventory",
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF333333),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              "Manage your Tools here's",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF666666),
+              const SizedBox(height: 4),
+              const Text(
+                "Manage your Tools here's",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF666666),
+                ),
               ),
-            ),
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-            // Summary Cards Row
-            Consumer<ReportProvider>(
-              builder: (context, reportProvider, _) {
-                // Sum up real monthly usage if available, otherwise fallback to calculated _monthlyUsage
-                double realUsage = _monthlyUsage;
-                if (reportProvider.toolUsageTrends.isNotEmpty) {
-                  realUsage = (reportProvider.toolUsageTrends.last['revenue'] as num).toDouble();
-                }
+              // Summary Cards Row
+              Consumer<ReportProvider>(
+                builder: (context, reportProvider, _) {
+                  // Sum up real monthly usage if available, otherwise fallback to calculated _monthlyUsage
+                  double realUsage = _monthlyUsage;
+                  if (reportProvider.toolUsageTrends.isNotEmpty) {
+                    realUsage = (reportProvider.toolUsageTrends.last['revenue'] as num).toDouble();
+                  }
 
-                return Row(
-                  children: [
-                    _buildSummaryCard("Total Inventory Value", currencyFormat.format(_totalInventoryValue)),
-                    const SizedBox(width: 20),
-                    _buildSummaryCard("Low Stock Alerts", "$_lowStockCount Items", hasAlert: _lowStockCount > 0),
-                    const SizedBox(width: 20),
-                    _buildSummaryCard("Monthly Usage", currencyFormat.format(realUsage)),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 48),
+                  return Row(
+                    children: [
+                      _buildSummaryCard("Total Inventory Value", currencyFormat.format(_totalInventoryValue)),
+                      const SizedBox(width: 20),
+                      _buildSummaryCard("Low Stock Alerts", "$_lowStockCount Items", hasAlert: _lowStockCount > 0),
+                      const SizedBox(width: 20),
+                      _buildSummaryCard("Monthly Usage", currencyFormat.format(realUsage)),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 48),
 
-            // Action Row
-            Row(
-              children: [
-                // Search Bar
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
+              // Action Row
+              Row(
+                children: [
+                  // Search Bar
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
-                          child: TextField(
-                            focusNode: _searchFocusNode,
-                            controller: _searchController,
-                            cursorColor: Colors.black,
-                            textAlignVertical: TextAlignVertical.center,
-                            style: const TextStyle(fontSize: 15, color: Colors.black),
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: _searchFocusNode.hasFocus 
-                                  ? const Color(0xFFD9D9D9).withOpacity(0.7) 
-                                  : const Color(0xFFE8E8E8),
-                              hintText: "Search by item name...",
-                              hintStyle: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 16, fontWeight: FontWeight.w500),
-                              prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFBBBBBB), size: 24),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                        ],
+                      ),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            onChanged: (value) {
-                              // Use backend search if needed, currently just local filtering logic can be added or simple re-fetch
-                              setState(() {}); 
-                            },
+                            child: TextField(
+                              focusNode: _searchFocusNode,
+                              controller: _searchController,
+                              cursorColor: Colors.black,
+                              textAlignVertical: TextAlignVertical.center,
+                              style: const TextStyle(fontSize: 15, color: Colors.black),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: _searchFocusNode.hasFocus 
+                                    ? const Color(0xFFD9D9D9).withOpacity(0.7) 
+                                    : const Color(0xFFE8E8E8),
+                                hintText: "Search by item name...",
+                                hintStyle: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 16, fontWeight: FontWeight.w500),
+                                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFBBBBBB), size: 24),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                              ),
+                              onChanged: (value) {
+                                // Use backend search if needed, currently just local filtering logic can be added or simple re-fetch
+                                setState(() {}); 
+                              },
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 20),
-                // ✅ Category Filter Button with Dropdown
-                _buildCategoryFilterButton(height: 64),
-                const SizedBox(width: 20),
-                // Usage Filter
-                _buildFilterButton(
-                  "Last $_analysisMonths months Usage", 
-                  width: 220, 
-                  isOutline: true, 
-                  height: 64,
-                  onTap: () {
-                    final nextMonths = _analysisMonths == 6 ? 12 : (_analysisMonths == 12 ? 3 : 6);
-                    setState(() => _analysisMonths = nextMonths);
-                    Provider.of<ReportProvider>(context, listen: false).fetchToolUsageReport(months: nextMonths);
+                  const SizedBox(width: 20),
+                  // ✅ Category Filter Button with Dropdown
+                  _buildCategoryFilterButton(height: 64),
+                  const SizedBox(width: 20),
+                  // Usage Filter
+                  _buildFilterButton(
+                    "Last $_analysisMonths months Usage", 
+                    width: 220, 
+                    isOutline: true, 
+                    height: 64,
+                    onTap: () {
+                      final nextMonths = _analysisMonths == 6 ? 12 : (_analysisMonths == 12 ? 3 : 6);
+                      setState(() => _analysisMonths = nextMonths);
+                      Provider.of<ReportProvider>(context, listen: false).fetchToolUsageReport(months: nextMonths);
+                    }
+                  ),
+                  const SizedBox(width: 20),
+                  // Add Button
+                  if (canAdd)
+                    _buildAddButton(height: 64),
+                ],
+              ),
+              const SizedBox(height: 48),
+
+              // Tools Table
+              _buildToolsTable(canEdit),
+
+              const SizedBox(height: 48),
+
+              // Usage Analysis Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Usage Analysis",
+                    style: TextStyle(
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF555555), // Darker for better contrast
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        _buildToggleButton("Usage", _historyMode == 'Usage'),
+                        _buildToggleButton("Re-orders", _historyMode == 'Re-orders'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Consumer<ReportProvider>(
+                builder: (context, reportProvider, _) {
+                  if (reportProvider.isLoading) {
+                    return const Center(child: Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: CircularProgressIndicator(),
+                    ));
                   }
-                ),
-                const SizedBox(width: 20),
-                // Add Button
-                if (canAdd)
-                  _buildAddButton(height: 64),
-              ],
-            ),
-            const SizedBox(height: 48),
-
-            // Tools Table
-            _buildToolsTable(canEdit),
-
-            const SizedBox(height: 48),
-
-            // Usage Analysis Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Usage Analysis",
-                  style: TextStyle(
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF555555), // Darker for better contrast
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      _buildToggleButton("Usage", _historyMode == 'Usage'),
-                      _buildToggleButton("Re-orders", _historyMode == 'Re-orders'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Consumer<ReportProvider>(
-              builder: (context, reportProvider, _) {
-                if (reportProvider.isLoading) {
-                  return const Center(child: Padding(
-                    padding: EdgeInsets.all(24.0),
-                    child: CircularProgressIndicator(),
-                  ));
-                }
-                return _buildAnalysisSection(reportProvider);
-              },
-            ),
-          ],
+                  return _buildAnalysisSection(reportProvider);
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

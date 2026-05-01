@@ -200,7 +200,7 @@ class AppLocalizationsUr extends AppLocalizations {
   String get category => 'زمرہ';
 
   @override
-  String get vendor => 'وینڈر';
+  String get vendor => 'کمپنی کا نام';
 
   @override
   String get zakat => 'زکٰوۃ';
@@ -362,7 +362,7 @@ class AppLocalizationsUr extends AppLocalizations {
   String get resetAll => 'سب ری سیٹ کریں';
 
   @override
-  String get unknownVendor => 'نامعلوم وینڈر';
+  String get unknownVendor => 'نامعلوم کمپنی';
 
   @override
   String get deletePurchaseConfirm => 'کیا آپ واقعی یہ خریداری حذف کرنا چاہتے ہیں؟';
@@ -4395,7 +4395,7 @@ class AppLocalizationsUr extends AppLocalizations {
   String get enterExpense => 'اخراجات درج کریں';
 
   @override
-  String get enterExpenseTypeCategory => 'اخراجات کی قسم/زمرہ درج کریں';
+  String get enterExpenseTypeCategory => 'خرچے کا نام لکھیں';
 
   @override
   String get pleaseEnterExpenseType => 'براہ کرم اخراجات کی قسم درج کریں';

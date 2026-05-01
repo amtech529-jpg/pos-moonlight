@@ -181,8 +181,8 @@ class _EnhancedCustomerTableState extends State<EnhancedCustomerTable> {
 
     return Row(
       children: [
-        SizedBox(width: columnWidths[0], child: _buildSortableHeaderCell(context, l10n.name, 'name')),
-        SizedBox(width: columnWidths[1], child: _buildHeaderCell(context, 'Business')),
+        SizedBox(width: columnWidths[0], child: _buildHeaderCell(context, l10n.businessName)),
+        SizedBox(width: columnWidths[1], child: _buildSortableHeaderCell(context, l10n.name, 'name')),
         SizedBox(width: columnWidths[2], child: _buildHeaderCell(context, l10n.phone)),
         SizedBox(width: columnWidths[3], child: _buildHeaderCell(context, l10n.email)),
         SizedBox(width: columnWidths[4], child: _buildHeaderCell(context, l10n.type)),
@@ -196,8 +196,8 @@ class _EnhancedCustomerTableState extends State<EnhancedCustomerTable> {
 
   List<double> _getColumnWidths(BuildContext context) {
     return [
+      215.0, // Business Name
       200.0, // Name
-      180.0, // Business Name
       160.0, // Phone
       220.0, // Email
       110.0, // Type
@@ -269,27 +269,9 @@ class _EnhancedCustomerTableState extends State<EnhancedCustomerTable> {
       padding: EdgeInsets.symmetric(vertical: context.cardPadding / 2),
       child: Row(
         children: [
-          // Name
-          SizedBox(
-            width: columnWidths[0],
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
-              child: Text(
-                customer.name,
-                style: TextStyle(
-                  fontSize: context.bodyFontSize,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.charcoalGray,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-
           // Business Name
           SizedBox(
-            width: columnWidths[1],
+            width: columnWidths[0],
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
               child: Text(
@@ -298,6 +280,24 @@ class _EnhancedCustomerTableState extends State<EnhancedCustomerTable> {
                   fontSize: context.subtitleFontSize,
                   fontWeight: FontWeight.w500,
                   color: customer.businessName != null ? AppTheme.charcoalGray : Colors.grey[500],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+
+          // Name
+          SizedBox(
+            width: columnWidths[1],
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
+              child: Text(
+                customer.name,
+                style: TextStyle(
+                  fontSize: context.bodyFontSize,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.charcoalGray,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

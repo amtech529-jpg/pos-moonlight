@@ -22,6 +22,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
   int _selectedMonth = DateTime.now().month;
   int _selectedYear = DateTime.now().year;
   String? _statusFilter; // 'PENDING', 'PAID', null (All)
+  final ScrollController _scrollController = ScrollController();
 
   double _totalGross = 0;
   double _totalPaid = 0;
@@ -308,249 +309,263 @@ class _SalaryScreenState extends State<SalaryScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Stats Cards
-          _buildStatsRow(),
-          
-          // Filters
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Row(
-              children: [
-                _buildFilterDropdown<int>(
-                  label: 'Month',
-                  value: _selectedMonth,
-                  items: List.generate(12, (index) => DropdownMenuItem(
-                    value: index + 1,
-                    child: Text(DateFormat('MMMM').format(DateTime(2000, index + 1))),
-                  )), 
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() => _selectedMonth = val);
-                      _loadSlips();
-                    }
-                  }
-                ),
-                const SizedBox(width: 12),
-                _buildFilterDropdown<int>(
-                  label: 'Year',
-                  value: _selectedYear,
-                  items: List.generate(51, (index) => DropdownMenuItem(
-                    value: 2020 + index,
-                    child: Text('${2020 + index}'),
-                  )), 
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() => _selectedYear = val);
-                      _loadSlips();
-                    }
-                  }
-                ),
-
-                const Spacer(),
-                if (canAdd)
-                  ElevatedButton.icon(
-                    onPressed: () => _generateSlips(),
-                    icon: const Icon(Icons.flash_on, size: 20),
-                    label: const Text('Run New Payroll'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1ABC9C),
-                      foregroundColor: Colors.white,
-                      elevation: 1,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          child: Column(
+            children: [
+              // Stats Cards
+              _buildStatsRow(),
+              
+              // Filters
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Row(
+                  children: [
+                    _buildFilterDropdown<int>(
+                      label: 'Month',
+                      value: _selectedMonth,
+                      items: List.generate(12, (index) => DropdownMenuItem(
+                        value: index + 1,
+                        child: Text(DateFormat('MMMM').format(DateTime(2000, index + 1))),
+                      )), 
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedMonth = val);
+                          _loadSlips();
+                        }
+                      }
                     ),
-                  ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          
-          // List
-          Expanded(
-            child: _isLoading 
-              ? const Center(child: CircularProgressIndicator())
-              : _slips.isEmpty 
-                ? const Center(child: Text('No salary slips found for this period.'))
-                : ListView.builder(
-                    itemCount: _slips.length,
-                    itemBuilder: (context, index) {
-                      final slip = _slips[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                            child: Text(
-                              slip.laborName.isNotEmpty ? slip.laborName.substring(0, 1).toUpperCase() : '?',
-                              style: TextStyle(
-                                color: Theme.of(context).primaryColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            slip.laborName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                              fontSize: 16,
-                            ),
-                          ),
-                          subtitle: Text(
-                            'Net Salary: ${NumberFormat.currency(symbol: 'PKR ').format(slip.netSalary)}',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                            ),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: slip.status == 'PAID' ? Colors.green[50] : Colors.orange[50],
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: slip.status == 'PAID' ? Colors.green[200]! : Colors.orange[200]!,
-                                  ),
-                                ),
+                    const SizedBox(width: 12),
+                    _buildFilterDropdown<int>(
+                      label: 'Year',
+                      value: _selectedYear,
+                      items: List.generate(51, (index) => DropdownMenuItem(
+                        value: 2020 + index,
+                        child: Text('${2020 + index}'),
+                      )), 
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedYear = val);
+                          _loadSlips();
+                        }
+                      }
+                    ),
+
+                    const Spacer(),
+                    if (canAdd)
+                      ElevatedButton.icon(
+                        onPressed: () => _generateSlips(),
+                        icon: const Icon(Icons.flash_on, size: 20),
+                        label: const Text('Run New Payroll'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1ABC9C),
+                          foregroundColor: Colors.white,
+                          elevation: 1,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              
+              // List
+              _isLoading 
+                  ? const Center(child: Padding(
+                      padding: EdgeInsets.all(40.0),
+                      child: CircularProgressIndicator(),
+                    ))
+                  : _slips.isEmpty 
+                    ? const Center(child: Padding(
+                        padding: EdgeInsets.all(40.0),
+                        child: Text('No salary slips found for this period.'),
+                      ))
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _slips.length,
+                        itemBuilder: (context, index) {
+                          final slip = _slips[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
                                 child: Text(
-                                  slip.status,
+                                  slip.laborName.isNotEmpty ? slip.laborName.substring(0, 1).toUpperCase() : '?',
                                   style: TextStyle(
-                                    color: slip.status == 'PAID' ? Colors.green[700] : Colors.orange[700],
-                                    fontSize: 12,
+                                    color: Theme.of(context).primaryColor,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.print_outlined),
-                                color: Colors.blue[700],
-                                tooltip: 'Print Slip',
-                                onPressed: () => SalarySlipPdfService.previewAndPrintSlip(slip),
-                              ),
-                              if (slip.status != 'PAID' && canEdit)
-                                IconButton(
-                                  icon: const Icon(Icons.check_circle_outline),
-                                  color: Colors.green[700],
-                                  tooltip: 'Mark as Paid',
-                                  onPressed: () => _markAsPaid(slip),
+                              title: Text(
+                                slip.laborName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                  fontSize: 16,
                                 ),
-                            ],
-                          ),
-                          onTap: () {
-                             showDialog(
-                               context: context, 
-                               builder: (context) => AlertDialog(
-                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                 titlePadding: EdgeInsets.zero,
-                                 title: Container(
-                                   padding: const EdgeInsets.all(16),
-                                   decoration: const BoxDecoration(
-                                     color: Color(0xFF2C3E50),
-                                     borderRadius: BorderRadius.only(
-                                       topLeft: Radius.circular(16),
-                                       topRight: Radius.circular(16),
-                                     ),
-                                   ),
-                                   child: Row(
-                                     children: [
-                                       const Icon(Icons.receipt_long, color: Colors.white),
-                                       const SizedBox(width: 12),
-                                       const Text('Payslip Details', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                                     ],
-                                   ),
-                                 ),
-                                 content: Container(
-                                   width: 400,
-                                   child: Column(
-                                     mainAxisSize: MainAxisSize.min,
-                                     crossAxisAlignment: CrossAxisAlignment.start,
-                                     children: [
-                                       _buildDetailRow('Employee Name', slip.laborName, isBold: true),
-                                       _buildDetailRow('Designation', slip.laborDesignation),
-                                       _buildDetailRow('Reference #', slip.referenceNumber ?? 'N/A'),
-                                       _buildDetailRow('Month/Year', '${DateFormat('MMMM').format(DateTime(2000, slip.month))} ${slip.year}'),
-                                       const Divider(height: 24),
-                                       const Text('EARNINGS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green)),
-                                       const SizedBox(height: 8),
-                                       _buildDetailRow('Base Salary', NumberFormat.currency(symbol: 'Rs ').format(slip.baseSalary)),
-                                       _buildDetailRow('Bonuses/Incentives', NumberFormat.currency(symbol: 'Rs ').format(slip.bonuses)),
-                                       const SizedBox(height: 12),
-                                       const Text('DEDUCTIONS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red)),
-                                       const SizedBox(height: 8),
-                                       _buildDetailRow('Monthly Advances', '- ${NumberFormat.currency(symbol: 'Rs ').format(slip.totalAdvances)}'),
-                                       _buildDetailRow('Other Deductions', '- ${NumberFormat.currency(symbol: 'Rs ').format(slip.deductions)}'),
-                                       const Divider(height: 32),
-                                       Container(
-                                         padding: const EdgeInsets.all(12),
-                                         decoration: BoxDecoration(
-                                           color: Colors.blue[50],
-                                           borderRadius: BorderRadius.circular(8),
+                              ),
+                              subtitle: Text(
+                                'Net Salary: ${NumberFormat.currency(symbol: 'PKR ').format(slip.netSalary)}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: slip.status == 'PAID' ? Colors.green[50] : Colors.orange[50],
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: slip.status == 'PAID' ? Colors.green[200]! : Colors.orange[200]!,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      slip.status,
+                                      style: TextStyle(
+                                        color: slip.status == 'PAID' ? Colors.green[700] : Colors.orange[700],
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.print_outlined),
+                                    color: Colors.blue[700],
+                                    tooltip: 'Print Slip',
+                                    onPressed: () => SalarySlipPdfService.previewAndPrintSlip(slip),
+                                  ),
+                                  if (slip.status != 'PAID' && canEdit)
+                                    IconButton(
+                                      icon: const Icon(Icons.check_circle_outline),
+                                      color: Colors.green[700],
+                                      tooltip: 'Mark as Paid',
+                                      onPressed: () => _markAsPaid(slip),
+                                    ),
+                                ],
+                              ),
+                              onTap: () {
+                                 showDialog(
+                                   context: context, 
+                                   builder: (context) => AlertDialog(
+                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                     titlePadding: EdgeInsets.zero,
+                                     title: Container(
+                                       padding: const EdgeInsets.all(16),
+                                       decoration: const BoxDecoration(
+                                         color: Color(0xFF2C3E50),
+                                         borderRadius: BorderRadius.only(
+                                           topLeft: Radius.circular(16),
+                                           topRight: Radius.circular(16),
                                          ),
-                                         child: Row(
-                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                           children: [
-                                             const Text('NET SALARY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                             Text(
-                                               NumberFormat.currency(symbol: 'Rs ').format(slip.netSalary),
-                                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Color(0xFF2980B9)),
+                                       ),
+                                       child: Row(
+                                         children: [
+                                           const Icon(Icons.receipt_long, color: Colors.white),
+                                           const SizedBox(width: 12),
+                                           const Text('Payslip Details', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                                         ],
+                                       ),
+                                     ),
+                                     content: Container(
+                                       width: 400,
+                                       child: Column(
+                                         mainAxisSize: MainAxisSize.min,
+                                         crossAxisAlignment: CrossAxisAlignment.start,
+                                         children: [
+                                           _buildDetailRow('Employee Name', slip.laborName, isBold: true),
+                                           _buildDetailRow('Designation', slip.laborDesignation),
+                                           _buildDetailRow('Reference #', slip.referenceNumber ?? 'N/A'),
+                                           _buildDetailRow('Month/Year', '${DateFormat('MMMM').format(DateTime(2000, slip.month))} ${slip.year}'),
+                                           const Divider(height: 24),
+                                           const Text('EARNINGS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green)),
+                                           const SizedBox(height: 8),
+                                           _buildDetailRow('Base Salary', NumberFormat.currency(symbol: 'Rs ').format(slip.baseSalary)),
+                                           _buildDetailRow('Bonuses/Incentives', NumberFormat.currency(symbol: 'Rs ').format(slip.bonuses)),
+                                           const SizedBox(height: 12),
+                                           const Text('DEDUCTIONS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red)),
+                                           const SizedBox(height: 8),
+                                           _buildDetailRow('Monthly Advances', '- ${NumberFormat.currency(symbol: 'Rs ').format(slip.totalAdvances)}'),
+                                           _buildDetailRow('Other Deductions', '- ${NumberFormat.currency(symbol: 'Rs ').format(slip.deductions)}'),
+                                           const Divider(height: 32),
+                                           Container(
+                                             padding: const EdgeInsets.all(12),
+                                             decoration: BoxDecoration(
+                                               color: Colors.blue[50],
+                                               borderRadius: BorderRadius.circular(8),
                                              ),
-                                           ],
+                                             child: Row(
+                                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                               children: [
+                                                 const Text('NET SALARY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                                 Text(
+                                                   NumberFormat.currency(symbol: 'Rs ').format(slip.netSalary),
+                                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Color(0xFF2980B9)),
+                                                 ),
+                                               ],
+                                             ),
+                                           ),
+                                         ],
+                                       ),
+                                     ),
+                                     actions: [
+                                       TextButton(
+                                         onPressed: () => Navigator.pop(context), 
+                                         child: Text(
+                                            'Close', 
+                                            style: TextStyle(
+                                              color: Theme.of(context).brightness == Brightness.dark 
+                                                  ? Colors.white70 
+                                                  : Colors.black87, 
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            )
+                                          )
+                                       ),
+                                       ElevatedButton.icon(
+                                         onPressed: () {
+                                           Navigator.pop(context);
+                                           SalarySlipPdfService.previewAndPrintSlip(slip);
+                                         },
+                                         icon: const Icon(Icons.print, size: 18, color: Colors.white),
+                                         label: const Text(
+                                           'Print Now',
+                                           style: TextStyle(
+                                             color: Colors.white,
+                                             fontWeight: FontWeight.bold,
+                                             fontSize: 16,
+                                           ),
+                                         ),
+                                         style: ElevatedButton.styleFrom(
+                                           backgroundColor: const Color(0xFF2C3E50),
+                                           foregroundColor: Colors.white,
+                                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                          ),
                                        ),
                                      ],
                                    ),
-                                 ),
-                                 actions: [
-                                   TextButton(
-                                     onPressed: () => Navigator.pop(context), 
-                                     child: Text(
-                                        'Close', 
-                                        style: TextStyle(
-                                          color: Theme.of(context).brightness == Brightness.dark 
-                                              ? Colors.white70 
-                                              : Colors.black87, 
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        )
-                                      )
-                                   ),
-                                   ElevatedButton.icon(
-                                     onPressed: () {
-                                       Navigator.pop(context);
-                                       SalarySlipPdfService.previewAndPrintSlip(slip);
-                                     },
-                                     icon: const Icon(Icons.print, size: 18, color: Colors.white),
-                                     label: const Text(
-                                       'Print Now',
-                                       style: TextStyle(
-                                         color: Colors.white,
-                                         fontWeight: FontWeight.bold,
-                                         fontSize: 16,
-                                       ),
-                                     ),
-                                     style: ElevatedButton.styleFrom(
-                                       backgroundColor: const Color(0xFF2C3E50),
-                                       foregroundColor: Colors.white,
-                                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                     ),
-                                   ),
-                                 ],
-                               ),
-                             );
-                          },
-                        ),
-                      );
-                    },
-                  ),
+                                 );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

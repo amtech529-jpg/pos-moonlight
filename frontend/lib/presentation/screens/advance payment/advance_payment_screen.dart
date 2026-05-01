@@ -23,6 +23,7 @@ class AdvancePaymentPage extends StatefulWidget {
 
 class _AdvancePaymentPageState extends State<AdvancePaymentPage> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -37,6 +38,7 @@ class _AdvancePaymentPageState extends State<AdvancePaymentPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -93,77 +95,79 @@ class _AdvancePaymentPageState extends State<AdvancePaymentPage> {
 
     return Scaffold(
       backgroundColor: AppTheme.creamWhite,
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: AppTheme.primaryMaroon,
-        child: Padding(
-          padding: EdgeInsets.all(context.mainPadding / 2),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ResponsiveBreakpoints.responsive(
-                context,
-                tablet: _buildTabletHeader(),
-                small: _buildMobileHeader(),
-                medium: _buildDesktopHeader(),
-                large: _buildDesktopHeader(),
-                ultrawide: _buildDesktopHeader(),
-              ),
-              SizedBox(height: context.mainPadding),
-              Consumer<AdvancePaymentProvider>(
-                builder: (context, provider, child) {
-                  final l10n = AppLocalizations.of(context)!;
-
-                  if (provider.hasError) {
-                    return Container(
-                      padding: EdgeInsets.all(context.cardPadding),
-                      margin: EdgeInsets.only(bottom: context.cardPadding),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(context.borderRadius()),
-                        border: Border.all(color: Colors.red.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.error_outline, color: Colors.red),
-                          SizedBox(width: context.smallPadding),
-                          Expanded(
-                            child: Text(
-                              provider.errorMessage ?? l10n.unexpectedError,
-                              style: TextStyle(
-                                fontSize: context.bodyFontSize,
-                                color: Colors.red[700],
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          child: Padding(
+            padding: EdgeInsets.all(context.mainPadding / 2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ResponsiveBreakpoints.responsive(
+                  context,
+                  tablet: _buildTabletHeader(),
+                  small: _buildMobileHeader(),
+                  medium: _buildDesktopHeader(),
+                  large: _buildDesktopHeader(),
+                  ultrawide: _buildDesktopHeader(),
+                ),
+                SizedBox(height: context.mainPadding),
+                Consumer<AdvancePaymentProvider>(
+                  builder: (context, provider, child) {
+                    final l10n = AppLocalizations.of(context)!;
+    
+                    if (provider.hasError) {
+                      return Container(
+                        padding: EdgeInsets.all(context.cardPadding),
+                        margin: EdgeInsets.only(bottom: context.cardPadding),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(context.borderRadius()),
+                          border: Border.all(color: Colors.red.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline, color: Colors.red),
+                            SizedBox(width: context.smallPadding),
+                            Expanded(
+                              child: Text(
+                                provider.errorMessage ?? l10n.unexpectedError,
+                                style: TextStyle(
+                                  fontSize: context.bodyFontSize,
+                                  color: Colors.red[700],
+                                ),
                               ),
                             ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              provider.clearError();
-                              provider.loadAdvancePayments();
-                            },
-                            child: Text(l10n.retry),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return context.statsCardColumns == 2
-                      ? _buildMobileStatsGrid(provider)
-                      : _buildDesktopStatsRow(provider);
-                },
-              ),
-              SizedBox(height: context.cardPadding * 0.5),
-              _buildSearchSection(),
-              SizedBox(height: context.cardPadding * 0.5),
-              Expanded(
-                child: AdvancePaymentTable(
+                            TextButton(
+                              onPressed: () {
+                                provider.clearError();
+                                provider.loadAdvancePayments();
+                              },
+                              child: Text(l10n.retry),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+    
+                    return context.statsCardColumns == 2
+                        ? _buildMobileStatsGrid(provider)
+                        : _buildDesktopStatsRow(provider);
+                  },
+                ),
+                SizedBox(height: context.cardPadding * 0.5),
+                _buildSearchSection(),
+                SizedBox(height: context.cardPadding * 0.5),
+                AdvancePaymentTable(
                   onEdit: _showEditAdvancePaymentDialog,
                   onDelete: _showDeleteAdvancePaymentDialog,
                   onView: _showViewAdvancePaymentDialog,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

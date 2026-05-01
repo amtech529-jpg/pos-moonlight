@@ -151,6 +151,45 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  /// Silently load orders without setting isLoading
+  Future<void> _loadOrdersSilent() async {
+    try {
+      final params = OrderListParams(
+        page: _currentPage,
+        pageSize: _pageSize,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+        status: _currentStatusFilter,
+        sortBy: _getApiSortKey(_sortBy),
+        sortOrder: _sortAscending ? 'asc' : 'desc',
+      );
+
+      final response = await OrderService().getOrders(params: params);
+
+      if (response.success && response.data != null) {
+        final ordersResponse = response.data!;
+        
+        if (_currentPage == 1) {
+          _orders = ordersResponse.orders;
+        } else {
+          _orders.addAll(ordersResponse.orders);
+        }
+
+        if (ordersResponse.pagination != null) {
+          _currentPage = ordersResponse.pagination.currentPage;
+          _pageSize = ordersResponse.pagination.pageSize;
+          _totalCount = ordersResponse.pagination.totalCount;
+        } else {
+          if (_currentPage == 1) _totalCount = _orders.length;
+        }
+
+        _filteredOrders = List.from(_orders);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Silent load failed: $e');
+    }
+  }
+
   /// Load order statistics from API
   Future<void> _loadStatistics() async {
     try {
@@ -281,6 +320,8 @@ class OrderProvider extends ChangeNotifier {
     required String id,
     required double advancePayment,
     DateTime? expectedDeliveryDate,
+    DateTime? eventDate,
+    DateTime? returnDate,
     required String description,
     required String status,
   }) async {
@@ -292,6 +333,8 @@ class OrderProvider extends ChangeNotifier {
         id: id,
         advancePayment: advancePayment,
         expectedDeliveryDate: expectedDeliveryDate,
+        eventDate: eventDate,
+        returnDate: returnDate,
         description: description,
         status: status,
       );
@@ -331,14 +374,13 @@ class OrderProvider extends ChangeNotifier {
       final response = await OrderService().deleteOrder(id);
 
       if (response.success) {
-        _orders.removeWhere((order) => order.id == id);
-        _totalCount = _orders.length;
-        _applySearchAndFilters();
-        _setLoading(false);
-        notifyListeners();
-
-        // Refresh statistics
-        await _loadStatistics();
+        // 1. Remove locally immediately for instant feedback
+        _orders.removeWhere((order) => order.id == id || order.id.trim() == id.trim());
+        _filteredOrders.removeWhere((order) => order.id == id || order.id.trim() == id.trim());
+        
+        // 2. Refresh everything from the server to be 100% sure (pagination, totals, etc.)
+        // This is exactly what the "Refresh" button does, but now it happens automatically.
+        await refreshData();
 
         return true;
       } else {

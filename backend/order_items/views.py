@@ -214,10 +214,6 @@ def create_order_item(request):
                     save_time = time.time() - save_start
                     logger.info(f"Order item saved in {save_time:.3f}s")
                     
-                    # Return response immediately without additional queries
-                    total_time = time.time() - start_time
-                    logger.info(f"Order item creation completed successfully in {total_time:.3f}s")
-                    
                     return Response({
                         'success': True,
                         'message': 'Order item created successfully.',

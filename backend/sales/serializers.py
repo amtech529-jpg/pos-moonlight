@@ -255,11 +255,28 @@ class TaxRateSerializer(serializers.ModelSerializer):
 class SaleItemCreateSerializer(serializers.Serializer):
     """Nested serializer for creating sale items within a sale"""
     
+    sale = serializers.PrimaryKeyRelatedField(queryset=Sales.objects.all(), required=False)
     product = serializers.UUIDField(help_text="Product UUID")
     unit_price = serializers.DecimalField(max_digits=12, decimal_places=2)
     quantity = serializers.IntegerField()
     item_discount = serializers.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     customization_notes = serializers.CharField(max_length=500, required=False, allow_blank=True)
+
+    def create(self, validated_data):
+        """Create and return a new SaleItem instance"""
+        from .models import SaleItem, Product
+        
+        # Extract product since it's a UUID field in this serializer
+        product_obj = validated_data.pop('product')
+        if isinstance(product_obj, str):
+            product_obj = Product.objects.get(id=product_obj)
+            
+        sale_item = SaleItem.objects.create(
+            product=product_obj,
+            product_name=product_obj.name,
+            **validated_data
+        )
+        return sale_item
     
     def validate_product(self, value):
         """Validate product exists and is active"""

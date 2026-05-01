@@ -18,6 +18,7 @@ class PayablesPage extends StatefulWidget {
 class _PayablesPageState extends State<PayablesPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
 
   void _showAddPayableDialog() {
     showDialog(
@@ -44,6 +45,7 @@ class _PayablesPageState extends State<PayablesPage> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -52,31 +54,37 @@ class _PayablesPageState extends State<PayablesPage> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.transparent, // Inherit global pinkish/beige background
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            _buildHeader(),
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              _buildHeader(),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Stats row (5 cards for Payables as per screenshot)
-            _buildStatsRow(),
+              // Stats row (5 cards for Payables as per screenshot)
+              _buildStatsRow(),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-            // Search Bar Section
-            _buildSearchSection(),
+              // Search Bar Section
+              _buildSearchSection(),
 
-            const SizedBox(height: 48),
+              const SizedBox(height: 48),
 
-            // Payables Table
-            _buildPayablesTable(),
+              // Payables Table
+              _buildPayablesTable(),
 
-            const SizedBox(height: 80),
-          ],
+              const SizedBox(height: 80),
+            ],
+          ),
         ),
       ),
     );

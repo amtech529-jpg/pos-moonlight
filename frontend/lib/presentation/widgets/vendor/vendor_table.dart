@@ -183,8 +183,8 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
   List<double> _getColumnWidths(BuildContext context) {
     if (context.shouldShowCompactLayout) {
       return [
-        140.0, // 0 Name
-        160.0, // 1 Business
+        215.0, // 0 Business Name
+        190.0, // 1 Name
         130.0, // 2 Phone
         100.0, // 3 Status
         120.0, // 4 Created
@@ -192,10 +192,10 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
       ];
     } else {
       return [
-        140.0, // 0 Name
-        160.0, // 1 Business
+        215.0, // 0 Business Name
+        190.0, // 1 Name
         130.0, // 2 Phone
-        200.0, // 3 Address (Increase width for address)
+        200.0, // 3 Address
         100.0, // 4 Status
         120.0, // 5 Created
         250.0, // 6 Actions
@@ -212,12 +212,12 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
         Container(
           width: columnWidths[0],
           padding: const EdgeInsets.only(right: 8),
-          child: _buildSortableHeaderCell(context, l10n.name, 'name'),
+          child: _buildSortableHeaderCell(context, l10n.businessName, 'business_name'),
         ),
         Container(
           width: columnWidths[1],
           padding: const EdgeInsets.only(right: 8),
-          child: _buildSortableHeaderCell(context, l10n.businessName, 'business_name'),
+          child: _buildSortableHeaderCell(context, l10n.name, 'name'),
         ),
         Container(
           width: columnWidths[2],
@@ -317,6 +317,16 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
           Container(
             width: columnWidths[0],
             padding: const EdgeInsets.only(right: 8),
+            child: Text(
+              vendor.businessName,
+              style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w500, color: AppTheme.charcoalGray),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Container(
+            width: columnWidths[1],
+            padding: const EdgeInsets.only(right: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -331,16 +341,6 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
-            ),
-          ),
-          Container(
-            width: columnWidths[1],
-            padding: const EdgeInsets.only(right: 8),
-            child: Text(
-              vendor.businessName,
-              style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w500, color: AppTheme.charcoalGray),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
           Container(

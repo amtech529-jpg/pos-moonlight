@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
 import '../../../l10n/app_localizations.dart';
@@ -31,6 +32,10 @@ class PurchaseFilterDialog extends StatefulWidget {
 
 class _PurchaseFilterDialogState extends State<PurchaseFilterDialog> {
   late PurchaseFilter _currentFilter;
+  final _vendorFocusNode = FocusNode();
+  final _fromDateFocusNode = FocusNode();
+  final _toDateFocusNode = FocusNode();
+  final _applyFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -45,6 +50,21 @@ class _PurchaseFilterDialogState extends State<PurchaseFilterDialog> {
     );
 
     Future.microtask(() => context.read<VendorProvider>().initialize());
+
+    // Add listeners to rebuild on focus for visual feedback
+    _vendorFocusNode.addListener(() => setState(() {}));
+    _fromDateFocusNode.addListener(() => setState(() {}));
+    _toDateFocusNode.addListener(() => setState(() {}));
+    _applyFocusNode.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _vendorFocusNode.dispose();
+    _fromDateFocusNode.dispose();
+    _toDateFocusNode.dispose();
+    _applyFocusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -106,8 +126,12 @@ class _PurchaseFilterDialogState extends State<PurchaseFilterDialog> {
                     value: v.id!,
                     label: v.businessName.isNotEmpty ? v.businessName : v.name,
                   )).toList(),
-                  onChanged: (val) => setState(() => _currentFilter.vendorId = val),
                   hint: "All Companies",
+                  focusNode: _vendorFocusNode,
+                  onChanged: (val) {
+                    setState(() => _currentFilter.vendorId = val);
+                    FocusScope.of(context).requestFocus(_fromDateFocusNode);
+                  },
                 );
               },
             ),
@@ -122,8 +146,12 @@ class _PurchaseFilterDialogState extends State<PurchaseFilterDialog> {
                   child: _buildDatePicker(
                     context,
                     label: "From Date",
+                    focusNode: _fromDateFocusNode,
                     date: _currentFilter.startDate,
-                    onSelected: (date) => setState(() => _currentFilter.startDate = date),
+                    onSelected: (date) {
+                      setState(() => _currentFilter.startDate = date);
+                      FocusScope.of(context).requestFocus(_toDateFocusNode);
+                    },
                   ),
                 ),
                 SizedBox(width: context.mainPadding),
@@ -131,8 +159,12 @@ class _PurchaseFilterDialogState extends State<PurchaseFilterDialog> {
                   child: _buildDatePicker(
                     context,
                     label: "To Date",
+                    focusNode: _toDateFocusNode,
                     date: _currentFilter.endDate,
-                    onSelected: (date) => setState(() => _currentFilter.endDate = date),
+                    onSelected: (date) {
+                      setState(() => _currentFilter.endDate = date);
+                      FocusScope.of(context).requestFocus(_applyFocusNode);
+                    },
                   ),
                 ),
               ],
@@ -160,7 +192,8 @@ class _PurchaseFilterDialogState extends State<PurchaseFilterDialog> {
                   text: l10n.cancel,
                   onPressed: () => Navigator.pop(context),
                   isOutlined: true,
-                  backgroundColor: AppTheme.charcoalGray,
+                  backgroundColor: Colors.black,
+                  textColor: Colors.black,
                   width: 100,
                   height: 40,
                 ),
@@ -169,6 +202,7 @@ class _PurchaseFilterDialogState extends State<PurchaseFilterDialog> {
                   text: l10n.apply ?? "Apply",
                   onPressed: () => Navigator.pop(context, _currentFilter),
                   backgroundColor: AppTheme.primaryMaroon,
+                  focusNode: _applyFocusNode,
                   width: 120,
                   height: 40,
                 ),
@@ -184,24 +218,47 @@ class _PurchaseFilterDialogState extends State<PurchaseFilterDialog> {
       BuildContext context, {
         required String label,
         required DateTime? date,
+        required FocusNode focusNode,
         required Function(DateTime) onSelected,
       }) {
-    return InkWell(
-      onTap: () {
-        context.showSyncfusionDateTimePicker(
-          initialDate: date ?? DateTime.now(),
-          initialTime: TimeOfDay.now(),
-          onDateTimeSelected: (selectedDate, _) => onSelected(selectedDate),
-        );
+    return Focus(
+      focusNode: focusNode,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent && 
+            (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
+          context.showSyncfusionDateTimePicker(
+            initialDate: date ?? DateTime.now(),
+            initialTime: TimeOfDay.now(),
+            onDateTimeSelected: (selectedDate, _) => onSelected(selectedDate),
+          );
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
       },
-      child: IgnorePointer(
-        child: PremiumTextField(
-          label: label,
-          controller: TextEditingController(
-            text: date != null ? "${date.day}/${date.month}/${date.year}" : "",
+      child: GestureDetector(
+        onTap: () {
+          context.showSyncfusionDateTimePicker(
+            initialDate: date ?? DateTime.now(),
+            initialTime: TimeOfDay.now(),
+            onDateTimeSelected: (selectedDate, _) => onSelected(selectedDate),
+          );
+        },
+        child: AbsorbPointer(
+          child: PremiumTextField(
+            label: label,
+            controller: TextEditingController(
+              text: date != null ? "${date.day}/${date.month}/${date.year}" : "",
+            ),
+            prefixIcon: Icons.calendar_month_rounded,
+            hint: "Select Date",
+            // Visual indicator for focus
+            containerDecoration: focusNode.hasFocus 
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                  border: Border.all(color: const Color(0xFFFFD700), width: 2),
+                )
+              : null,
           ),
-          prefixIcon: Icons.calendar_month_rounded,
-          hint: "Select Date",
         ),
       ),
     );

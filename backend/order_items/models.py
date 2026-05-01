@@ -138,6 +138,10 @@ class OrderItem(models.Model):
         default=False,
         help_text="Whether this item is rented from a partner"
     )
+    partner_quantity = models.PositiveIntegerField(
+        default=0,
+        help_text="Quantity rented from a partner (part of total quantity)"
+    )
     PRICING_TYPE_CHOICES = [
         ('PER_DAY', 'Per Day'),
         ('PER_EVENT', 'Per Event'),
@@ -238,10 +242,6 @@ class OrderItem(models.Model):
         
         self.full_clean()
         super().save(*args, **kwargs)
-        
-        # Update parent order total
-        if self.order:
-            self.order.calculate_totals()
 
     def get_related_sale_items(self):
         """Get sale items created from this order item"""

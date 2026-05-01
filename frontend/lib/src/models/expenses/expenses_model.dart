@@ -16,7 +16,10 @@ class Expense {
   final bool isRecurring;
   final bool isSalaryDeductible;
   final String? deductibleLaborId;
-
+  final String? deductibleLaborName;
+  final String? transportVendorId;
+  final String? transportVendorName;
+  final String? vehicleNumber;
 
   Expense({
     required this.id,
@@ -34,6 +37,10 @@ class Expense {
     this.isRecurring = false,
     this.isSalaryDeductible = false,
     this.deductibleLaborId,
+    this.deductibleLaborName,
+    this.transportVendorId,
+    this.transportVendorName,
+    this.vehicleNumber,
   });
 
 
@@ -120,6 +127,10 @@ class Expense {
     bool? isRecurring,
     bool? isSalaryDeductible,
     String? deductibleLaborId,
+    String? deductibleLaborName,
+    String? transportVendorId,
+    String? transportVendorName,
+    String? vehicleNumber,
   }) {
     return Expense(
       id: id ?? this.id,
@@ -137,6 +148,10 @@ class Expense {
       isRecurring: isRecurring ?? this.isRecurring,
       isSalaryDeductible: isSalaryDeductible ?? this.isSalaryDeductible,
       deductibleLaborId: deductibleLaborId ?? this.deductibleLaborId,
+      deductibleLaborName: deductibleLaborName ?? this.deductibleLaborName,
+      transportVendorId: transportVendorId ?? this.transportVendorId,
+      transportVendorName: transportVendorName ?? this.transportVendorName,
+      vehicleNumber: vehicleNumber ?? this.vehicleNumber,
     );
   }
 
@@ -159,6 +174,8 @@ class Expense {
       'is_recurring': isRecurring,
       'is_salary_deductible': isSalaryDeductible,
       'deductible_labor': deductibleLaborId,
+      'transport_vendor': transportVendorId,
+      'vehicle_number': vehicleNumber,
     };
   }
 
@@ -236,7 +253,11 @@ class Expense {
       createdByEmail: json['created_by_name'] != null ? safeString(json['created_by_name']) : null,
       isRecurring: json['is_recurring'] ?? false,
       isSalaryDeductible: json['is_salary_deductible'] ?? false,
-      deductibleLaborId: json['deductible_labor']?.toString(), // Ensure it's string if exists
+      deductibleLaborId: json['deductible_labor']?.toString(),
+      deductibleLaborName: json['deductible_labor_name']?.toString(),
+      transportVendorId: json['transport_vendor']?.toString(),
+      transportVendorName: json['transport_vendor_name']?.toString(),
+      vehicleNumber: json['vehicle_number']?.toString(),
     );
   }
 

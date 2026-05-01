@@ -24,6 +24,7 @@ class ExpensesPage extends StatefulWidget {
 class _ExpensesPageState extends State<ExpensesPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -42,6 +43,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -55,166 +57,172 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3E9E7), // Matches the creamy background in screenshot
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            const Text(
-              "Expense Management",
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF333333),
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              "Manage your Expense Management",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF666666),
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Stats row (3 cards as per screenshot)
-            // Stats row (3 cards as per screenshot)
-            Consumer<ExpensesProvider>(
-              builder: (context, provider, child) {
-                final stats = provider.statistics;
-                final currencyFormat = NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 0);
-                
-                // Calculate values based on available data or use mock logic if strict adherence to screenshot is needed
-                // Assuming:
-                // Daily Expenses = Total Expenses (or filtered by 'Daily' if category exists)
-                // Monthly Fixed = Filtered by 'Fixed'
-                // Salary Deductibles = Filtered by 'isSalaryDeductible'
-                
-                // For now, mapping general stats to these cards:
-                return Row(
-                  children: [
-                    Expanded(child: _buildSummaryCard(
-                      "Total Expenses", 
-                      currencyFormat.format(stats?.totalAmount ?? 0)
-                    )),
-                    const SizedBox(width: 20),
-                    Expanded(child: _buildSummaryCard(
-                      "This Month", 
-                      currencyFormat.format(stats?.currentMonthAmount ?? 0)
-                    )),
-                    const SizedBox(width: 20),
-                    Expanded(child: _buildSummaryCard(
-                      "Total Count", 
-                      "${stats?.totalExpenses ?? 0}"
-                    )),
-
-                  ],
-                );
-              },
-            ),
-
-
-            const SizedBox(height: 48),
-
-            // Search Bar & Add Button Section
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE8E8E8),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: TextField(
-                            focusNode: _searchFocusNode,
-                            controller: _searchController,
-                            cursorColor: Colors.black,
-                            textAlignVertical: TextAlignVertical.center,
-                            style: const TextStyle(fontSize: 15, color: Colors.black),
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: _searchFocusNode.hasFocus 
-                                  ? const Color(0xFFD9D9D9).withOpacity(0.7) 
-                                  : const Color(0xFFE8E8E8),
-                              hintText: "Search by Category or Description...",
-                              hintStyle: const TextStyle(color: Color(0xFF8E8E8E), fontSize: 15),
-                              prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF8E8E8E), size: 22),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                            ),
-                            onChanged: (value) => context.read<ExpensesProvider>().searchExpenses(value),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              const Text(
+                "Expense Management",
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF333333),
                 ),
-                const SizedBox(width: 16),
-                if (canAdd)
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => const AddExpenseDialog(),
-                      );
-                    },
-                    icon: const Icon(Icons.add_rounded, size: 20),
-                    label: const Text(
-                      "Add Expense",
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF679DAA),
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(220, 80), // Fixed size to match search bar
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      shape: RoundedRectangleBorder(
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                "Manage your Expense Management",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF666666),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Stats row (3 cards as per screenshot)
+              // Stats row (3 cards as per screenshot)
+              Consumer<ExpensesProvider>(
+                builder: (context, provider, child) {
+                  final stats = provider.statistics;
+                  final currencyFormat = NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 0);
+                  
+                  // Calculate values based on available data or use mock logic if strict adherence to screenshot is needed
+                  // Assuming:
+                  // Daily Expenses = Total Expenses (or filtered by 'Daily' if category exists)
+                  // Monthly Fixed = Filtered by 'Fixed'
+                  // Salary Deductibles = Filtered by 'isSalaryDeductible'
+                  
+                  // For now, mapping general stats to these cards:
+                  return Row(
+                    children: [
+                      Expanded(child: _buildSummaryCard(
+                        "Total Expenses", 
+                        currencyFormat.format(stats?.totalAmount ?? 0)
+                      )),
+                      const SizedBox(width: 20),
+                      Expanded(child: _buildSummaryCard(
+                        "This Month", 
+                        currencyFormat.format(stats?.currentMonthAmount ?? 0)
+                      )),
+                      const SizedBox(width: 20),
+                      Expanded(child: _buildSummaryCard(
+                        "Total Count", 
+                        "${stats?.totalExpenses ?? 0}"
+                      )),
+
+                    ],
+                  );
+                },
+              ),
+
+
+              const SizedBox(height: 48),
+
+              // Search Bar & Add Button Section
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      elevation: 2,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8E8E8),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: TextField(
+                              focusNode: _searchFocusNode,
+                              controller: _searchController,
+                              cursorColor: Colors.black,
+                              textAlignVertical: TextAlignVertical.center,
+                              style: const TextStyle(fontSize: 15, color: Colors.black),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: _searchFocusNode.hasFocus 
+                                    ? const Color(0xFFD9D9D9).withOpacity(0.7) 
+                                    : const Color(0xFFE8E8E8),
+                                hintText: "Search by Category or Description...",
+                                hintStyle: const TextStyle(color: Color(0xFF8E8E8E), fontSize: 15),
+                                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF8E8E8E), size: 22),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                              ),
+                              onChanged: (value) => context.read<ExpensesProvider>().searchExpenses(value),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-              ],
-            ),
+                  const SizedBox(width: 16),
+                  if (canAdd)
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => const AddExpenseDialog(),
+                        );
+                      },
+                      icon: const Icon(Icons.add_rounded, size: 20),
+                      label: const Text(
+                        "Add Expense",
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF679DAA),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(220, 80), // Fixed size to match search bar
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                    ),
+                ],
+              ),
 
-            const SizedBox(height: 48),
+              const SizedBox(height: 48),
 
-            // Expenses Table
-            _buildExpensesTable(canEdit, canDelete),
+              // Expenses Table
+              _buildExpensesTable(canEdit, canDelete),
 
-            const SizedBox(height: 32),
-          ],
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );

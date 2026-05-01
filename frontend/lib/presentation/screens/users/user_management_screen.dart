@@ -18,6 +18,13 @@ class UserManagementScreen extends StatefulWidget {
 class _UserManagementScreenState extends State<UserManagementScreen> {
   bool isApprovalWorkflowEnabled = true;
   RoleModel? selectedRoleForMatrix;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -51,25 +58,31 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
     debugPrint('DEBUG: Building UserManagementScreen. Users count: ${userProvider.users.length}, isLoading: ${userProvider.isLoading}');
     
-    return Container(
-      color: const Color(0xFFF5E9E9),
-      padding: const EdgeInsets.all(24.0),
-      child: userProvider.isLoading && userProvider.users.isEmpty
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5E9E9),
+      body: userProvider.isLoading && userProvider.users.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildUserManagementSection(context, l10n, userProvider, currentUser),
-                  if (currentUser?.roleName == 'Admin') ...[
-                    const SizedBox(height: 24),
-                    _buildPermissionMatrixSection(context, l10n, userProvider),
-                    if (userProvider.roles.length <= 1) ...[
-                      const SizedBox(height: 16),
-                      _buildSetupProductionRolesButton(userProvider),
+          : Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              trackVisibility: true,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildUserManagementSection(context, l10n, userProvider, currentUser),
+                    if (currentUser?.roleName == 'Admin') ...[
+                      const SizedBox(height: 24),
+                      _buildPermissionMatrixSection(context, l10n, userProvider),
+                      if (userProvider.roles.length <= 1) ...[
+                        const SizedBox(height: 16),
+                        _buildSetupProductionRolesButton(userProvider),
+                      ],
                     ],
                   ],
-                ],
+                ),
               ),
             ),
     );
@@ -550,10 +563,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   void _showAddRoleDialog(BuildContext context, UserProvider provider) {
     final nameController = TextEditingController();
     final descController = TextEditingController();
+    final nameFocusNode = FocusNode();
+    final descFocusNode = FocusNode();
+    final submitFocusNode = FocusNode();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         titlePadding: EdgeInsets.zero,
@@ -586,7 +603,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: nameController,
+              focusNode: nameFocusNode,
               textInputAction: TextInputAction.next,
+              onSubmitted: (_) => descFocusNode.requestFocus(),
               style: const TextStyle(color: Colors.black, fontSize: 16),
               decoration: InputDecoration(
                 hintText: "e.g. Accountant",
@@ -603,7 +622,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: descController,
+              focusNode: descFocusNode,
               textInputAction: TextInputAction.done,
+              onSubmitted: (_) => submitFocusNode.requestFocus(),
               style: const TextStyle(color: Colors.black, fontSize: 16),
               maxLines: 2,
               decoration: InputDecoration(
@@ -631,32 +652,54 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               )
             ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryMaroon,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () async {
-              if (nameController.text.isNotEmpty) {
-                final success = await provider.createRole(nameController.text, descController.text);
-                if (success && context.mounted) Navigator.pop(context);
-              }
-            },
-            child: const Text(
-              "CREATE ROLE", 
-              style: TextStyle(
-                color: Colors.white, 
-                fontWeight: FontWeight.w900, 
-                fontSize: 16,
-                letterSpacing: 1.2,
-              )
+          Focus(
+            onFocusChange: (hasFocus) => setDialogState(() {}),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: submitFocusNode.hasFocus ? [
+                  BoxShadow(
+                    color: const Color(0xFFFFD700).withOpacity(0.6),
+                    blurRadius: 15,
+                    spreadRadius: 5,
+                  )
+                ] : [],
+              ),
+              child: ElevatedButton(
+                focusNode: submitFocusNode,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryMaroon,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  side: submitFocusNode.hasFocus 
+                    ? const BorderSide(color: Color(0xFFFFD700), width: 3.5)
+                    : BorderSide.none,
+                  elevation: submitFocusNode.hasFocus ? 12 : 2,
+                ),
+                onPressed: () async {
+                  if (nameController.text.isNotEmpty) {
+                    final success = await provider.createRole(nameController.text, descController.text);
+                    if (success && context.mounted) Navigator.pop(context);
+                  }
+                },
+                child: const Text(
+                  "CREATE ROLE", 
+                  style: TextStyle(
+                    color: Colors.white, 
+                    fontWeight: FontWeight.w900, 
+                    fontSize: 16,
+                    letterSpacing: 1.2,
+                  )
+                ),
+              ),
             ),
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildCheckbox(bool isChecked, Function(bool) onChanged) {
@@ -674,6 +717,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
+    final nameFocusNode = FocusNode();
+    final emailFocusNode = FocusNode();
+    final passwordFocusNode = FocusNode();
+    final dropdownFocusNode = FocusNode();
+    final submitButtonFocusNode = FocusNode();
     bool isPassVisible = false;
     int? selectedRoleId;
     
@@ -706,7 +754,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       const SizedBox(height: 6),
                       TextField(
                         controller: nameController,
+                        focusNode: nameFocusNode,
                         textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => emailFocusNode.requestFocus(),
                         style: const TextStyle(color: Colors.black, fontSize: 15),
                         decoration: InputDecoration(
                           hintText: "Enter full name (e.g. Ali Ahmed)",
@@ -729,7 +779,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       const SizedBox(height: 6),
                       TextField(
                         controller: emailController,
+                        focusNode: emailFocusNode,
                         textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => passwordFocusNode.requestFocus(),
                         style: const TextStyle(color: Colors.black, fontSize: 15),
                         decoration: InputDecoration(
                           hintText: "Enter email (e.g. user@example.com)",
@@ -752,8 +804,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       const SizedBox(height: 6),
                       TextField(
                         controller: passwordController,
+                        focusNode: passwordFocusNode,
                         obscureText: !isPassVisible,
-                        textInputAction: TextInputAction.done,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => dropdownFocusNode.requestFocus(),
                         style: const TextStyle(color: Colors.black, fontSize: 15),
                         decoration: InputDecoration(
                           hintText: "Enter secure password",
@@ -807,6 +861,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           return PremiumDropdownField<int>(
                             hint: 'User Role',
                             value: selectedRoleId,
+                            focusNode: dropdownFocusNode,
                             items: userProvider.roles.map((role) {
                               return DropdownItem<int>(
                                 value: role.id,
@@ -817,6 +872,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               setDialogState(() {
                                 selectedRoleId = val;
                               });
+                              submitButtonFocusNode.requestFocus();
                             },
                             prefixIcon: Icons.admin_panel_settings_outlined,
                             focusColor: const Color(0xFF7B61FF),
@@ -833,38 +889,61 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   onPressed: () => Navigator.pop(context),
                   child: const Text("CANCEL", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7B61FF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                Focus(
+                  onFocusChange: (hasFocus) => setDialogState(() {}),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: submitButtonFocusNode.hasFocus ? [
+                        BoxShadow(
+                          color: const Color(0xFFFFD700).withOpacity(0.6),
+                          blurRadius: 15,
+                          spreadRadius: 5,
+                        )
+                      ] : [],
+                    ),
+                    child: ElevatedButton(
+                      focusNode: submitButtonFocusNode,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7B61FF),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        side: submitButtonFocusNode.hasFocus 
+                          ? const BorderSide(color: Color(0xFFFFD700), width: 3.5)
+                          : BorderSide.none,
+                        elevation: submitButtonFocusNode.hasFocus ? 12 : 2,
+                      ),
+                      onPressed: () async {
+                        if (nameController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty || selectedRoleId == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("All fields are required!")));
+                          return;
+                        }
+                        
+                        final payload = {
+                          'full_name': nameController.text.trim(),
+                          'email': emailController.text.trim(),
+                          'password': passwordController.text,
+                          'password_confirm': passwordController.text,
+                          'role_id': selectedRoleId,
+                          'agreed_to_terms': true,
+                        };
+                        
+                        final success = await provider.createUser(payload);
+                        if (success) {
+                          Navigator.pop(context);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(provider.errorMessage ?? "Failed to create user"))
+                          );
+                        }
+                      },
+                      child: const Text("ADD USER", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
                   ),
-                  onPressed: () async {
-                    if (nameController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty || selectedRoleId == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("All fields are required!")));
-                      return;
-                    }
-                    
-                    final payload = {
-                      'full_name': nameController.text.trim(),
-                      'email': emailController.text.trim(),
-                      'password': passwordController.text,
-                      'password_confirm': passwordController.text,
-                      'role_id': selectedRoleId,
-                      'agreed_to_terms': true,
-                    };
-                    
-                    final success = await provider.createUser(payload);
-                    if (success) {
-                      Navigator.pop(context);
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(provider.errorMessage ?? "Failed to create user"))
-                      );
-                    }
-                  },
-                  child: const Text("ADD USER", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ],
             );

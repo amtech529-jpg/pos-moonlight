@@ -22,6 +22,7 @@ class _ViewVendorDetailsDialogState extends State<ViewVendorDetailsDialog>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  final ScrollController _scrollController = ScrollController();
 
   bool _isLoadingDetails = false;
 
@@ -119,6 +120,7 @@ class _ViewVendorDetailsDialogState extends State<ViewVendorDetailsDialog>
   @override
   void dispose() {
     _animationController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -340,24 +342,32 @@ class _ViewVendorDetailsDialogState extends State<ViewVendorDetailsDialog>
   }
 
   Widget _buildContent() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: EdgeInsets.all(context.cardPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildVendorProfileCard(),
-            SizedBox(height: context.cardPadding),
-            _buildContactInfoCard(),
-            SizedBox(height: context.cardPadding),
-            _buildLocationCard(),
-            SizedBox(height: context.cardPadding),
-            _buildStatusCard(),
-            SizedBox(height: context.cardPadding),
-            _buildActivityCard(),
-            SizedBox(height: context.mainPadding),
-            _buildCloseButton(),
-          ],
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      trackVisibility: true,
+      thickness: 6,
+      radius: const Radius.circular(3),
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        child: Padding(
+          padding: EdgeInsets.all(context.cardPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildVendorProfileCard(),
+              SizedBox(height: context.cardPadding),
+              _buildContactInfoCard(),
+              SizedBox(height: context.cardPadding),
+              _buildLocationCard(),
+              SizedBox(height: context.cardPadding),
+              _buildStatusCard(),
+              SizedBox(height: context.cardPadding),
+              _buildActivityCard(),
+              SizedBox(height: context.mainPadding),
+              _buildCloseButton(),
+            ],
+          ),
         ),
       ),
     );

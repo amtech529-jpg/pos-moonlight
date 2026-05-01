@@ -24,6 +24,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
   PurchaseFilter _activeFilter = PurchaseFilter();
   final FocusNode _searchFocusNode = FocusNode(); 
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   Timer? _searchDebounce;
 
   @override
@@ -58,6 +59,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
   void dispose() {
     _searchFocusNode.dispose();
     _searchController.dispose();
+    _scrollController.dispose();
     _searchDebounce?.cancel();
     super.dispose();
   }
@@ -91,69 +93,75 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       backgroundColor: const Color(0xFFF9FAFB),
       body: RefreshIndicator(
         onRefresh: _refreshPurchases,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24), // Using standard padding
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Section
-              _buildHeader(context, l10n, canAdd),
+        child: Scrollbar(
+          controller: _scrollController,
+          thumbVisibility: true,
+          trackVisibility: true,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.all(24), // Using standard padding
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Section
+                _buildHeader(context, l10n, canAdd),
   
-              const SizedBox(height: 32),
+                const SizedBox(height: 32),
   
-              // Statistics Summary Cards
-              _buildSummaryRow(context, l10n),
+                // Statistics Summary Cards
+                _buildSummaryRow(context, l10n),
   
-              const SizedBox(height: 32),
+                const SizedBox(height: 32),
   
-              // Search and Filter Row
-              _buildSearchAndFilterRow(context, l10n),
+                // Search and Filter Row
+                _buildSearchAndFilterRow(context, l10n),
   
-              if (_activeFilter.vendorId != null || _activeFilter.startDate != null) ...[
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    if (_activeFilter.vendorId != null)
-                      Chip(
-                        backgroundColor: Colors.white,
-                        side: BorderSide(color: Colors.grey.shade400),
-                        label: const Text("Vendor Filter active", style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)),
-                        deleteIconColor: Colors.black87,
-                        onDeleted: () => setState(() => _activeFilter.vendorId = null),
-                      ),
-                    if (_activeFilter.startDate != null)
-                      Chip(
-                        backgroundColor: Colors.white,
-                        side: BorderSide(color: Colors.grey.shade400),
-                        label: Text(
-                          "Date: ${_activeFilter.startDate!.day}/${_activeFilter.startDate!.month} - ${_activeFilter.endDate != null ? '${_activeFilter.endDate!.day}/${_activeFilter.endDate!.month}' : ''}",
-                          style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500),
+                if (_activeFilter.vendorId != null || _activeFilter.startDate != null) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      if (_activeFilter.vendorId != null)
+                        Chip(
+                          backgroundColor: Colors.white,
+                          side: BorderSide(color: Colors.grey.shade400),
+                          label: const Text("Vendor Filter active", style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)),
+                          deleteIconColor: Colors.black87,
+                          onDeleted: () => setState(() => _activeFilter.vendorId = null),
                         ),
-                        deleteIconColor: Colors.black87,
-                        onDeleted: () => setState(() {
-                            _activeFilter.startDate = null;
-                            _activeFilter.endDate = null;
-                        }),
+                      if (_activeFilter.startDate != null)
+                        Chip(
+                          backgroundColor: Colors.white,
+                          side: BorderSide(color: Colors.grey.shade400),
+                          label: Text(
+                            "Date: ${_activeFilter.startDate!.day}/${_activeFilter.startDate!.month} - ${_activeFilter.endDate != null ? '${_activeFilter.endDate!.day}/${_activeFilter.endDate!.month}' : ''}",
+                            style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
+                          deleteIconColor: Colors.black87,
+                          onDeleted: () => setState(() {
+                              _activeFilter.startDate = null;
+                              _activeFilter.endDate = null;
+                          }),
+                        ),
+                      ActionChip(
+                        backgroundColor: Colors.white,
+                        side: BorderSide(color: AppTheme.primaryMaroon),
+                        label: const Text("Reset All Filters", style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)),
+                        avatar: Icon(Icons.refresh_rounded, size: 18, color: AppTheme.primaryMaroon),
+                        onPressed: () => setState(() => _activeFilter = PurchaseFilter()),
                       ),
-                    ActionChip(
-                      backgroundColor: Colors.white,
-                      side: BorderSide(color: AppTheme.primaryMaroon),
-                      label: const Text("Reset All Filters", style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)),
-                      avatar: Icon(Icons.refresh_rounded, size: 18, color: AppTheme.primaryMaroon),
-                      onPressed: () => setState(() => _activeFilter = PurchaseFilter()),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
+  
+                const SizedBox(height: 32),
+  
+                // Main Data Section: Purchase List Table
+                PurchaseTable(filter: _activeFilter),
               ],
-  
-              const SizedBox(height: 32),
-  
-              // Main Data Section: Purchase List Table
-              PurchaseTable(filter: _activeFilter),
-            ],
+            ),
           ),
         ),
       ),

@@ -50,7 +50,10 @@ class CreateSaleItemRequest {
   final double itemDiscount;
   final String? customizationNotes;
 
+  final String? saleId;
+
   CreateSaleItemRequest({
+    this.saleId,
     this.orderItemId,
     required this.productId,
     required this.unitPrice,
@@ -61,6 +64,7 @@ class CreateSaleItemRequest {
 
   Map<String, dynamic> toJson() {
     return {
+      'sale': saleId,
       'order_item': orderItemId,
       'product': productId,
       'unit_price': unitPrice.toString(),

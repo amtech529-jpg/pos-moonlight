@@ -25,6 +25,7 @@ class ProductPage extends StatefulWidget {
 class _ProductPageState extends State<ProductPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode(); // Added focus node
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -43,6 +44,7 @@ class _ProductPageState extends State<ProductPage> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose(); // Dispose focus node
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -108,40 +110,46 @@ class _ProductPageState extends State<ProductPage> {
       backgroundColor: Colors.transparent, // Inherit global background
       body: RefreshIndicator(
         onRefresh: _refreshProducts,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Section
-              ResponsiveBreakpoints.responsive(
-                context,
-                tablet: _buildTabletHeader(canAdd),
-                small: _buildMobileHeader(canAdd),
-                medium: _buildDesktopHeader(canAdd),
-                large: _buildDesktopHeader(canAdd),
-                ultrawide: _buildDesktopHeader(canAdd),
-              ),
-
-              const SizedBox(height: 18), // Precise spacing from screenshot
-
-              // Search Bar Section
-              _buildSearchSection(),
-
-              const SizedBox(height: 24), // Spacing before table
-
-              // Product Table Area
-              EnhancedProductTable(
-                onEdit: _showEditProductDialog,
-                onDelete: _showDeleteProductDialog,
-                onView: _showViewProductDialog,
-                canEdit: canEdit,
-                canDelete: canDelete,
-              ),
-
-              const SizedBox(height: 32),
-            ],
+        child: Scrollbar(
+          controller: _scrollController,
+          thumbVisibility: true,
+          trackVisibility: true,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Section
+                ResponsiveBreakpoints.responsive(
+                  context,
+                  tablet: _buildTabletHeader(canAdd),
+                  small: _buildMobileHeader(canAdd),
+                  medium: _buildDesktopHeader(canAdd),
+                  large: _buildDesktopHeader(canAdd),
+                  ultrawide: _buildDesktopHeader(canAdd),
+                ),
+  
+                const SizedBox(height: 18), // Precise spacing from screenshot
+  
+                // Search Bar Section
+                _buildSearchSection(),
+  
+                const SizedBox(height: 24), // Spacing before table
+  
+                // Product Table Area
+                EnhancedProductTable(
+                  onEdit: _showEditProductDialog,
+                  onDelete: _showDeleteProductDialog,
+                  onView: _showViewProductDialog,
+                  canEdit: canEdit,
+                  canDelete: canDelete,
+                ),
+  
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),

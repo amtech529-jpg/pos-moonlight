@@ -268,19 +268,25 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildHeader(),
-                    Flexible(
-                      child: _buildFormContent(),
-                    ),
-                    // Keep buttons always visible at bottom, out of scroll
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      child: _buildActionButtons(),
-                    ),
-                  ],
+                child: FocusTraversalGroup(
+                  policy: OrderedTraversalPolicy(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildHeader(),
+                      Flexible(
+                        child: _buildFormContent(),
+                      ),
+                      // Keep buttons always visible at bottom, out of scroll
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        child: FocusTraversalOrder(
+                          order: const NumericFocusOrder(10),
+                          child: _buildActionButtons(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -325,8 +331,8 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
       controller: _scrollController,
       thumbVisibility: true,
       trackVisibility: true,
-      thickness: 6,
-      radius: const Radius.circular(3),
+      thickness: 8,
+      radius: const Radius.circular(4),
       child: SingleChildScrollView(
         controller: _scrollController,
         child: Padding(
@@ -350,71 +356,109 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PremiumTextField(
-          label: '${l10n.vendor} ${l10n.name} *',
-          labelFontSize: 12.sp,
-          hint: l10n.enterVendorName,
-          controller: _nameController,
-          prefixIcon: Icons.person_outline,
-          focusNode: _nameFocusNode,
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_phoneFocusNode),
-          validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(1),
+          child: PremiumTextField(
+            key: const ValueKey('vendor_name_field'),
+            label: '${l10n.vendor} ${l10n.name} *',
+            labelFontSize: 12.sp,
+            hint: l10n.enterVendorName,
+            controller: _nameController,
+            prefixIcon: Icons.person_outline,
+            focusNode: _nameFocusNode,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+              _nameFocusNode.unfocus();
+              FocusScope.of(context).requestFocus(_phoneFocusNode);
+            },
+            validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
+          ),
         ),
         const SizedBox(height: 16),
-        PremiumTextField(
-          label: '${l10n.phone} *',
-          labelFontSize: 12.sp,
-          hint: 'Enter Phone Number',
-          controller: _phoneController,
-          prefixIcon: Icons.phone_outlined,
-          keyboardType: TextInputType.phone,
-          focusNode: _phoneFocusNode,
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_businessNameFocusNode),
-          validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(2),
+          child: PremiumTextField(
+            key: const ValueKey('vendor_phone_field'),
+            label: '${l10n.phone} *',
+            labelFontSize: 12.sp,
+            hint: 'Enter Phone Number',
+            controller: _phoneController,
+            prefixIcon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
+            focusNode: _phoneFocusNode,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+              _phoneFocusNode.unfocus();
+              FocusScope.of(context).requestFocus(_businessNameFocusNode);
+            },
+            validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
+          ),
         ),
         const SizedBox(height: 16),
-        PremiumTextField(
-          label: '${l10n.businessName} *',
-          labelFontSize: 12.sp,
-          hint: 'Enter Business/Company Name',
-          controller: _businessNameController,
-          prefixIcon: Icons.business_outlined,
-          focusNode: _businessNameFocusNode,
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_addressFocusNode),
-          validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(3),
+          child: PremiumTextField(
+            key: const ValueKey('vendor_business_field'),
+            label: '${l10n.businessName} *',
+            labelFontSize: 12.sp,
+            hint: 'Enter Business/Company Name',
+            controller: _businessNameController,
+            prefixIcon: Icons.business_outlined,
+            focusNode: _businessNameFocusNode,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+              _businessNameFocusNode.unfocus();
+              FocusScope.of(context).requestFocus(_addressFocusNode);
+            },
+            validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
+          ),
         ),
         const SizedBox(height: 16),
-        PremiumTextField(
-          label: 'Address *',
-          labelFontSize: 12.sp,
-          hint: 'Enter Full Address',
-          controller: _addressController,
-          prefixIcon: Icons.location_on_outlined,
-          focusNode: _addressFocusNode,
-          maxLines: 2,
-          keyboardType: TextInputType.multiline,
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) => FocusScope.of(context).requestFocus(_noteFocusNode),
-          validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(4),
+          child: PremiumTextField(
+            key: const ValueKey('vendor_address_field'),
+            label: 'Address *',
+            labelFontSize: 12.sp,
+            hint: 'Enter Full Address',
+            controller: _addressController,
+            prefixIcon: Icons.location_on_outlined,
+            focusNode: _addressFocusNode,
+            maxLines: 2,
+            keyboardType: TextInputType.multiline,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+              _addressFocusNode.unfocus();
+              FocusScope.of(context).requestFocus(_noteFocusNode);
+            },
+            validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
+          ),
         ),
         const SizedBox(height: 16),
-        PremiumTextField(
-          label: 'Notes (Optional)',
-          labelFontSize: 12.sp,
-          hint: 'Add notes here',
-          controller: _noteController,
-          prefixIcon: Icons.note_outlined,
-          focusNode: _noteFocusNode,
-          maxLines: 2,
-          keyboardType: TextInputType.multiline,
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) => _dateFocusNode.requestFocus(),
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(5),
+          child: PremiumTextField(
+            key: const ValueKey('vendor_notes_field'),
+            label: 'Notes (Optional)',
+            labelFontSize: 12.sp,
+            hint: 'Add notes here',
+            controller: _noteController,
+            prefixIcon: Icons.note_outlined,
+            focusNode: _noteFocusNode,
+            maxLines: 2,
+            keyboardType: TextInputType.multiline,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+              _noteFocusNode.unfocus();
+              FocusScope.of(context).requestFocus(_dateFocusNode);
+            },
+          ),
         ),
         const SizedBox(height: 16),
-        _buildDatePicker(),
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(6),
+          child: _buildDatePicker(),
+        ),
       ],
     );
   }

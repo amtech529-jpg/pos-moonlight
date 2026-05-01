@@ -186,9 +186,22 @@ class OrderItemService {
     required int quantity,
     required double unitPrice,
     String? customizationNotes,
+    bool rentedFromPartner = false,
+    String? partnerId,
+    double? partnerRate,
+    int? partnerQuantity,
   }) async {
     try {
-      final Map<String, dynamic> requestData = {'order': orderId, 'product': productId, 'quantity': quantity, 'unit_price': unitPrice.toString()};
+    final Map<String, dynamic> requestData = {
+        'order': orderId,
+        'product': productId,
+        'quantity': quantity,
+        'rate': unitPrice,
+        'rented_from_partner': rentedFromPartner,
+        if (partnerId != null) 'partner': partnerId,
+        if (partnerRate != null) 'partner_rate': partnerRate,
+        if (partnerQuantity != null) 'partner_quantity': partnerQuantity,
+      };
 
       // Always send customization notes, even if empty
       requestData['customization_notes'] = customizationNotes ?? '';
@@ -223,17 +236,27 @@ class OrderItemService {
   }
 
   /// Update an existing order item
-  Future<ApiResponse<OrderItemModel>> updateOrderItem({required String id, int? quantity, double? unitPrice, String? customizationNotes}) async {
+  Future<ApiResponse<OrderItemModel>> updateOrderItem({
+    required String id,
+    String? orderId,
+    int? quantity,
+    double? unitPrice,
+    String? customizationNotes,
+    bool? rentedFromPartner,
+    String? partnerId,
+    double? partnerRate,
+    int? partnerQuantity,
+  }) async {
     try {
       final Map<String, dynamic> requestData = {};
 
-      if (quantity != null) {
-        requestData['quantity'] = quantity;
-      }
-
-      if (unitPrice != null) {
-        requestData['unit_price'] = unitPrice.toString();
-      }
+      if (orderId != null) requestData['order'] = orderId;
+      if (quantity != null) requestData['quantity'] = quantity;
+      if (unitPrice != null) requestData['rate'] = unitPrice;
+      if (rentedFromPartner != null) requestData['rented_from_partner'] = rentedFromPartner;
+      if (partnerId != null) requestData['partner'] = partnerId;
+      if (partnerRate != null) requestData['partner_rate'] = partnerRate;
+      if (partnerQuantity != null) requestData['partner_quantity'] = partnerQuantity;
 
       // Always send customization notes, even if empty
       requestData['customization_notes'] = customizationNotes ?? '';

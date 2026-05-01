@@ -146,11 +146,7 @@ class _CheckoutDialogState extends State<CheckoutDialog>
           context: context,
           barrierDismissible: false,
           builder: (context) => OrderSuccessDialog(
-            saleId: newSale.id,                   // ✅ Fix: Pass Sale ID
-            invoiceNumber: newSale.invoiceNumber, // ✅ Fix: Pass Invoice Number
-            totalPrice: capturedTotalAmount,
-            advanceAmount: amountPaid,
-            deliveryDate: DateTime.now(),
+            sale: newSale,
           ),
         );
       } else {

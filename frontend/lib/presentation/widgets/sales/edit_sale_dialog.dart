@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
@@ -7,9 +8,38 @@ import '../../../l10n/app_localizations.dart';
 import '../../../src/providers/sales_provider.dart';
 import '../../../src/models/sales/sale_model.dart';
 import '../../../src/models/sales/request_models.dart';
+import '../../../src/models/product/product_model.dart';
+import '../../../src/services/product_service.dart';
+import '../../../src/services/sale_item_service.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+
+class LocalSaleItem {
+  final String? saleItemId;
+  final String productId;
+  final String productName;
+  final String? categoryName;
+  double unitPrice;
+  int quantity;
+  double itemDiscount;
+  bool isDeleted;
+  bool isNew;
+
+  LocalSaleItem({
+    this.saleItemId,
+    required this.productId,
+    required this.productName,
+    this.categoryName,
+    required this.unitPrice,
+    required this.quantity,
+    this.itemDiscount = 0.0,
+    this.isDeleted = false,
+    this.isNew = false,
+  });
+
+  double get total => (unitPrice * quantity) - itemDiscount;
+}
 
 class EditSaleDialog extends StatefulWidget {
   final SaleModel sale;
@@ -24,7 +54,13 @@ class _EditSaleDialogState extends State<EditSaleDialog> with SingleTickerProvid
   final _formKey = GlobalKey<FormState>();
   final _amountPaidController = TextEditingController();
   final _notesController = TextEditingController();
+  final _searchController = TextEditingController();
   final _scrollController = ScrollController();
+  
+  final List<LocalSaleItem> _localItems = [];
+  List<ProductModel> _searchResults = [];
+  bool _isSearching = false;
+  Timer? _searchDebounce;
 
   String _selectedPaymentMethod = 'Cash';
   String _selectedStatus = 'Paid';
@@ -42,6 +78,18 @@ class _EditSaleDialogState extends State<EditSaleDialog> with SingleTickerProvid
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeIn));
     _animationController.forward();
 
+    for (var item in widget.sale.saleItems) {
+      _localItems.add(LocalSaleItem(
+        saleItemId: item.id,
+        productId: item.productId,
+        productName: item.productName,
+        categoryName: item.categoryName, // Assuming this is available
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+        itemDiscount: item.itemDiscount,
+      ));
+    }
+
     _amountPaidController.text = widget.sale.amountPaid.toStringAsFixed(0);
     _notesController.text = widget.sale.notes ?? '';
     _selectedPaymentMethod = widget.sale.paymentMethod ?? 'CASH';
@@ -53,66 +101,109 @@ class _EditSaleDialogState extends State<EditSaleDialog> with SingleTickerProvid
     _animationController.dispose();
     _amountPaidController.dispose();
     _notesController.dispose();
+    _searchController.dispose();
     _scrollController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
+  }
+
+  double get _calculatedSubtotal => _localItems.where((i) => !i.isDeleted).fold(0.0, (sum, item) => sum + item.total);
+  int get _totalActiveQuantity => _localItems.where((i) => !i.isDeleted).fold(0, (sum, item) => sum + item.quantity);
+  int get _totalActiveItems => _localItems.where((i) => !i.isDeleted).length;
+
+  double get _calculatedGrandTotal => _calculatedSubtotal - widget.sale.overallDiscount + widget.sale.taxAmount;
+  double get _remainingAmount {
+    final amountPaid = double.tryParse(_amountPaidController.text) ?? 0.0;
+    return _calculatedGrandTotal - amountPaid;
+  }
+
+  void _onSearchChanged(String query) {
+    if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () async {
+      if (query.isEmpty) {
+        setState(() { _searchResults = []; _isSearching = false; });
+        return;
+      }
+      setState(() => _isSearching = true);
+      try {
+        final response = await ProductService().searchProducts(query: query);
+        if (response.success && response.data != null) {
+          setState(() { _searchResults = response.data!.products; });
+        }
+      } finally {
+        setState(() => _isSearching = false);
+      }
+    });
+  }
+
+  void _addProduct(ProductModel product) {
+    setState(() {
+      final existingIndex = _localItems.indexWhere((i) => i.productId == product.id && !i.isDeleted);
+      if (existingIndex != -1) {
+        _localItems[existingIndex].quantity += 1;
+      } else {
+        _localItems.add(LocalSaleItem(
+          productId: product.id,
+          productName: product.name,
+          categoryName: product.categoryName,
+          unitPrice: product.price,
+          quantity: 1,
+          isNew: true,
+        ));
+      }
+      _searchController.clear();
+      _searchResults = [];
+    });
   }
 
   void _handleUpdate() async {
     if (_formKey.currentState?.validate() ?? false) {
       final provider = Provider.of<SalesProvider>(context, listen: false);
-      final amountPaid = double.tryParse(_amountPaidController.text) ?? 0.0;
+      final saleItemService = SaleItemService();
 
-      await provider.updateSale(
-        widget.sale.id,
-        UpdateSaleRequest(paymentMethod: _selectedPaymentMethod, status: _selectedStatus, notes: _notesController.text),
-      );
-
-      if (mounted) {
-        _showSuccessSnackbar();
-        Navigator.of(context).pop();
+      try {
+        for (var item in _localItems.where((i) => i.isDeleted && i.saleItemId != null)) {
+          await saleItemService.deleteSaleItem(item.saleItemId!);
+        }
+        for (var item in _localItems.where((i) => !i.isDeleted && !i.isNew && i.saleItemId != null)) {
+          await saleItemService.updateSaleItem(item.saleItemId!, UpdateSaleItemRequest(
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+            itemDiscount: item.itemDiscount,
+          ));
+        }
+        for (var item in _localItems.where((i) => !i.isDeleted && i.isNew)) {
+          await saleItemService.createSaleItem(CreateSaleItemRequest(
+            saleId: widget.sale.id,
+            productId: item.productId,
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+            itemDiscount: item.itemDiscount,
+          ));
+        }
+        await provider.updateSale(widget.sale.id, UpdateSaleRequest(
+          paymentMethod: _selectedPaymentMethod,
+          status: _selectedStatus,
+          notes: _notesController.text,
+        ));
+        if (mounted) {
+          // Get the updated sale from the provider
+          final updatedSale = provider.sales.firstWhere((s) => s.id == widget.sale.id);
+          
+          Navigator.of(context).pop(); // Close edit dialog
+          
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => OrderSuccessDialog(
+              sale: updatedSale,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     }
-  }
-
-  void _showSuccessSnackbar() {
-    final l10n = AppLocalizations.of(context)!;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: AppTheme.pureWhite, size: context.iconSize('medium')),
-            SizedBox(width: context.smallPadding),
-            Text(
-              l10n.saleUpdatedSuccessfully,
-              style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w500, color: AppTheme.pureWhite),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(context.borderRadius())),
-      ),
-    );
-  }
-
-  void _handleCancel() {
-    _animationController.reverse().then((_) {
-      Navigator.of(context).pop();
-    });
-  }
-
-  double get _remainingAmount {
-    final amountPaid = double.tryParse(_amountPaidController.text) ?? 0.0;
-    return widget.sale.grandTotal - amountPaid;
-  }
-
-  String _calculatedStatus(AppLocalizations l10n) {
-    final remaining = _remainingAmount;
-    if (remaining <= 0) return l10n.paidStatus;
-    if (remaining < widget.sale.grandTotal) return l10n.partialStatus;
-    return l10n.unpaidStatus;
   }
 
   @override
@@ -126,26 +217,45 @@ class _EditSaleDialogState extends State<EditSaleDialog> with SingleTickerProvid
             child: Transform.scale(
               scale: _scaleAnimation.value,
               child: Container(
-                width: context.dialogWidth,
-                constraints: BoxConstraints(
-                  maxWidth: ResponsiveBreakpoints.responsive(context, tablet: 95.w, small: 85.w, medium: 75.w, large: 65.w, ultrawide: 55.w),
-                  maxHeight: ResponsiveBreakpoints.responsive(context, tablet: 90.h, small: 85.h, medium: 80.h, large: 75.h, ultrawide: 70.h),
-                ),
-                margin: EdgeInsets.all(context.mainPadding),
+                width: 90.w,
+                height: 92.h,
                 decoration: BoxDecoration(
-                  color: AppTheme.pureWhite,
-                  borderRadius: BorderRadius.circular(context.borderRadius('large')),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: context.shadowBlur('heavy'), offset: Offset(0, context.cardPadding)),
-                  ],
+                  color: const Color(0xFFFDF7FF), // Subtle lavender tint background
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20)],
                 ),
-                child: ResponsiveBreakpoints.responsive(
-                  context,
-                  tablet: _buildCompactLayout(),
-                  small: _buildCompactLayout(),
-                  medium: _buildDesktopLayout(),
-                  large: _buildDesktopLayout(),
-                  ultrawide: _buildDesktopLayout(),
+                child: Column(
+                  children: [
+                    _buildTopHeader(),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Main Table Area
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                children: [
+                                  _buildProductSearchInput(),
+                                  const SizedBox(height: 16),
+                                  _buildItemsTableContainer(),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            // Right Side Summary & Payment
+                            Expanded(
+                              flex: 1,
+                              child: _buildRightSummaryPanel(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    _buildBottomActions(),
+                  ],
                 ),
               ),
             ),
@@ -155,588 +265,311 @@ class _EditSaleDialogState extends State<EditSaleDialog> with SingleTickerProvid
     );
   }
 
-  Widget _buildCompactLayout() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildHeader(),
-        Flexible(
-          child: SingleChildScrollView(controller: _scrollController, child: _buildFormContent(isCompact: true)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDesktopLayout() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildHeader(),
-        Flexible(
-          child: SingleChildScrollView(controller: _scrollController, child: _buildFormContent(isCompact: false)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHeader() {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Container(
-      padding: EdgeInsets.all(context.cardPadding),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [AppTheme.primaryMaroon, AppTheme.secondaryMaroon]),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(context.borderRadius('large')),
-          topRight: Radius.circular(context.borderRadius('large')),
-        ),
-      ),
+  Widget _buildTopHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
       child: Row(
         children: [
-          Container(
-            padding: EdgeInsets.all(context.smallPadding),
-            decoration: BoxDecoration(color: AppTheme.pureWhite.withOpacity(0.2), borderRadius: BorderRadius.circular(context.borderRadius())),
-            child: Icon(Icons.edit_outlined, color: AppTheme.pureWhite, size: context.iconSize('large')),
+          const Icon(Icons.shopping_cart_outlined, color: Color(0xFF8B2252), size: 32),
+          const SizedBox(width: 12),
+          const Text(
+            'Order Items',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D2D2D)),
           ),
-          SizedBox(width: context.cardPadding),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3E5F5),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$_totalActiveItems items · Qty: $_totalActiveQuantity',
+              style: const TextStyle(color: Color(0xFF8B2252), fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 16),
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductSearchInput() {
+    return Column(
+      children: [
+        PremiumTextField(
+          controller: _searchController,
+          hint: 'Search products to add...',
+          prefixIcon: Icons.search,
+          onChanged: _onSearchChanged,
+        ),
+        if (_isSearching) const LinearProgressIndicator(),
+        if (_searchResults.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            maxHeight: 200,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _searchResults.length,
+              itemBuilder: (context, index) {
+                final p = _searchResults[index];
+                return ListTile(
+                  title: Text(p.name),
+                  subtitle: Text('PKR ${p.price}'),
+                  trailing: const Icon(Icons.add_circle, color: Color(0xFF8B2252)),
+                  onTap: () => _addProduct(p),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildItemsTableContainer() {
+    final activeItems = _localItems.where((i) => !i.isDeleted).toList();
+
+    return Expanded(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF3E5F5)),
+        ),
+        child: Column(
+          children: [
+            // Table Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF8F0FA),
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+              ),
+              child: const Row(
+                children: [
+                  Expanded(flex: 3, child: Text('Product', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
+                  Expanded(flex: 1, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey), textAlign: TextAlign.center)),
+                  Expanded(flex: 2, child: Text('Rent Price', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey), textAlign: TextAlign.center)),
+                  Expanded(flex: 2, child: Text('Total', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey), textAlign: TextAlign.end)),
+                  SizedBox(width: 40),
+                ],
+              ),
+            ),
+            // Table Body with Always Visible Scrollbar
+            Expanded(
+              child: Scrollbar(
+                controller: _scrollController,
+                thumbVisibility: true,
+                thickness: 8,
+                radius: const Radius.circular(4),
+                child: ListView.separated(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 0),
+                  itemCount: activeItems.length,
+                  separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
+                  itemBuilder: (context, index) {
+                    final item = activeItems[index];
+                    return _buildTableItemRow(item);
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTableItemRow(LocalSaleItem item) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: [
+          // Product Name & Category Badge
           Expanded(
+            flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  context.shouldShowCompactLayout ? l10n.editSale : l10n.editSaleDetails,
-                  style: TextStyle(
-                    fontSize: context.headerFontSize,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.pureWhite,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                if (!context.isTablet) ...[
-                  SizedBox(height: context.smallPadding / 2),
-                  Text(
-                    widget.sale.formattedInvoiceNumber,
-                    style: TextStyle(
-                      fontSize: context.subtitleFontSize,
-                      fontWeight: FontWeight.w400,
-                      color: AppTheme.pureWhite.withOpacity(0.9),
+                Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                if (item.categoryName != null)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFEBEE),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      item.categoryName!,
+                      style: const TextStyle(fontSize: 10, color: Color(0xFFD32F2F), fontWeight: FontWeight.bold),
                     ),
                   ),
-                ],
               ],
             ),
           ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding / 2),
-            decoration: BoxDecoration(color: AppTheme.pureWhite.withOpacity(0.2), borderRadius: BorderRadius.circular(context.borderRadius('small'))),
-            child: Text(
-              widget.sale.id,
-              style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w600, color: AppTheme.pureWhite),
+          // Editable Qty
+          Expanded(
+            flex: 1,
+            child: _buildTransparentInput(
+              value: item.quantity.toString(),
+              color: const Color(0xFF2196F3),
+              onChanged: (v) => setState(() => item.quantity = int.tryParse(v) ?? 0),
             ),
           ),
-          SizedBox(width: context.smallPadding),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _handleCancel,
-              borderRadius: BorderRadius.circular(context.borderRadius()),
-              child: Container(
-                padding: EdgeInsets.all(context.smallPadding),
-                child: Icon(Icons.close_rounded, color: AppTheme.pureWhite, size: context.iconSize('medium')),
-              ),
+          // Editable Rent Price
+          Expanded(
+            flex: 2,
+            child: _buildTransparentInput(
+              value: item.unitPrice.toStringAsFixed(0),
+              color: const Color(0xFF2196F3),
+              onChanged: (v) => setState(() => item.unitPrice = double.tryParse(v) ?? 0.0),
+              showCurrency: true,
             ),
+          ),
+          // Total (Red)
+          Expanded(
+            flex: 2,
+            child: Text(
+              'PKR ${item.total.toStringAsFixed(0)}',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD32F2F), fontSize: 16),
+              textAlign: TextAlign.end,
+            ),
+          ),
+          // Remove Action
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.grey),
+            onPressed: () => setState(() => item.isDeleted = true),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFormContent({required bool isCompact}) {
-    return Padding(
-      padding: EdgeInsets.all(context.cardPadding),
+  Widget _buildTransparentInput({required String value, required Color color, required Function(String) onChanged, bool showCurrency = false}) {
+    return TextFormField(
+      initialValue: value,
+      keyboardType: TextInputType.number,
+      textAlign: TextAlign.center,
+      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16),
+      decoration: InputDecoration(
+        border: InputBorder.none,
+        prefixText: showCurrency ? ' ' : null,
+      ),
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildRightSummaryPanel() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF3E5F5)),
+      ),
       child: Form(
         key: _formKey,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSaleSummaryCard(),
-            SizedBox(height: context.cardPadding),
-            _buildEditableFieldsCard(isCompact),
-            SizedBox(height: context.cardPadding),
-            _buildPaymentSummaryCard(),
-            SizedBox(height: context.mainPadding),
-            _buildActionButtons(isCompact),
+            const Text('Payment Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 20),
+            _buildDropdownField('Payment Method', _selectedPaymentMethod, ['Cash', 'Card', 'Bank Transfer', 'Credit'], (v) => setState(() => _selectedPaymentMethod = v!)),
+            const SizedBox(height: 16),
+            PremiumTextField(
+              label: 'Amount Paid',
+              controller: _amountPaidController,
+              keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 16),
+            PremiumTextField(
+              label: 'Order Notes',
+              controller: _notesController,
+              maxLines: 3,
+            ),
+            const Spacer(),
+            const Divider(),
+            const SizedBox(height: 16),
+            _buildSummaryRow('Subtotal', 'PKR ${_calculatedSubtotal.toStringAsFixed(0)}'),
+            _buildSummaryRow('Discount', '- PKR ${widget.sale.overallDiscount.toStringAsFixed(0)}'),
+            _buildSummaryRow('Tax', '+ PKR ${widget.sale.taxAmount.toStringAsFixed(0)}'),
+            const SizedBox(height: 12),
+            _buildSummaryRow('Grand Total', 'PKR ${_calculatedGrandTotal.toStringAsFixed(0)}', isBold: true, color: const Color(0xFF8B2252)),
+            const SizedBox(height: 8),
+            _buildSummaryRow(_remainingAmount > 0 ? 'Remaining' : 'Change', 'PKR ${_remainingAmount.abs().toStringAsFixed(0)}', color: _remainingAmount > 0 ? Colors.red : Colors.green),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSaleSummaryCard() {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Container(
-      padding: EdgeInsets.all(context.cardPadding),
-      decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(context.borderRadius()),
-        border: Border.all(color: Colors.blue.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.receipt_long_rounded, color: Colors.blue, size: context.iconSize('medium')),
-              SizedBox(width: context.smallPadding),
-              Text(
-                l10n.saleSummaryReadOnly,
-                style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
-              ),
-            ],
-          ),
-          SizedBox(height: context.cardPadding),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.customer,
-                      style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
-                    ),
-                    Text(
-                      widget.sale.customerName,
-                      style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.items,
-                      style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
-                    ),
-                    Text(
-                      l10n.itemsCount(widget.sale.totalItems),
-                      style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: context.smallPadding),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.subtotal,
-                      style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
-                    ),
-                    Text(
-                      'PKR ${widget.sale.subtotal.toStringAsFixed(0)}',
-                      style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.grandTotal,
-                      style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
-                    ),
-                    Text(
-                      'PKR ${widget.sale.grandTotal.toStringAsFixed(0)}',
-                      style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w700, color: AppTheme.primaryMaroon),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (widget.sale.overallDiscount > 0 || widget.sale.gstPercentage > 0) ...[
-            SizedBox(height: context.smallPadding),
-            Row(
-              children: [
-                if (widget.sale.overallDiscount > 0)
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.discount,
-                          style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
-                        ),
-                        Text(
-                          'PKR ${widget.sale.overallDiscount.toStringAsFixed(0)}',
-                          style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: Colors.orange),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (widget.sale.gstPercentage > 0)
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.gst,
-                          style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
-                        ),
-                        Text(
-                          '${widget.sale.gstPercentage}%',
-                          style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
+  Widget _buildDropdownField(String label, String value, List<String> items, Function(String?) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              isExpanded: true,
+              items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: onChanged,
             ),
-          ],
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildEditableFieldsCard(bool isCompact) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Container(
-      padding: EdgeInsets.all(context.cardPadding),
-      decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(context.borderRadius()),
-        border: Border.all(color: Colors.green.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.edit_rounded, color: Colors.green, size: context.iconSize('medium')),
-              SizedBox(width: context.smallPadding),
-              Text(
-                l10n.editableFields,
-                style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
-              ),
-            ],
-          ),
-          SizedBox(height: context.cardPadding),
-          Text(
-            l10n.paymentMethod,
-            style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
-          ),
-          SizedBox(height: context.smallPadding),
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(context.borderRadius()),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedPaymentMethod,
-                isExpanded: true,
-                onChanged: (value) => setState(() => _selectedPaymentMethod = value ?? 'Cash'),
-                items: ['Cash', 'Card', 'Bank Transfer', 'Credit', 'Split'].map((method) {
-                  return DropdownMenuItem<String>(
-                    value: method,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: context.cardPadding / 2),
-                      child: Row(
-                        children: [
-                          Icon(_getPaymentMethodIcon(method), color: AppTheme.primaryMaroon, size: context.iconSize('medium')),
-                          SizedBox(width: context.smallPadding),
-                          Text(
-                            method,
-                            style: TextStyle(fontSize: context.bodyFontSize, color: AppTheme.charcoalGray),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-          SizedBox(height: context.cardPadding),
-          PremiumTextField(
-            label: l10n.amountPaidPkr,
-            controller: _amountPaidController,
-            keyboardType: TextInputType.number,
-            prefixIcon: Icons.attach_money_rounded,
-            onChanged: (value) => setState(() {}),
-            validator: (value) {
-              if (value?.isEmpty ?? true) return l10n.enterAmountPaid;
-              final amount = double.tryParse(value!);
-              if (amount == null || amount < 0) return l10n.enterValidAmount;
-              return null;
-            },
-          ),
-          SizedBox(height: context.cardPadding),
-          Text(
-            l10n.status,
-            style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
-          ),
-          SizedBox(height: context.smallPadding),
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(context.borderRadius()),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedStatus,
-                isExpanded: true,
-                onChanged: (value) => setState(() => _selectedStatus = value ?? 'Paid'),
-                items: [
-                  DropdownMenuItem(value: 'Paid', child: _buildStatusItem(l10n.paidStatus, _getStatusColor('Paid'), context)),
-                  DropdownMenuItem(value: 'Partial', child: _buildStatusItem(l10n.partialStatus, _getStatusColor('Partial'), context)),
-                  DropdownMenuItem(value: 'Unpaid', child: _buildStatusItem(l10n.unpaidStatus, _getStatusColor('Unpaid'), context)),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: context.cardPadding),
-          PremiumTextField(
-            label: l10n.notesOptional,
-            controller: _notesController,
-            prefixIcon: Icons.note_outlined,
-            maxLines: 3,
-            hint: l10n.specialInstructionsOrRemarks,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusItem(String status, Color color, BuildContext context) {
+  Widget _buildSummaryRow(String label, String value, {bool isBold = false, Color? color}) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.cardPadding / 2),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          SizedBox(width: context.smallPadding),
-          Text(
-            status,
-            style: TextStyle(fontSize: context.bodyFontSize, color: AppTheme.charcoalGray),
-          ),
+          Text(label, style: TextStyle(color: isBold ? Colors.black : Colors.grey, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(value, style: TextStyle(color: color ?? Colors.black, fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 18 : 14)),
         ],
       ),
     );
   }
 
-  Widget _buildPaymentSummaryCard() {
-    final l10n = AppLocalizations.of(context)!;
-    final remaining = _remainingAmount;
-    final calculatedStatus = _calculatedStatus(l10n);
-
-    return Container(
-      padding: EdgeInsets.all(context.cardPadding),
-      decoration: BoxDecoration(
-        color: remaining <= 0 ? Colors.green.withOpacity(0.05) : Colors.orange.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(context.borderRadius()),
-        border: Border.all(color: remaining <= 0 ? Colors.green.withOpacity(0.2) : Colors.orange.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildBottomActions() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Row(
-            children: [
-              Icon(Icons.calculate_rounded, color: remaining <= 0 ? Colors.green : Colors.orange, size: context.iconSize('medium')),
-              SizedBox(width: context.smallPadding),
-              Text(
-                l10n.paymentSummary,
-                style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
-              ),
-              const Spacer(),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding / 2),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(_selectedStatus).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(context.borderRadius('small')),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(color: _getStatusColor(_selectedStatus), shape: BoxShape.circle),
-                    ),
-                    SizedBox(width: context.smallPadding / 2),
-                    Text(
-                      calculatedStatus,
-                      style: TextStyle(
-                        fontSize: context.captionFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: _getStatusColor(_selectedStatus),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Discard Changes', style: TextStyle(color: Colors.grey)),
           ),
-          SizedBox(height: context.cardPadding),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.grandTotal,
-                      style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
-                    ),
-                    Text(
-                      'PKR ${widget.sale.grandTotal.toStringAsFixed(0)}',
-                      style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w700, color: AppTheme.charcoalGray),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.amountPaying,
-                      style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
-                    ),
-                    Text(
-                      'PKR ${(double.tryParse(_amountPaidController.text) ?? 0.0).toStringAsFixed(0)}',
-                      style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w700, color: Colors.green),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      remaining > 0 ? l10n.remaining : l10n.change,
-                      style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
-                    ),
-                    Text(
-                      'PKR ${remaining.abs().toStringAsFixed(0)}',
-                      style: TextStyle(
-                        fontSize: context.subtitleFontSize,
-                        fontWeight: FontWeight.w700,
-                        color: remaining > 0 ? Colors.red : Colors.blue,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 200,
+            child: PremiumButton(
+              text: 'Update Sale Order',
+              onPressed: _handleUpdate,
+              icon: Icons.check_circle,
+            ),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildActionButtons(bool isCompact) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Consumer<SalesProvider>(
-      builder: (context, provider, child) {
-        if (isCompact) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              PremiumButton(
-                text: provider.isLoading ? l10n.updating : l10n.updateSale,
-                onPressed: provider.isLoading ? null : _handleUpdate,
-                isLoading: provider.isLoading,
-                height: context.buttonHeight,
-                icon: Icons.save_rounded,
-                backgroundColor: AppTheme.primaryMaroon,
-              ),
-              SizedBox(height: context.cardPadding),
-              PremiumButton(
-                text: l10n.cancel,
-                onPressed: provider.isLoading ? null : _handleCancel,
-                isOutlined: true,
-                height: context.buttonHeight,
-                backgroundColor: Colors.grey[600],
-                textColor: Colors.grey[600],
-              ),
-            ],
-          );
-        } else {
-          return Row(
-            children: [
-              Expanded(
-                child: PremiumButton(
-                  text: l10n.cancel,
-                  onPressed: provider.isLoading ? null : _handleCancel,
-                  isOutlined: true,
-                  height: context.buttonHeight / 1.5,
-                  backgroundColor: Colors.grey[600],
-                  textColor: Colors.grey[600],
-                ),
-              ),
-              SizedBox(width: context.cardPadding),
-              Expanded(
-                child: PremiumButton(
-                  text: provider.isLoading ? l10n.updating : l10n.updateSale,
-                  onPressed: provider.isLoading ? null : _handleUpdate,
-                  isLoading: provider.isLoading,
-                  height: context.buttonHeight / 1.5,
-                  icon: Icons.save_rounded,
-                  backgroundColor: AppTheme.primaryMaroon,
-                ),
-              ),
-            ],
-          );
-        }
-      },
-    );
-  }
-
-  IconData _getPaymentMethodIcon(String method) {
-    switch (method) {
-      case 'Cash':
-        return Icons.money_rounded;
-      case 'Card':
-        return Icons.credit_card_rounded;
-      case 'Bank Transfer':
-        return Icons.account_balance_rounded;
-      case 'Credit':
-        return Icons.account_balance_wallet_rounded;
-      case 'Split':
-        return Icons.call_split_rounded;
-      default:
-        return Icons.payment_rounded;
-    }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Paid':
-        return Colors.green;
-      case 'Partial':
-        return Colors.orange;
-      case 'Unpaid':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
   }
 }

@@ -263,11 +263,18 @@ class _ViewExpenseDetailsDialogState extends State<ViewExpenseDetailsDialog>
           _buildAmountDetailsCard(isCompact),
           SizedBox(height: context.cardPadding),
 
+          if (widget.expense.category == 'Transport') ...[
+            _buildTransportCard(),
+            SizedBox(height: context.cardPadding),
+          ],
+
           _buildDateTimeInfoCard(isCompact),
           SizedBox(height: context.cardPadding),
 
-          _buildDescriptionCard(isCompact),
-          SizedBox(height: context.cardPadding),
+          if ((widget.expense.description?.isNotEmpty ?? false)) ...[
+            _buildDescriptionCard(isCompact),
+            SizedBox(height: context.cardPadding),
+          ],
 
           _buildSettingsCard(isCompact),
           SizedBox(height: context.mainPadding),
@@ -645,7 +652,9 @@ class _ViewExpenseDetailsDialogState extends State<ViewExpenseDetailsDialog>
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: Text(
-              widget.expense.description,
+              widget.expense.description?.isNotEmpty == true
+                  ? widget.expense.description!
+                  : 'No description provided.',
               style: TextStyle(
                 fontSize: context.bodyFontSize,
                 fontWeight: FontWeight.w400,
@@ -745,13 +754,96 @@ class _ViewExpenseDetailsDialogState extends State<ViewExpenseDetailsDialog>
               _buildSettingItem(Icons.badge_outlined, 'Salary Deductible', widget.expense.isSalaryDeductible),
             ],
           ),
-          if (widget.expense.isSalaryDeductible && widget.expense.deductibleLaborId != null) ...[
+          if (widget.expense.isSalaryDeductible && widget.expense.deductibleLaborName != null) ...[
             SizedBox(height: context.cardPadding),
-            Text(
-              'Labor ID: ${widget.expense.deductibleLaborId}',
-              style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600]),
+            Container(
+              padding: EdgeInsets.all(context.cardPadding),
+              decoration: BoxDecoration(
+                color: Colors.teal.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                border: Border.all(color: Colors.teal.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.badge_outlined, size: context.iconSize('small'), color: Colors.teal),
+                  SizedBox(width: context.smallPadding),
+                  Text('Employee: ', style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600])),
+                  Expanded(
+                    child: Text(
+                      widget.expense.deductibleLaborName!,
+                      style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w700, color: Colors.teal),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransportCard() {
+    return Container(
+      padding: EdgeInsets.all(context.cardPadding),
+      decoration: BoxDecoration(
+        color: const Color(0xFF8B2252).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(context.borderRadius()),
+        border: Border.all(color: const Color(0xFF8B2252).withOpacity(0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_shipping_rounded, color: const Color(0xFF8B2252), size: context.iconSize('medium')),
+              SizedBox(width: context.smallPadding),
+              Text('Transport Details', style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray)),
+            ],
+          ),
+          SizedBox(height: context.cardPadding),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.directions_car_rounded, size: 14, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text('Vehicle No.', style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      widget.expense.vehicleNumber?.isNotEmpty == true ? widget.expense.vehicleNumber! : '—',
+                      style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w700, color: AppTheme.charcoalGray),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.person_pin_rounded, size: 14, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text('Driver / Vendor', style: TextStyle(fontSize: context.captionFontSize, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      widget.expense.transportVendorName ?? '—',
+                      style: TextStyle(fontSize: context.bodyFontSize, fontWeight: FontWeight.w700, color: const Color(0xFF8B2252)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

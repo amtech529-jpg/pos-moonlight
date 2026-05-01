@@ -8,6 +8,14 @@ import os
 import json
 import datetime
 from pathlib import Path
+import pandas as pd
+from io import BytesIO
+from customers.models import Customer
+from products.models import Product
+from sales.models import Sales
+from purchases.models import Purchase
+from expenses.models import Expense
+from orders.models import Order
 
 class DatabaseBackupView(APIView):
     """Create and download database backup"""
@@ -203,4 +211,91 @@ class DownloadBackupView(APIView):
             return Response({
                 'success': False,
                 'message': f'Failed to download backup: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ReadableBackupView(APIView):
+    """Create and download a human-readable Excel backup of key data"""
+    permission_classes = []
+    
+    def get(self, request):
+        try:
+            # Get modules to export from query params
+            modules_param = request.query_params.get('modules')
+            selected_modules = modules_param.split(',') if modules_param else []
+            is_full = not selected_modules
+
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                # 0. Summary Sheet (Ensures file is never empty)
+                summary_data = [
+                    {'Category': 'Export Date', 'Value': datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')},
+                    {'Category': 'Export Type', 'Value': 'Full' if is_full else 'Selective'},
+                ]
+                
+                # Sheet Generation Helper
+                def add_sheet(model, fields, sheet_name, filter_active=True):
+                    qs = model.objects.filter(is_active=True) if filter_active else model.objects.all()
+                    qs_values = qs.values(*fields)
+                    df = pd.DataFrame(list(qs_values), columns=fields)
+                    for col in df.select_dtypes(['datetimetz']).columns:
+                        df[col] = df[col].dt.tz_localize(None)
+                    df.to_excel(writer, sheet_name=sheet_name, index=False)
+                    return qs.count()
+
+                # 1. Customers
+                if is_full or 'customers' in selected_modules:
+                    count = add_sheet(Customer, ['name', 'phone', 'email', 'city', 'status', 'customer_type', 'created_at'], 'Customers')
+                    summary_data.append({'Category': 'Total Customers', 'Value': count})
+                
+                # 2. Products
+                if is_full or 'products' in selected_modules:
+                    count = add_sheet(Product, ['name', 'sku', 'category__name', 'price', 'cost_price', 'quantity'], 'Products')
+                    summary_data.append({'Category': 'Total Products', 'Value': count})
+                
+                # 3. Sales
+                if is_full or 'sales' in selected_modules:
+                    count = add_sheet(Sales, ['invoice_number', 'customer_name', 'grand_total', 'amount_paid', 'remaining_amount', 'status', 'date_of_sale'], 'Sales')
+                    summary_data.append({'Category': 'Total Sales', 'Value': count})
+
+                # 4. Purchases
+                if is_full or 'purchases' in selected_modules:
+                    # Purchase model doesn't have is_active in some versions, check if it exists
+                    has_is_active = hasattr(Purchase, 'is_active')
+                    count = add_sheet(Purchase, ['invoice_number', 'vendor__name', 'total', 'status', 'purchase_date'], 'Purchases', filter_active=has_is_active)
+                    summary_data.append({'Category': 'Total Purchases', 'Value': count})
+
+                # 5. Expenses
+                if is_full or 'expenses' in selected_modules:
+                    count = add_sheet(Expense, ['expense', 'amount', 'category', 'date', 'withdrawal_by'], 'Expenses')
+                    summary_data.append({'Category': 'Total Expenses', 'Value': count})
+
+                # 6. Labors / Employees
+                if is_full or 'labors' in selected_modules:
+                    from labors.models import Labor
+                    count = add_sheet(Labor, ['name', 'phone_number', 'cnic', 'designation', 'salary', 'joining_date', 'city'], 'Employees')
+                    summary_data.append({'Category': 'Total Employees', 'Value': count})
+
+                # 7. Rental Orders
+                if is_full or 'orders' in selected_modules:
+                    count = add_sheet(Order, ['customer_name', 'total_amount', 'advance_payment', 'remaining_amount', 'status', 'date_ordered', 'event_date'], 'Rental Orders')
+                    summary_data.append({'Category': 'Total Rental Orders', 'Value': count})
+
+                # Write Summary last to ensure all counts are collected
+                pd.DataFrame(summary_data).to_excel(writer, sheet_name='Summary', index=False)
+
+            output.seek(0)
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            prefix = "excel_export_full" if is_full else f"excel_export_{'_'.join(selected_modules[:3])}"
+            response = HttpResponse(
+                output.read(),
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            response['Content-Disposition'] = f'attachment; filename={prefix}_{timestamp}.xlsx'
+            return response
+
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Readable export failed: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

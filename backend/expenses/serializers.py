@@ -16,6 +16,19 @@ class ExpenseSerializer(serializers.ModelSerializer):
     expense_summary = serializers.ReadOnlyField()
     expense_age_days = serializers.ReadOnlyField()
     created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+    transport_vendor_name = serializers.SerializerMethodField()
+    deductible_labor_name = serializers.SerializerMethodField()
+
+    def get_transport_vendor_name(self, obj):
+        if obj.transport_vendor:
+            vendor = obj.transport_vendor
+            return vendor.business_name or vendor.name
+        return None
+
+    def get_deductible_labor_name(self, obj):
+        if obj.deductible_labor:
+            return obj.deductible_labor.name
+        return None
     
     class Meta:
         model = Expense
@@ -24,10 +37,12 @@ class ExpenseSerializer(serializers.ModelSerializer):
             'withdrawal_by', 'withdrawal_initials', 'date', 'time',
             'category', 'notes', 'expense_summary', 'expense_age_days',
             'created_at', 'updated_at', 'created_by', 'created_by_name',
-            'is_recurring', 'is_salary_deductible', 'deductible_labor'
+            'is_recurring', 'is_salary_deductible', 'deductible_labor',
+            'deductible_labor_name',
+            'transport_vendor', 'transport_vendor_name', 'vehicle_number'
         ]
 
-        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by', 'transport_vendor_name', 'deductible_labor_name']
     
     def validate_amount(self, value):
         """Validate amount is positive"""
@@ -94,7 +109,8 @@ class ExpenseUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'expense', 'description', 'amount', 'withdrawal_by',
             'date', 'time', 'category', 'notes',
-            'is_recurring', 'is_salary_deductible', 'deductible_labor'
+            'is_recurring', 'is_salary_deductible', 'deductible_labor',
+            'transport_vendor', 'vehicle_number'
         ]
 
     def update(self, instance, validated_data):
@@ -173,13 +189,28 @@ class ExpenseListSerializer(serializers.ModelSerializer):
     expense_summary = serializers.ReadOnlyField()
     created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
     
+    transport_vendor_name = serializers.SerializerMethodField()
+    deductible_labor_name = serializers.SerializerMethodField()
+
+    def get_transport_vendor_name(self, obj):
+        if obj.transport_vendor:
+            vendor = obj.transport_vendor
+            return vendor.business_name or vendor.name
+        return None
+
+    def get_deductible_labor_name(self, obj):
+        if obj.deductible_labor:
+            return obj.deductible_labor.name
+        return None
+
     class Meta:
         model = Expense
         fields = [
             'id', 'expense', 'expense_summary', 'formatted_amount', 'amount', 'withdrawal_by',
             'withdrawal_initials', 'date', 'time', 'category',
             'created_by_name', 'created_at', 'description',
-            'is_salary_deductible', 'deductible_labor', 'is_recurring'
+            'is_salary_deductible', 'deductible_labor', 'deductible_labor_name', 'is_recurring',
+            'transport_vendor', 'transport_vendor_name', 'vehicle_number'
         ]
 
 

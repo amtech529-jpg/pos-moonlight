@@ -45,7 +45,8 @@ class Expense(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     expense = models.CharField(max_length=200, help_text="Expense title/name")
-    description = models.TextField(help_text="Detailed description of the expense")
+    description = models.TextField(blank=True, null=True, help_text="Detailed description of the expense")
+
     amount = models.DecimalField(
         max_digits=12, 
         decimal_places=2, 
@@ -99,6 +100,22 @@ class Expense(models.Model):
         help_text="Employee whose salary will be deducted"
     )
 
+    # Transport / Delivery fields
+    transport_vendor = models.ForeignKey(
+        'vendors.Vendor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transport_expenses',
+        help_text="Driver / Transport vendor (only for Transport category)"
+    )
+    vehicle_number = models.CharField(
+        max_length=30,
+        blank=True,
+        null=True,
+        help_text="Vehicle registration number (e.g. ABC-123)"
+    )
+
     
     objects = ExpenseManager()
     
@@ -115,7 +132,7 @@ class Expense(models.Model):
             models.Index(fields=['created_at']),
             models.Index(fields=['is_recurring']),
             models.Index(fields=['is_salary_deductible']),
-
+            models.Index(fields=['transport_vendor']),
         ]
     
     def __str__(self):

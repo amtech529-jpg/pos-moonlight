@@ -30,17 +30,15 @@ class EnhancedCategoryTable extends StatefulWidget {
 }
 
 class _EnhancedCategoryTableState extends State<EnhancedCategoryTable> {
-  // Separate controllers for synchronized scrolling
+  // Separate controllers for synchronized horizontal scrolling
   late ScrollController _headerHorizontalController;
   late ScrollController _contentHorizontalController;
-  late ScrollController _verticalController;
 
   @override
   void initState() {
     super.initState();
     _headerHorizontalController = ScrollController();
     _contentHorizontalController = ScrollController();
-    _verticalController = ScrollController();
 
     // Link the header and content horizontal scrolling (Two-way sync)
     _headerHorizontalController.addListener(() {
@@ -62,7 +60,6 @@ class _EnhancedCategoryTableState extends State<EnhancedCategoryTable> {
   void dispose() {
     _headerHorizontalController.dispose();
     _contentHorizontalController.dispose();
-    _verticalController.dispose();
     super.dispose();
   }
 
@@ -205,34 +202,17 @@ class _EnhancedCategoryTableState extends State<EnhancedCategoryTable> {
                 ),
               ),
 
-              // 2. Table Content (Vertical + Horizontal Scroll)
-              Expanded(
-                child: Scrollbar(
-                  controller: _verticalController,
-                  thumbVisibility: true,
-                  trackVisibility: true,
-                  child: SingleChildScrollView(
-                    controller: _verticalController,
-                    scrollDirection: Axis.vertical,
-                    child: Scrollbar(
-                      controller: _contentHorizontalController,
-                      thumbVisibility: true,
-                      notificationPredicate: (notification) => notification.depth == 1,
-                      child: SingleChildScrollView(
-                        controller: _contentHorizontalController,
-                        scrollDirection: Axis.horizontal,
-                        physics: const ClampingScrollPhysics(),
-                        child: Container(
-                          width: _getTableWidth(context),
-                          // Use Column instead of ListView for better sync in nested scrolls
-                          child: Column(
-                            children: filteredCategories.asMap().entries.map((entry) {
-                              return _buildTableRow(context, entry.value, entry.key);
-                            }).toList(),
-                          ),
-                        ),
-                      ),
-                    ),
+              // 2. Table Content — horizontal scroll only (vertical handled by parent screen)
+              SingleChildScrollView(
+                controller: _contentHorizontalController,
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                child: SizedBox(
+                  width: _getTableWidth(context),
+                  child: Column(
+                    children: filteredCategories.asMap().entries.map((entry) {
+                      return _buildTableRow(context, entry.value, entry.key);
+                    }).toList(),
                   ),
                 ),
               ),

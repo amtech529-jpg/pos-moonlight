@@ -221,6 +221,8 @@ class OrderService {
     required String id,
     required double advancePayment,
     DateTime? expectedDeliveryDate,
+    DateTime? eventDate,
+    DateTime? returnDate,
     required String description,
     required String status,
   }) async {
@@ -228,6 +230,8 @@ class OrderService {
       final request = OrderUpdateRequest(
         advancePayment: advancePayment,
         expectedDeliveryDate: expectedDeliveryDate,
+        eventDate: eventDate,
+        returnDate: returnDate,
         description: description,
         status: status,
       );
@@ -281,7 +285,7 @@ class OrderService {
     try {
       final response = await _apiClient.delete(ApiConfig.deleteOrder(id));
 
-      if (response.statusCode == 204) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         // Remove from cache
         await _removeOrderFromCache(id);
         return ApiResponse<void>(success: true, message: 'Order deleted successfully');

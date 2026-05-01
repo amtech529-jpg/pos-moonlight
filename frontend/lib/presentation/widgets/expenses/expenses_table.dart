@@ -139,7 +139,7 @@ class _ExpensesTableState extends State<ExpensesTable> {
   }
 
   double _getTableWidth(BuildContext context) {
-    return ResponsiveBreakpoints.responsive(context, tablet: 1500.0, small: 1600.0, medium: 1700.0, large: 1800.0, ultrawide: 1900.0);
+    return ResponsiveBreakpoints.responsive(context, tablet: 1800.0, small: 1900.0, medium: 2000.0, large: 2100.0, ultrawide: 2200.0);
   }
 
   Widget _buildTableHeader(BuildContext context) {
@@ -151,10 +151,12 @@ class _ExpensesTableState extends State<ExpensesTable> {
         Container(width: columnWidths[0], child: _buildHeaderCell(context, l10n.expenseId)),
         Container(width: columnWidths[1], child: _buildHeaderCell(context, l10n.expense)),
         Container(width: columnWidths[2], child: _buildHeaderCell(context, l10n.description)),
-        Container(width: columnWidths[3], child: _buildHeaderCell(context, l10n.amount)),
-        Container(width: columnWidths[4], child: _buildHeaderCell(context, l10n.date)),
-        Container(width: columnWidths[5], child: _buildHeaderCell(context, l10n.time)),
-        Container(width: columnWidths[6], child: _buildHeaderCell(context, l10n.actions)),
+        Container(width: columnWidths[3], child: _buildHeaderCell(context, 'Vendor / Driver')),
+        Container(width: columnWidths[4], child: _buildHeaderCell(context, 'Employee')),
+        Container(width: columnWidths[5], child: _buildHeaderCell(context, l10n.amount)),
+        Container(width: columnWidths[6], child: _buildHeaderCell(context, l10n.date)),
+        Container(width: columnWidths[7], child: _buildHeaderCell(context, l10n.time)),
+        Container(width: columnWidths[8], child: _buildHeaderCell(context, l10n.actions)),
       ],
     );
   }
@@ -163,11 +165,13 @@ class _ExpensesTableState extends State<ExpensesTable> {
     return [
       130.0, // Expense ID
       180.0, // Expense Name
-      280.0, // Description
+      240.0, // Description
+      180.0, // Vendor / Driver
+      180.0, // Employee
       140.0, // Amount
       130.0, // Date
-      120.0, // Time
-      260.0, // Actions
+      110.0, // Time
+      220.0, // Actions
     ];
   }
 
@@ -228,16 +232,100 @@ class _ExpensesTableState extends State<ExpensesTable> {
             width: columnWidths[2],
             padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
             child: Text(
-              expense.description,
+              expense.description?.isNotEmpty == true ? expense.description! : '—',
               style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w500, color: AppTheme.charcoalGray),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ),
 
-          // Amount
+          // Vendor / Driver
           Container(
             width: columnWidths[3],
+            padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
+            child: expense.transportVendorName != null
+                ? Container(
+                    padding: EdgeInsets.symmetric(horizontal: context.smallPadding / 2, vertical: context.smallPadding / 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B2252).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.local_shipping_rounded, size: 12, color: const Color(0xFF8B2252)),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                expense.transportVendorName!,
+                                style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w600, color: const Color(0xFF8B2252)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (expense.vehicleNumber?.isNotEmpty == true) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.directions_car_rounded, size: 10, color: const Color(0xFF8B2252).withOpacity(0.8)),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  expense.vehicleNumber!,
+                                  style: TextStyle(fontSize: context.captionFontSize * 0.9, fontWeight: FontWeight.w500, color: const Color(0xFF8B2252).withOpacity(0.8)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                : Text('—', style: TextStyle(fontSize: context.subtitleFontSize, color: Colors.grey.shade400)),
+          ),
+
+          // Employee (Salary Deductible)
+          Container(
+            width: columnWidths[4],
+            padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
+            child: expense.isSalaryDeductible && expense.deductibleLaborName != null
+                ? Container(
+                    padding: EdgeInsets.symmetric(horizontal: context.smallPadding / 2, vertical: context.smallPadding / 4),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(context.borderRadius('small')),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.badge_outlined, size: 12, color: Colors.teal),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            expense.deductibleLaborName!,
+                            style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w600, color: Colors.teal),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Text('—', style: TextStyle(fontSize: context.subtitleFontSize, color: Colors.grey.shade400)),
+          ),
+
+          // Amount
+          Container(
+            width: columnWidths[5],
             padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: context.smallPadding, vertical: context.smallPadding / 3),
@@ -253,7 +341,7 @@ class _ExpensesTableState extends State<ExpensesTable> {
 
           // Date
           Container(
-            width: columnWidths[4],
+            width: columnWidths[6],
             padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,7 +360,7 @@ class _ExpensesTableState extends State<ExpensesTable> {
 
           // Time
           Container(
-            width: columnWidths[5],
+            width: columnWidths[7],
             padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: context.smallPadding / 2, vertical: context.smallPadding / 4),
@@ -293,7 +381,7 @@ class _ExpensesTableState extends State<ExpensesTable> {
 
           // Actions
           Container(
-            width: columnWidths[6],
+            width: columnWidths[8],
             padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
             child: _buildActions(context, expense),
           ),

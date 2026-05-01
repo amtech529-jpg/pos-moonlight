@@ -22,6 +22,7 @@ class CategoryPage extends StatefulWidget {
 
 class _CategoryPageState extends State<CategoryPage> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   
   // Local state for the current filter
   CategoryFilter _activeFilter = CategoryFilter();
@@ -29,6 +30,7 @@ class _CategoryPageState extends State<CategoryPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -100,35 +102,39 @@ class _CategoryPageState extends State<CategoryPage> {
 
     return Scaffold(
       backgroundColor: AppTheme.creamWhite,
-      body: Padding(
-        padding: EdgeInsets.all(context.mainPadding / 2),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Responsive Header Section
-            ResponsiveBreakpoints.responsive(
-              context,
-              tablet: _buildTabletHeader(canAdd),
-              small: _buildMobileHeader(canAdd),
-              medium: _buildDesktopHeader(canAdd),
-              large: _buildDesktopHeader(canAdd),
-              ultrawide: _buildDesktopHeader(canAdd),
-            ),
-
-            SizedBox(height: context.mainPadding),
-
-            SizedBox(height: context.cardPadding * 0.5),
-
-            SizedBox(height: context.cardPadding * 0.5),
-
-            // Responsive Search Section
-            _buildSearchSection(),
-
-            SizedBox(height: context.cardPadding * 0.5),
-
-            // Enhanced Categories Table with View functionality
-            Expanded(
-              child: EnhancedCategoryTable(
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: EdgeInsets.all(context.mainPadding / 2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Responsive Header Section
+              ResponsiveBreakpoints.responsive(
+                context,
+                tablet: _buildTabletHeader(canAdd),
+                small: _buildMobileHeader(canAdd),
+                medium: _buildDesktopHeader(canAdd),
+                large: _buildDesktopHeader(canAdd),
+                ultrawide: _buildDesktopHeader(canAdd),
+              ),
+  
+              SizedBox(height: context.mainPadding),
+  
+              SizedBox(height: context.cardPadding * 0.5),
+  
+              SizedBox(height: context.cardPadding * 0.5),
+  
+              // Responsive Search Section
+              _buildSearchSection(),
+  
+              SizedBox(height: context.cardPadding * 0.5),
+  
+              // Enhanced Categories Table with View functionality
+              EnhancedCategoryTable(
                 filter: _activeFilter,
                 onEdit: _showEditCategoryDialog,
                 onDelete: _showDeleteCategoryDialog,
@@ -136,8 +142,8 @@ class _CategoryPageState extends State<CategoryPage> {
                 canEdit: canEdit,
                 canDelete: canDelete,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

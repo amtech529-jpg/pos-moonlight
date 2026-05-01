@@ -23,6 +23,7 @@ class InvoiceManagementScreen extends StatefulWidget {
 class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
 
   final Map<String, bool> _fetchingIds = {};
 
@@ -64,6 +65,7 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -71,31 +73,37 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent, // Inherit global pinkish/beige background
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            _buildHeader(),
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              _buildHeader(),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Stats row (Total Invoice & Total Received)
-            _buildSummaryCards(),
+              // Stats row (Total Invoice & Total Received)
+              _buildSummaryCards(),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Search Bar Section
-            _buildSearchSection(),
+              // Search Bar Section
+              _buildSearchSection(),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Invoice Table
-            _buildInvoiceTable(),
+              // Invoice Table
+              _buildInvoiceTable(),
 
-            const SizedBox(height: 32),
-          ],
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );

@@ -476,7 +476,7 @@ abstract class AppLocalizations {
   /// No description provided for @vendor.
   ///
   /// In en, this message translates to:
-  /// **'Vendor'**
+  /// **'Company Name'**
   String get vendor;
 
   /// No description provided for @zakat.
@@ -788,7 +788,7 @@ abstract class AppLocalizations {
   /// No description provided for @unknownVendor.
   ///
   /// In en, this message translates to:
-  /// **'Unknown Vendor'**
+  /// **'Unknown Company'**
   String get unknownVendor;
 
   /// No description provided for @deletePurchaseConfirm.
@@ -8774,7 +8774,7 @@ abstract class AppLocalizations {
   /// No description provided for @enterExpenseTypeCategory.
   ///
   /// In en, this message translates to:
-  /// **'Enter expense type/category'**
+  /// **'Expense Name'**
   String get enterExpenseTypeCategory;
 
   /// No description provided for @pleaseEnterExpenseType.

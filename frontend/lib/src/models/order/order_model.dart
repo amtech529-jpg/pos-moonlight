@@ -81,6 +81,13 @@ class OrderModel {
   String get orderNumber => "ORD-${id.substring(0, 8).toUpperCase()}";
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
+    // Debug logging for dates
+    if (json.containsKey('event_date') || json.containsKey('return_date')) {
+      debugPrint('OrderModel: Parsing Order ${json['id']}');
+      debugPrint('OrderModel: Raw event_date from JSON: ${json['event_date']}');
+      debugPrint('OrderModel: Raw return_date from JSON: ${json['return_date']}');
+    }
+
     return OrderModel(
       id: json['id'] as String,
       customerId: json['customer_id'] as String,

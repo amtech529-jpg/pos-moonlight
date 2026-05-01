@@ -13,6 +13,13 @@ class ReportsAnalyticsScreen extends StatefulWidget {
 }
 
 class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
   @override
   void initState() {
     super.initState();
@@ -30,28 +37,34 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
       return const Center(child: CircularProgressIndicator(color: Color(0xFFBD0D1D)));
     }
 
-    return Container(
-      color: const Color(0xFFF8F9FA),
-      padding: const EdgeInsets.all(24.0),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(l10n),
-            const SizedBox(height: 32),
-            _buildBusinessSummaryCards(l10n, provider.businessSummary),
-            const SizedBox(height: 32),
-            _buildRevenueSection(l10n, provider.monthlyRevenue),
-            const SizedBox(height: 32),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 3, child: _buildTopProductsTable(l10n, provider.topProducts)),
-                const SizedBox(width: 24),
-                Expanded(flex: 2, child: _buildTopCustomersTable(l10n, provider.topCustomers)),
-              ],
-            ),
-          ],
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(l10n),
+              const SizedBox(height: 32),
+              _buildBusinessSummaryCards(l10n, provider.businessSummary),
+              const SizedBox(height: 32),
+              _buildRevenueSection(l10n, provider.monthlyRevenue),
+              const SizedBox(height: 32),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: _buildTopProductsTable(l10n, provider.topProducts)),
+                  const SizedBox(width: 24),
+                  Expanded(flex: 2, child: _buildTopCustomersTable(l10n, provider.topCustomers)),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -245,15 +258,16 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
                     maxY: _getMaxY(data),
                     barTouchData: BarTouchData(
                       touchTooltipData: BarTouchTooltipData(
-                        getTooltipColor: (_) => const Color(0xFF2C3E50),
+                        getTooltipColor: (_) => const Color(0xFF333333),
+                        tooltipPadding: const EdgeInsets.all(8),
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           return BarTooltipItem(
                             "${data[group.x.toInt()]['month']}\n",
                             const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                             children: [
-                               TextSpan(
-                                text: NumberFormat.compact().format(rod.toY),
-                                style: TextStyle(color: rod.color, fontSize: 12, fontWeight: FontWeight.w500),
+                              TextSpan(
+                                text: NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 0).format(rod.toY),
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
                               ),
                             ],
                           );

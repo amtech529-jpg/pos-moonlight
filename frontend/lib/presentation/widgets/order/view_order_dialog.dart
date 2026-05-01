@@ -23,6 +23,7 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -39,6 +40,7 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
   @override
   void dispose() {
     _animationController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -176,15 +178,23 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
   }
 
   Widget _buildContent() {
-    return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      thickness: 8,
+      radius: const Radius.circular(4),
       child: SingleChildScrollView(
+        controller: _scrollController,
         child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildOrderInfoSection(),
+
+            SizedBox(height: context.cardPadding),
+
+            _buildOrderItemsSection(),
 
             SizedBox(height: context.cardPadding),
 
@@ -196,15 +206,9 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
 
             SizedBox(height: context.cardPadding),
 
-            _buildOrderItemsSection(),
-
-            SizedBox(height: context.cardPadding),
-
+/*
             _buildDeliveryInfoSection(),
-
-            SizedBox(height: context.cardPadding),
-
-            _buildAdditionalInfoSection(),
+*/
 
             SizedBox(height: context.mainPadding),
 
@@ -219,9 +223,9 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
           ],
         ),
       ),
-    ),
-  );
-}
+      ),
+    );
+  }
 
   Widget _buildOrderInfoSection() {
     final l10n = AppLocalizations.of(context)!;

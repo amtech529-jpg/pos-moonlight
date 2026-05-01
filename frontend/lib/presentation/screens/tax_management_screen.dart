@@ -47,16 +47,20 @@ class _TaxManagementScreenState extends State<TaxManagementScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.creamWhite,
-      body: _buildMainContent(canAdd, canEdit, canDelete),
-    );
-  }
-
-  Widget _buildMainContent(bool canAdd, bool canEdit, bool canDelete) {
-    return Column(
-      children: [
-        _buildHeader(canAdd),
-        Expanded(child: _buildContent(canEdit, canDelete)),
-      ],
+      body: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          child: Column(
+            children: [
+              _buildHeader(canAdd),
+              _buildContent(canEdit, canDelete),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -169,9 +173,10 @@ class _TaxManagementScreenState extends State<TaxManagementScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           _buildListHeader(),
-          Expanded(child: _buildTaxRatesTable(canEdit, canDelete)),
+          _buildTaxRatesTable(canEdit, canDelete),
           _buildPagination(),
         ],
       ),
@@ -252,21 +257,26 @@ class _TaxManagementScreenState extends State<TaxManagementScreen> {
       builder: (context, provider, child) {
         if (provider.isLoading) {
           return Center(
-            child: SizedBox(
-              width: 6.w,
-              height: 6.w,
-              child: const CircularProgressIndicator(color: AppTheme.primaryMaroon, strokeWidth: 3),
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: SizedBox(
+                width: 6.w,
+                height: 6.w,
+                child: const CircularProgressIndicator(color: AppTheme.primaryMaroon, strokeWidth: 3),
+              ),
             ),
           );
         }
 
         if (provider.taxRates.isEmpty) {
-          return _buildEmptyState();
+          return Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: _buildEmptyState(),
+          );
         }
 
-        return SingleChildScrollView(
-          controller: _scrollController,
-          child: Column(children: provider.taxRates.map((taxRate) => _buildTaxRateCard(taxRate, canEdit, canDelete)).toList()),
+        return Column(
+          children: provider.taxRates.map((taxRate) => _buildTaxRateCard(taxRate, canEdit, canDelete)).toList()
         );
       },
     );
@@ -453,29 +463,22 @@ class _TaxManagementScreenState extends State<TaxManagementScreen> {
   }
 
   Widget _buildTaxConfiguration() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.5,
-            ),
-            decoration: BoxDecoration(
-              color: AppTheme.pureWhite,
-              borderRadius: BorderRadius.circular(context.borderRadius('medium')),
-              boxShadow: [BoxShadow(color: AppTheme.shadowColor, blurRadius: context.shadowBlur(), offset: Offset(0, 2))],
-            ),
-            child: SingleChildScrollView(
-              child: TaxConfigurationWidget(
-                isEditable: false,
-                onConfigurationChanged: (config) {},
-              ),
-            ),
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.pureWhite,
+            borderRadius: BorderRadius.circular(context.borderRadius('medium')),
+            boxShadow: [BoxShadow(color: AppTheme.shadowColor, blurRadius: context.shadowBlur(), offset: Offset(0, 2))],
           ),
-          SizedBox(height: context.cardPadding),
-          _buildStatisticsCard(),
-        ],
-      ),
+          child: TaxConfigurationWidget(
+            isEditable: false,
+            onConfigurationChanged: (config) {},
+          ),
+        ),
+        SizedBox(height: context.cardPadding),
+        _buildStatisticsCard(),
+      ],
     );
   }
 
@@ -796,8 +799,7 @@ class _TaxRateDialogState extends State<_TaxRateDialog> {
 
         final success = await provider.createTaxRate(request);
         if (success && mounted) {
-          widget.onSaved(widget.taxRate!);
-          Navigator.of(context).pop();
+           Navigator.of(context).pop();
         }
       } else {
         final request = UpdateTaxRateRequest(
@@ -805,15 +807,14 @@ class _TaxRateDialogState extends State<_TaxRateDialog> {
           taxType: _selectedTaxType,
           percentage: percentage,
           description: description,
+          isActive: _isActive,
           effectiveFrom: _effectiveFrom,
           effectiveTo: _effectiveTo,
-          isActive: _isActive,
         );
 
         final success = await provider.updateTaxRate(widget.taxRate!.id, request);
         if (success && mounted) {
-          widget.onSaved(widget.taxRate!);
-          Navigator.of(context).pop();
+           Navigator.of(context).pop();
         }
       }
     }

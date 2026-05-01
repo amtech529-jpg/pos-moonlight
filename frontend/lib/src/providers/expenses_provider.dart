@@ -143,6 +143,8 @@ class ExpensesProvider extends ChangeNotifier {
     bool isRecurring = false,
     bool isSalaryDeductible = false,
     String? deductibleLaborId,
+    String? transportVendorId,
+    String? vehicleNumber,
   }) async {
     _setLoading(true);
 
@@ -161,6 +163,8 @@ class ExpensesProvider extends ChangeNotifier {
         isRecurring: isRecurring,
         isSalaryDeductible: isSalaryDeductible,
         deductibleLaborId: deductibleLaborId,
+        transportVendorId: transportVendorId,
+        vehicleNumber: vehicleNumber,
       );
 
 
@@ -196,6 +200,8 @@ class ExpensesProvider extends ChangeNotifier {
     bool isRecurring = false,
     bool isSalaryDeductible = false,
     String? deductibleLaborId,
+    String? transportVendorId,
+    String? vehicleNumber,
   }) async {
     _setLoading(true);
 
@@ -215,6 +221,8 @@ class ExpensesProvider extends ChangeNotifier {
         isRecurring: isRecurring,
         isSalaryDeductible: isSalaryDeductible,
         deductibleLaborId: deductibleLaborId,
+        transportVendorId: transportVendorId,
+        vehicleNumber: vehicleNumber,
       );
 
 

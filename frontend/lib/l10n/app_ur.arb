@@ -1565,7 +1565,7 @@
   "addNewExpense": "نیا اخراجات شامل کریں",
   "recordNewExpenseEntry": "نیا اخراجات اندراج ریکارڈ کریں",
   "enterExpense": "اخراجات درج کریں",
-  "enterExpenseTypeCategory": "اخراجات کی قسم/زمرہ درج کریں",
+  "enterExpenseTypeCategory": "خرچے کا نام لکھیں",
   "pleaseEnterExpenseType": "براہ کرم اخراجات کی قسم درج کریں",
   "expenseMinLength": "اخراجات کم از کم 2 حروف کا ہونا چاہیے",
   "enterExpenseDescription": "اخراجات کی تفصیل/تفصیلات درج کریں",

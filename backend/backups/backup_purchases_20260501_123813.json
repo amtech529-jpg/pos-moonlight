@@ -1,0 +1,83 @@
+[
+{
+  "model": "purchases.purchase",
+  "pk": "173b4a67-bac9-436c-b0e0-53a622e87105",
+  "fields": {
+    "vendor": "10892995-e09f-43fa-b7f1-ac5f13e212cd",
+    "invoice_number": "Auto-Generated",
+    "purchase_date": "2026-04-12",
+    "subtotal": "6480.00",
+    "tax": "0.00",
+    "total": "6480.00",
+    "status": "posted",
+    "created_at": "2026-04-11T22:05:28.141Z"
+  }
+},
+{
+  "model": "purchases.purchase",
+  "pk": "2fb11962-8a3c-45b2-b5f3-e215f2c16ba7",
+  "fields": {
+    "vendor": "3e2e6a86-dabc-4e34-812f-fa44d0c1ca0c",
+    "invoice_number": "Auto-Generated",
+    "purchase_date": "2026-04-12",
+    "subtotal": "12320.00",
+    "tax": "0.00",
+    "total": "12320.00",
+    "status": "posted",
+    "created_at": "2026-04-12T18:08:56.123Z"
+  }
+},
+{
+  "model": "purchases.purchase",
+  "pk": "4e44e76f-9f73-4be5-96e1-53592f1c451b",
+  "fields": {
+    "vendor": "99afb1fd-1527-4e41-993a-96a729779277",
+    "invoice_number": "Auto-Generated",
+    "purchase_date": "2026-04-04",
+    "subtotal": "7920.00",
+    "tax": "0.00",
+    "total": "7920.00",
+    "status": "posted",
+    "created_at": "2026-04-04T12:57:33.473Z"
+  }
+},
+{
+  "model": "purchases.purchaseitem",
+  "pk": 3,
+  "fields": {
+    "purchase": "4e44e76f-9f73-4be5-96e1-53592f1c451b",
+    "product": "045c3aa3-f235-4956-a889-0f9b8a17002d",
+    "quantity": "18.00",
+    "unit_cost": "440.00",
+    "retail_price": "200.00",
+    "total_cost": "7920.00",
+    "description": "its too good"
+  }
+},
+{
+  "model": "purchases.purchaseitem",
+  "pk": 4,
+  "fields": {
+    "purchase": "173b4a67-bac9-436c-b0e0-53a622e87105",
+    "product": "059f4582-6f10-4ece-80aa-b0d133755b61",
+    "quantity": "12.00",
+    "unit_cost": "540.00",
+    "retail_price": "300.00",
+    "total_cost": "6480.00",
+    "description": "its too good"
+  }
+},
+{
+  "model": "purchases.purchaseitem",
+  "pk": 5,
+  "fields": {
+    "purchase": "2fb11962-8a3c-45b2-b5f3-e215f2c16ba7",
+    "product": "aa1f3694-5f13-4fb7-b0cd-c37bcbe6f7b2",
+    "quantity": "8.00",
+    "unit_cost": "1540.00",
+    "retail_price": "800.00",
+    "total_cost": "12320.00",
+    "description": "its too good"
+  }
+}
+]
