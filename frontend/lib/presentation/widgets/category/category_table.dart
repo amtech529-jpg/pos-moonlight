@@ -189,7 +189,7 @@ class _EnhancedCategoryTableState extends State<EnhancedCategoryTable> {
                     topRight: Radius.circular(context.borderRadius('large')),
                   ),
                 ),
-                child: KeyboardScrollable(
+                child: SingleChildScrollView(
                   controller: _headerHorizontalController,
                   scrollDirection: Axis.horizontal,
                   physics: const ClampingScrollPhysics(),

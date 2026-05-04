@@ -76,8 +76,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Center(
-        child: KeyboardScrollable(
+      body: KeyboardScrollable(
+        child: Container(
+          constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height),
+          alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
           child: Container(
             width: screenWidth > 500 ? formWidth : screenWidth,

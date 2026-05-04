@@ -356,6 +356,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
 class OrderListSerializer(serializers.ModelSerializer):
     """Minimal serializer for listing orders"""
     
+    customer = serializers.SerializerMethodField()
+    customer_name = serializers.SerializerMethodField()
     customer_id = serializers.UUIDField(source='customer.id', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     days_since_ordered = serializers.IntegerField(read_only=True)
@@ -403,7 +405,8 @@ class OrderListSerializer(serializers.ModelSerializer):
             'phone': obj.customer.phone,
             'email': obj.customer.email,
             'status': obj.customer.status,
-            'customer_type': obj.customer.customer_type
+            'customer_type': obj.customer.customer_type,
+            'business_name': getattr(obj.customer, 'business_name', None)
         }
 
     def get_order_items(self, obj):
@@ -427,6 +430,12 @@ class OrderListSerializer(serializers.ModelSerializer):
             for item in items
         ]
     
+    def get_customer_name(self, obj):
+        """Get customer name (prioritizes business name for business customers)"""
+        if obj.customer.customer_type == 'BUSINESS' and obj.customer.business_name:
+            return obj.customer.business_name
+        return obj.customer_name
+
     def get_items(self, obj):
         """Alias for get_order_items for frontend consistency"""
         return self.get_order_items(obj)
@@ -476,6 +485,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer for single order view"""
     
     customer = serializers.SerializerMethodField()
+    customer_name = serializers.SerializerMethodField()
     created_by = serializers.StringRelatedField(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     days_since_ordered = serializers.IntegerField(read_only=True)
@@ -560,7 +570,8 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             'phone': obj.customer.phone,
             'email': obj.customer.email,
             'status': obj.customer.status,
-            'customer_type': obj.customer.customer_type
+            'customer_type': obj.customer.customer_type,
+            'business_name': getattr(obj.customer, 'business_name', None)
         }
 
     def get_order_items(self, obj):
@@ -583,6 +594,16 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             }
             for item in items
         ]
+
+    def get_customer_name(self, obj):
+        """Get customer name (prioritizes business name for business customers)"""
+        if obj.customer.customer_type == 'BUSINESS' and obj.customer.business_name:
+            return obj.customer.business_name
+        return obj.customer_name
+
+    def get_items(self, obj):
+        """Alias for get_order_items for frontend consistency"""
+        return self.get_order_items(obj)
 
 
 class OrderStatsSerializer(serializers.Serializer):

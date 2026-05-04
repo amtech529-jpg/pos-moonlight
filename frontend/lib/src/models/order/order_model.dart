@@ -93,7 +93,7 @@ class OrderModel {
     return OrderModel(
       id: json['id']?.toString() ?? '',
       customerId: json['customer_id']?.toString() ?? json['customer']?.toString() ?? '',
-      customerName: json['customer_name']?.toString() ?? 'Unknown Customer',
+      customerName: _resolveCustomerName(json),
       customerPhone: json['customer_phone']?.toString() ?? '',
       customerEmail: json['customer_email']?.toString() ?? '',
       advancePayment: _parseDouble(json['advance_payment']),
@@ -168,6 +168,19 @@ class OrderModel {
       'return_date': returnDate?.toIso8601String().split('T')[0],
       'items': items.map((i) => i.toJson()).toList(),
     };
+  }
+
+  // Helper to resolve customer name (prioritizes business name if business customer)
+  static String _resolveCustomerName(Map<String, dynamic> json) {
+    if (json['customer'] != null && json['customer'] is Map) {
+      final customerData = json['customer'] as Map<String, dynamic>;
+      final type = customerData['customer_type']?.toString().toUpperCase();
+      final businessName = customerData['business_name']?.toString();
+      if (type == 'BUSINESS' && businessName != null && businessName.trim().isNotEmpty) {
+        return businessName.trim();
+      }
+    }
+    return json['customer_name']?.toString() ?? 'Unknown Customer';
   }
 
   // Helper method to parse double from string or number

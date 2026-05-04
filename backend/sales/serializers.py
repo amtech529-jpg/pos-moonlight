@@ -384,6 +384,7 @@ class SaleItemListSerializer(serializers.ModelSerializer):
 class SalesSerializer(serializers.ModelSerializer):
     """Complete serializer for Sales model"""
     
+    customer_name = serializers.SerializerMethodField()
     sale_items = SaleItemSerializer(many=True, read_only=True)
     payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -414,6 +415,12 @@ class SalesSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         )
     
+    def get_customer_name(self, obj):
+        """Get customer name (prioritizes business name for business customers)"""
+        if obj.customer and obj.customer.customer_type == 'BUSINESS' and obj.customer.business_name:
+            return obj.customer.business_name
+        return obj.customer_name
+
     def validate_overall_discount(self, value):
         """Validate overall discount"""
         print(f"🔍 Validating overall_discount: {value}")
@@ -473,6 +480,7 @@ class SalesUpdateSerializer(serializers.ModelSerializer):
 class SalesListSerializer(serializers.ModelSerializer):
     """Simplified serializer for listing sales"""
     
+    customer_name = serializers.SerializerMethodField()
     payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     tax_summary_display = serializers.CharField(read_only=True)
@@ -484,6 +492,12 @@ class SalesListSerializer(serializers.ModelSerializer):
             'grand_total', 'amount_paid', 'payment_method', 'payment_method_display',
             'date_of_sale', 'total_items', 'tax_summary_display', 'is_active'
         )
+
+    def get_customer_name(self, obj):
+        """Get customer name (prioritizes business name for business customers)"""
+        if obj.customer and obj.customer.customer_type == 'BUSINESS' and obj.customer.business_name:
+            return obj.customer.business_name
+        return obj.customer_name
 
 
 class SalesPaymentSerializer(serializers.ModelSerializer):
