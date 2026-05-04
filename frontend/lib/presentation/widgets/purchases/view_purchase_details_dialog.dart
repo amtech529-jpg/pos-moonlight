@@ -10,6 +10,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
 import '../globals/text_button.dart';
 import 'purchase_table_helpers.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewPurchaseDetailsDialog extends StatelessWidget {
   final PurchaseModel purchase;
@@ -104,7 +106,7 @@ class ViewPurchaseDetailsDialog extends StatelessWidget {
 
             // Content Section (Scrollable)
             Flexible(
-              child: SingleChildScrollView(
+              child: KeyboardScrollable(
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

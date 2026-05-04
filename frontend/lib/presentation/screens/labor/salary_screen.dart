@@ -7,6 +7,8 @@ import '../../../src/models/labor/salary_slip_model.dart';
 import '../../../src/services/labor/labor_service.dart';
 import '../../../src/services/labor/salary_slip_pdf_service.dart';
 import '../../../src/utils/debug_helper.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class SalaryScreen extends StatefulWidget {
   const SalaryScreen({super.key});
@@ -313,7 +315,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           child: Column(
             children: [

@@ -6,6 +6,8 @@ import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../../../src/models/principal_account/principal_account_model.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewPrincipalAccountDetailsDialog extends StatefulWidget {
   final PrincipalAccount account;
@@ -87,7 +89,7 @@ class _ViewPrincipalAccountDetailsDialogState extends State<ViewPrincipalAccount
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: true))),
       ],
     );
   }
@@ -97,7 +99,7 @@ class _ViewPrincipalAccountDetailsDialogState extends State<ViewPrincipalAccount
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: true))),
       ],
     );
   }
@@ -107,7 +109,7 @@ class _ViewPrincipalAccountDetailsDialogState extends State<ViewPrincipalAccount
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: false))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: false))),
       ],
     );
   }

@@ -7,6 +7,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EditReceivableDialog extends StatefulWidget {
   final Receivable receivable;
@@ -298,7 +300,7 @@ class _EditReceivableDialogState extends State<EditReceivableDialog> with Single
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildFormContent(isCompact: true),
           ),
         ),
@@ -312,7 +314,7 @@ class _EditReceivableDialogState extends State<EditReceivableDialog> with Single
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildFormContent(isCompact: true),
           ),
         ),
@@ -326,7 +328,7 @@ class _EditReceivableDialogState extends State<EditReceivableDialog> with Single
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildFormContent(isCompact: false),
           ),
         ),

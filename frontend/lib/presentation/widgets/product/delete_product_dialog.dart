@@ -8,6 +8,8 @@ import '../../../src/models/product/product_model.dart';
 import '../../../src/providers/product_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DeleteProductDialog extends StatefulWidget {
   final ProductModel product;
@@ -338,7 +340,7 @@ class _DeleteProductDialogState extends State<DeleteProductDialog>
 
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),
           child: Column(

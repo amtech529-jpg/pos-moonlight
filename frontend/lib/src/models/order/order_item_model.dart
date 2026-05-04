@@ -85,7 +85,7 @@ class OrderItemModel {
       remainingToSell: json['remaining_to_sell'] as int?,
       hasBeenSold: json['has_been_sold'] as bool?,
       totalValue: _parseDouble(json['total_value'] ?? json['line_total']),
-      productDisplayInfo: json['product_display_info'] as Map<String, dynamic>? ?? {},
+      productDisplayInfo: json['product_display_info'] != null ? Map<String, dynamic>.from(json['product_display_info'] as Map) : {},
       rentedFromPartner: json['rented_from_partner'] as bool? ?? false,
       partnerId: json['partner']?.toString(),
       partnerRate: _parseDouble(json['partner_rate']),

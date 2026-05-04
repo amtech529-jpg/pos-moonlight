@@ -19,6 +19,9 @@ import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import '../globals/custom_date_picker.dart';
 import '../product/add_product_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+import '../../../src/providers/auth_provider.dart';
+
 
 class LocalOrderItem {
   final String? id;
@@ -67,6 +70,7 @@ class EditOrderDialog extends StatefulWidget {
 }
 
 class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProviderStateMixin {
+  bool get canSeeFinancials => context.watch<AuthProvider>().currentUser?.canSeeFinancials ?? false;
   final _formKey = GlobalKey<FormState>();
   final _advanceController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -584,6 +588,9 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    final canSeeFinancials = currentUser?.canSeeFinancials ?? false;
+
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
@@ -602,7 +609,7 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                 ),
                 child: Column(
                   children: [
-                    _buildTopHeader(),
+                    _buildTopHeader(canSeeFinancials),
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -642,7 +649,7 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
     );
   }
 
-  Widget _buildTopHeader() {
+  Widget _buildTopHeader(bool canSeeFinancials) {
     final String displayName = (_customer?.businessName != null && _customer!.businessName!.isNotEmpty)
         ? _customer!.businessName!
         : widget.order.customerName;
@@ -671,18 +678,19 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
             ],
           ),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF8B2252).withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF8B2252).withOpacity(0.2)),
+          if (canSeeFinancials)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF8B2252).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF8B2252).withOpacity(0.2)),
+              ),
+              child: Text(
+                '$_totalActiveItems Items · PKR ${_calculatedSubtotal.toStringAsFixed(0)}',
+                style: const TextStyle(color: Color(0xFF8B2252), fontWeight: FontWeight.bold, fontSize: 13),
+              ),
             ),
-            child: Text(
-              '$_totalActiveItems Items · PKR ${_calculatedSubtotal.toStringAsFixed(0)}',
-              style: const TextStyle(color: Color(0xFF8B2252), fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-          ),
           const SizedBox(width: 12),
           IconButton(
             onPressed: () => Navigator.pop(context),
@@ -723,7 +731,7 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                 return ListTile(
                   dense: true,
                   title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Price: PKR ${p.price}'),
+                  subtitle: canSeeFinancials ? Text('Price: PKR ${p.price}') : null,
                   trailing: const Icon(Icons.add_circle_outline, color: Color(0xFF8B2252), size: 20),
                   onTap: () => _addProduct(p),
                 );
@@ -764,8 +772,10 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
         children: [
           Expanded(flex: 4, child: Text('PRODUCT NAME', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade700, fontSize: 11))),
           Expanded(flex: 2, child: Text('QTY', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade700, fontSize: 11), textAlign: TextAlign.center)),
-          Expanded(flex: 2, child: Text('RENT PRICE', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade700, fontSize: 11), textAlign: TextAlign.center)),
-          Expanded(flex: 2, child: Text('TOTAL', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade700, fontSize: 11), textAlign: TextAlign.end)),
+          if (canSeeFinancials)
+            Expanded(flex: 2, child: Text('RENT PRICE', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade700, fontSize: 11), textAlign: TextAlign.center)),
+          if (canSeeFinancials)
+            Expanded(flex: 2, child: Text('TOTAL', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.grey.shade700, fontSize: 11), textAlign: TextAlign.end)),
           const SizedBox(width: 45),
         ],
       ),
@@ -904,34 +914,36 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
               ),
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: Container(
-              height: 36,
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              child: TextFormField(
-                initialValue: item.rate.toStringAsFixed(0),
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF2196F3)),
-                decoration: InputDecoration(
-                  contentPadding: EdgeInsets.zero,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade200)),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF2196F3))),
+          if (canSeeFinancials)
+            Expanded(
+              flex: 2,
+              child: Container(
+                height: 36,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                child: TextFormField(
+                  initialValue: item.rate.toStringAsFixed(0),
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF2196F3)),
+                  decoration: InputDecoration(
+                    contentPadding: EdgeInsets.zero,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade200)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF2196F3))),
+                  ),
+                  onChanged: (v) => setState(() => item.rate = double.tryParse(v) ?? 0.0),
                 ),
-                onChanged: (v) => setState(() => item.rate = double.tryParse(v) ?? 0.0),
               ),
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              'PKR ${item.total.toStringAsFixed(0)}',
-              style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFD32F2F), fontSize: 14),
-              textAlign: TextAlign.end,
+          if (canSeeFinancials)
+            Expanded(
+              flex: 2,
+              child: Text(
+                'PKR ${item.total.toStringAsFixed(0)}',
+                style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFD32F2F), fontSize: 14),
+                textAlign: TextAlign.end,
+              ),
             ),
-          ),
           const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.delete_outline_rounded, color: Colors.grey, size: 20),
@@ -961,7 +973,7 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
             thumbVisibility: true,
             thickness: 6,
             radius: const Radius.circular(3),
-            child: SingleChildScrollView(
+            child: KeyboardScrollable(
               controller: _rightPanelScrollController,
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -1001,6 +1013,34 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                 ),
               ),
 */
+              const Text('Dispatch Date', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: () async {
+                  await context.showSyncfusionDateTimePicker(
+                    initialDate: _dispatchDate ?? _eventDate ?? DateTime.now(),
+                    initialTime: TimeOfDay.now(),
+                    title: 'Select Dispatch Date',
+                    onDateTimeSelected: (date, time) {
+                      setState(() => _dispatchDate = date);
+                    },
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(10), color: Colors.grey.shade50),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.local_shipping, size: 18, color: Color(0xFF8B2252)),
+                      const SizedBox(width: 10),
+                      Text(
+                        _dispatchDate == null ? 'Select Date' : '${_dispatchDate!.day}/${_dispatchDate!.month}/${_dispatchDate!.year}',
+                        style: TextStyle(color: _dispatchDate == null ? Colors.grey : Colors.black, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
               const Text('Event Date', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
               const SizedBox(height: 6),
@@ -1025,35 +1065,6 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                       Text(
                         _eventDate == null ? 'Select Date' : '${_eventDate!.day}/${_eventDate!.month}/${_eventDate!.year}',
                         style: TextStyle(color: _eventDate == null ? Colors.grey : Colors.black, fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text('Dispatch Date', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: () async {
-                  await context.showSyncfusionDateTimePicker(
-                    initialDate: _dispatchDate ?? _eventDate ?? DateTime.now(),
-                    initialTime: TimeOfDay.now(),
-                    title: 'Select Dispatch Date',
-                    onDateTimeSelected: (date, time) {
-                      setState(() => _dispatchDate = date);
-                    },
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(10), color: Colors.grey.shade50),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.local_shipping, size: 18, color: Color(0xFF8B2252)),
-                      const SizedBox(width: 10),
-                      Text(
-                        _dispatchDate == null ? 'Select Date' : '${_dispatchDate!.day}/${_dispatchDate!.month}/${_dispatchDate!.year}',
-                        style: TextStyle(color: _dispatchDate == null ? Colors.grey : Colors.black, fontSize: 13, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -1089,13 +1100,15 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                 ),
               ),
               const SizedBox(height: 12),
-              PremiumTextField(
-                label: 'Advance Payment (PKR)',
-                controller: _advanceController,
-                keyboardType: TextInputType.number,
-                fontSize: 13,
-                onChanged: (_) => setState(() {}),
-              ),
+              if (canSeeFinancials) ...[
+                PremiumTextField(
+                  label: 'Advance Payment (PKR)',
+                  controller: _advanceController,
+                  keyboardType: TextInputType.number,
+                  fontSize: 13,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ],
               const SizedBox(height: 12),
               PremiumTextField(
                 label: 'Description / Notes',

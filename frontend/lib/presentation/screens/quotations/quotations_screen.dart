@@ -11,6 +11,8 @@ import 'package:frontend/presentation/widgets/quotations/delete_quotation_dialog
 import 'package:frontend/src/models/quotation/quotation_model.dart';
 import 'package:frontend/src/services/pdf_quotation_service.dart';
 import 'package:frontend/src/providers/customer_provider.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class QuotationsScreen extends StatefulWidget {
   const QuotationsScreen({super.key});
@@ -63,7 +65,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
 
           return RefreshIndicator(
             onRefresh: () => provider.initialize(),
-            child: SingleChildScrollView(
+            child: KeyboardScrollable(
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
@@ -71,11 +73,11 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
                 children: [
                   _buildHeader(canAdd),
                   const SizedBox(height: 18),
-                  _buildStatsRow(provider.quotations.length.toString(), pendingCount.toString(), acceptedCount.toString(), totalValue),
+                  _buildStatsRow(provider.quotations.length.toString(), pendingCount.toString(), acceptedCount.toString(), totalValue, currentUser?.canSeeFinancials ?? false),
                   const SizedBox(height: 24),
                   _buildSearchSection(),
                   const SizedBox(height: 24),
-                  _buildQuotationsTable(provider.quotations, canEdit, canDelete, canAddOrder),
+                  _buildQuotationsTable(provider.quotations, canEdit, canDelete, canAddOrder, currentUser?.canSeeFinancials ?? false),
                   const SizedBox(height: 32),
                 ],
               ),
@@ -151,7 +153,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
     }
   }
 
-  Widget _buildStatsRow(String total, String pending, String accepted, double totalValue) {
+  Widget _buildStatsRow(String total, String pending, String accepted, double totalValue, bool canSeeFinancials) {
     return Row(
       children: [
         Expanded(child: _buildSummaryCard("Total Quotations", total, Colors.black)),
@@ -159,8 +161,10 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
         Expanded(child: _buildSummaryCard("Pending", pending, Colors.orange)),
         const SizedBox(width: 20),
         Expanded(child: _buildSummaryCard("Accepted", accepted, const Color(0xFF2ECC71))),
-        const SizedBox(width: 20),
-        Expanded(child: _buildSummaryCard("Total Value", "Rs. ${totalValue.toStringAsFixed(0)}", AppTheme.primaryMaroon)),
+        if (canSeeFinancials) ...[
+          const SizedBox(width: 20),
+          Expanded(child: _buildSummaryCard("Total Value", "Rs. ${totalValue.toStringAsFixed(0)}", AppTheme.primaryMaroon)),
+        ],
       ],
     );
   }
@@ -217,7 +221,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
     );
   }
 
-  Widget _buildQuotationsTable(List<QuotationModel> quotations, bool canEdit, bool canDelete, bool canAddOrder) {
+  Widget _buildQuotationsTable(List<QuotationModel> quotations, bool canEdit, bool canDelete, bool canAddOrder, bool canSeeFinancials) {
     final filtered = quotations;
 
     return Column(
@@ -225,15 +229,16 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           decoration: BoxDecoration(color: const Color(0xFFF2F2F2), borderRadius: BorderRadius.circular(8)),
-          child: const Row(
+          child: Row(
             children: [
-              Expanded(flex: 1, child: Text("Quotation ID", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-              SizedBox(width: 24),
-              Expanded(flex: 3, child: Text("Clients", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-              Expanded(flex: 1, child: Text("Value", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-              Expanded(flex: 1, child: Text("Days Left", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-              Expanded(flex: 1, child: Text("Status", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-              Expanded(flex: 2, child: Text("Action", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)), textAlign: TextAlign.center)),
+              const Expanded(flex: 1, child: Text("Quotation ID", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+              const SizedBox(width: 24),
+              const Expanded(flex: 3, child: Text("Clients", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+              if (canSeeFinancials)
+                const Expanded(flex: 1, child: Text("Value", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+              const Expanded(flex: 1, child: Text("Days Left", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+              const Expanded(flex: 1, child: Text("Status", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+              const Expanded(flex: 2, child: Text("Action", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)), textAlign: TextAlign.center)),
             ],
           ),
         ),
@@ -244,7 +249,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
             child: Text("No quotations found.", style: TextStyle(color: Colors.grey)),
           )
         else ...[
-          ...filtered.map((q) => _buildTableRow(context, q, canEdit, canDelete, canAddOrder)).toList(),
+          ...filtered.map((q) => _buildTableRow(context, q, canEdit, canDelete, canAddOrder, canSeeFinancials)).toList(),
           if (context.watch<QuotationProvider>().hasMore)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
@@ -268,7 +273,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
     );
   }
 
-  Widget _buildTableRow(BuildContext context, QuotationModel quotation, bool canEdit, bool canDelete, bool canAddOrder) {
+  Widget _buildTableRow(BuildContext context, QuotationModel quotation, bool canEdit, bool canDelete, bool canAddOrder, bool canSeeFinancials) {
     Color statusColor = const Color(0xFFFE813E); // Brand Orange for PENDING
     Color textOnStatus = Colors.white;
     double opacity = 0.94;
@@ -320,10 +325,11 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
               ],
             ),
           ),
-          Expanded(
-              flex: 1,
-              child: Text("Rs. ${quotation.finalAmount.toStringAsFixed(0)}",
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
+          if (canSeeFinancials)
+            Expanded(
+                flex: 1,
+                child: Text("Rs. ${quotation.finalAmount.toStringAsFixed(0)}",
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
           Expanded(
               flex: 1,
               child: Text(
@@ -428,7 +434,7 @@ class _QuotationsScreenState extends State<QuotationsScreen> {
               const Text('Convert to Order', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
             ],
           ),
-          content: SingleChildScrollView(
+          content: KeyboardScrollable(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,

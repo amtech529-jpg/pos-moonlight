@@ -13,6 +13,8 @@ import '../globals/text_field.dart';
 import '../../../src/services/category_service.dart';
 import '../../../src/models/category/category_model.dart';
 import '../../../src/models/product/product_model.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class AddProductDialog extends StatefulWidget {
   final bool initialIsRental;
@@ -70,6 +72,7 @@ class _AddProductDialogState extends State<AddProductDialog>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -137,6 +140,13 @@ class _AddProductDialogState extends State<AddProductDialog>
     _rentalFocusNode.addListener(focusListener);
     _consumableFocusNode.addListener(focusListener);
     _pricingFocusNode.addListener(focusListener);
+    
+    // Load categories to ensure they are available in the dropdown
+    Future.microtask(() {
+      if (mounted) {
+        context.read<ProductProvider>().loadCategories();
+      }
+    });
 
     _setupKeyboardNavigation();
   }
@@ -185,6 +195,7 @@ class _AddProductDialogState extends State<AddProductDialog>
     _rentalFocusNode.dispose();
     _consumableFocusNode.dispose();
     _pricingFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -383,13 +394,16 @@ class _AddProductDialogState extends State<AddProductDialog>
                       ),
                     ],
                   ),
-                  child: ResponsiveBreakpoints.responsive(
-                    context,
-                    tablet: _buildTabletLayout(),
-                    small: _buildMobileLayout(),
-                    medium: _buildDesktopLayout(),
-                    large: _buildDesktopLayout(),
-                    ultrawide: _buildDesktopLayout(),
+                  child: KeyboardScrollable(
+                    controller: _scrollController,
+                    child: ResponsiveBreakpoints.responsive(
+                      context,
+                      tablet: _buildTabletLayout(),
+                      small: _buildMobileLayout(),
+                      medium: _buildDesktopLayout(),
+                      large: _buildDesktopLayout(),
+                      ultrawide: _buildDesktopLayout(),
+                    ),
                   ),
                 ),
               ),
@@ -401,29 +415,23 @@ class _AddProductDialogState extends State<AddProductDialog>
   }
 
   Widget _buildTabletLayout() {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [_buildHeader(), _buildFormContent(isCompact: true)],
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [_buildHeader(), _buildFormContent(isCompact: true)],
     );
   }
 
   Widget _buildMobileLayout() {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [_buildHeader(), _buildFormContent(isCompact: true)],
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [_buildHeader(), _buildFormContent(isCompact: true)],
     );
   }
 
   Widget _buildDesktopLayout() {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [_buildHeader(), _buildFormContent(isCompact: false)],
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [_buildHeader(), _buildFormContent(isCompact: false)],
     );
   }
 
@@ -619,7 +627,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                   return '${l10n.pleaseEnter} ${l10n.price}';
                 }
                 final price = double.tryParse(value!);
-                if (price == null || price <= 0) {
+                if (price == null || price < 0) {
                   return '${l10n.pleaseEnterValid} ${l10n.price}';
                 }
                 return null;
@@ -921,7 +929,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                       optionsBuilder: (TextEditingValue textEditingValue) {
                         _categorySearchText = textEditingValue.text;
                         if (textEditingValue.text.isEmpty) {
-                          return const Iterable<CategoryModel>.empty();
+                          return provider.categories;
                         }
                         return provider.categories.where((CategoryModel option) {
                           return option.name.toLowerCase().contains(textEditingValue.text.toLowerCase());
@@ -943,6 +951,13 @@ class _AddProductDialogState extends State<AddProductDialog>
                           label: 'Category',
                           hint: 'Search or select category',
                           prefixIcon: Icons.category_outlined,
+                          onTap: () {
+                            // Force suggestions to appear by triggering a change if empty
+                            if (controller.text.isEmpty) {
+                              controller.text = ' ';
+                              controller.text = '';
+                            }
+                          },
                           onSubmitted: (_) {
                             onFieldSubmitted();
                             // FIX: From category move to the SAVE button focus node

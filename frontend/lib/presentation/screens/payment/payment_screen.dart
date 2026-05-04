@@ -12,6 +12,8 @@ import '../../widgets/payment/enhanced_payment_table.dart';
 import '../../widgets/payment/delete_payment_dialog.dart';
 import '../../widgets/payment/edit_payment_dialog.dart';
 import '../../widgets/payment/view_payment_receipt.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class PaymentPage extends StatefulWidget {
   const PaymentPage({super.key});
@@ -94,7 +96,7 @@ class _PaymentPageState extends State<PaymentPage> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           child: Padding(
             padding: EdgeInsets.all(context.mainPadding / 2),

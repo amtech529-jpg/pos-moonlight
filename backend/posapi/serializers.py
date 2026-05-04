@@ -124,6 +124,13 @@ class UserLoginSerializer(serializers.Serializer):
         password = attrs.get('password')
         
         if email and password:
+            # Check if email exists
+            user_qs = User.objects.filter(email=email)
+            if not user_qs.exists():
+                raise serializers.ValidationError(
+                    {'email': ['No account found with this email address.']}
+                )
+                
             user = authenticate(
                 request=self.context.get('request'),
                 username=email,
@@ -132,22 +139,19 @@ class UserLoginSerializer(serializers.Serializer):
             
             if not user:
                 raise serializers.ValidationError(
-                    'Invalid email or password.',
-                    code='authorization'
+                    {'password': ['Incorrect password.']}
                 )
             
             if not user.is_active:
                 raise serializers.ValidationError(
-                    'User account is disabled.',
-                    code='authorization'
+                    {'email': ['User account is disabled.']}
                 )
             
             attrs['user'] = user
             return attrs
         else:
             raise serializers.ValidationError(
-                'Must include email and password.',
-                code='authorization'
+                {'non_field_errors': ['Must include email and password.']}
             )
 
 

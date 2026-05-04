@@ -8,6 +8,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../src/providers/customer_provider.dart';
 import 'order_table_helpers.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedOrderTable extends StatefulWidget {
   final Function(OrderModel) onEdit;
@@ -84,7 +86,7 @@ class _EnhancedOrderTableState extends State<EnhancedOrderTable> {
                       topRight: Radius.circular(context.borderRadius('large')),
                     ),
                   ),
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     controller: _headerHorizontalController,
                     scrollDirection: Axis.horizontal,
                     physics: const ClampingScrollPhysics(),
@@ -100,7 +102,7 @@ class _EnhancedOrderTableState extends State<EnhancedOrderTable> {
                   child: Scrollbar(
                     controller: _verticalController,
                     thumbVisibility: true,
-                    child: SingleChildScrollView(
+                    child: KeyboardScrollable(
                       controller: _contentHorizontalController,
                       scrollDirection: Axis.horizontal,
                       physics: const ClampingScrollPhysics(),
@@ -198,7 +200,7 @@ class _EnhancedOrderTableState extends State<EnhancedOrderTable> {
         Container(
           width: columnWidths[3],
           constraints: BoxConstraints(maxWidth: columnWidths[3]),
-          child: _buildSortableHeaderCell(context, l10n.amount, 'total_amount'),
+          child: _buildHeaderCell(context, 'Location'),
         ),
 
         Container(
@@ -343,81 +345,26 @@ class _EnhancedOrderTableState extends State<EnhancedOrderTable> {
               width: columnWidths[3],
               padding: EdgeInsets.symmetric(horizontal: context.smallPadding),
               constraints: BoxConstraints(maxWidth: columnWidths[3]),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  if (order.totalAmount > 0) ...[
-                    Text(
-                      'PKR ${order.totalAmount.toStringAsFixed(0)}',
-                      style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: AppTheme.charcoalGray),
-                      maxLines: 1,
+                  Icon(Icons.location_on_outlined, size: 14, color: order.eventLocation != null && order.eventLocation!.isNotEmpty ? AppTheme.primaryMaroon : Colors.grey[400]),
+                  SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      order.eventLocation != null && order.eventLocation!.isNotEmpty
+                          ? order.eventLocation!
+                          : 'No location',
+                      style: TextStyle(
+                        fontSize: context.subtitleFontSize,
+                        fontWeight: FontWeight.w500,
+                        color: order.eventLocation != null && order.eventLocation!.isNotEmpty
+                            ? AppTheme.charcoalGray
+                            : Colors.grey[400],
+                      ),
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (order.remainingAmount > 0) ...[
-                      SizedBox(height: context.smallPadding / 4),
-                      Text(
-                        '${l10n.due}: PKR ${order.remainingAmount.toStringAsFixed(0)}',
-                        style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w400, color: Colors.red),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ] else ...[
-                      SizedBox(height: context.smallPadding / 4),
-                      Text(
-                        l10n.fullyPaid,
-                        style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w400, color: Colors.green),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ] else ...[
-                    Builder(
-                      builder: (context) {
-                        final totalItems = order.orderSummary['total_items'] ?? 0;
-                        final totalQuantity = order.orderSummary['total_quantity'] ?? 0;
-
-                        if (totalItems > 0) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${totalItems} ${totalItems == 1 ? l10n.item : l10n.items}',
-                                style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: Colors.blue[700]),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: context.smallPadding / 4),
-                              Text(
-                                '${l10n.qty}: ${totalQuantity}',
-                                style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w400, color: Colors.blue[600]),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          );
-                        } else {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                l10n.noItems,
-                                style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: Colors.grey[600]),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: context.smallPadding / 4),
-                              Text(
-                                l10n.addItemsToSeeTotal,
-                                style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w400, color: Colors.blue),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          );
-                        }
-                      },
-                    ),
-                  ],
+                  ),
                 ],
               ),
             ),

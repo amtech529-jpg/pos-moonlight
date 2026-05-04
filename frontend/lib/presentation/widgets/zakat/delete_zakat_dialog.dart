@@ -7,6 +7,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../src/models/zakat/zakat_model.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DeleteZakatDialog extends StatefulWidget {
   final Zakat zakat;
@@ -183,7 +185,7 @@ class _DeleteZakatDialogState extends State<DeleteZakatDialog> with SingleTicker
                       ),
                     ],
                   ),
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

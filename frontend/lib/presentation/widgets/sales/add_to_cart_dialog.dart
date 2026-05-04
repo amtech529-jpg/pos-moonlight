@@ -9,6 +9,8 @@ import '../../../src/providers/sales_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedAddToCartDialog extends StatefulWidget {
   final ProductModel product;
@@ -224,7 +226,7 @@ class _EnhancedAddToCartDialogState extends State<EnhancedAddToCartDialog> with 
   }
 
   Widget _buildContent() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       padding: EdgeInsets.all(context.cardPadding),
       child: Form(
         key: _formKey,

@@ -13,6 +13,8 @@ import 'view_purchase_details_dialog.dart';
 import 'edit_purchase_dialog.dart';
 import 'delete_purchase_dialog.dart';
 import 'purchase_filter_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class PurchaseTable extends StatefulWidget {
   final PurchaseFilter? filter;
@@ -184,7 +186,7 @@ class _PurchaseTableState extends State<PurchaseTable> {
           return Scrollbar(
             controller: _contentHorizontalController,
             thumbVisibility: true,
-            child: SingleChildScrollView(
+            child: KeyboardScrollable(
               controller: _contentHorizontalController,
               scrollDirection: Axis.horizontal,
               child: tableContent,

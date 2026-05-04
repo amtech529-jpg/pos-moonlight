@@ -7,6 +7,8 @@ import '../../../src/providers/payables_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import 'payables_table_helpers.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedPayablesTable extends StatefulWidget {
   final Function(Payable) onEdit;
@@ -82,7 +84,7 @@ class _EnhancedPayablesTableState extends State<EnhancedPayablesTable> {
                       topRight: Radius.circular(context.borderRadius('large')),
                     ),
                   ),
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     controller: _headerHorizontalController,
                     scrollDirection: Axis.horizontal,
                     physics: const ClampingScrollPhysics(),
@@ -99,7 +101,7 @@ class _EnhancedPayablesTableState extends State<EnhancedPayablesTable> {
                   child: Scrollbar(
                     controller: _verticalController,
                     thumbVisibility: true,
-                    child: SingleChildScrollView(
+                    child: KeyboardScrollable(
                       controller: _contentHorizontalController,
                       scrollDirection: Axis.horizontal,
                       physics: const ClampingScrollPhysics(),

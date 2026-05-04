@@ -7,6 +7,8 @@ import '../../../src/providers/payables_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DeletePayableDialog extends StatefulWidget {
   final Payable payable;
@@ -135,7 +137,7 @@ class _DeletePayableDialogState extends State<DeletePayableDialog> with SingleTi
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: true))),
       ],
     );
   }
@@ -145,7 +147,7 @@ class _DeletePayableDialogState extends State<DeletePayableDialog> with SingleTi
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: true))),
       ],
     );
   }
@@ -155,7 +157,7 @@ class _DeletePayableDialogState extends State<DeletePayableDialog> with SingleTi
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: false))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: false))),
       ],
     );
   }

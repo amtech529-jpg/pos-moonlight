@@ -13,6 +13,8 @@ import 'custom_order_dialog.dart';
 import 'customize_and_add_dialog.dart';
 import 'existing_orders_dialog.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ProductGrid extends StatelessWidget {
   final String searchQuery;
@@ -90,7 +92,7 @@ class ProductGrid extends StatelessWidget {
             ultrawide: 7,
           );
 
-          return SingleChildScrollView(
+          return KeyboardScrollable(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.only(right: context.cardPadding),
             child: SizedBox(

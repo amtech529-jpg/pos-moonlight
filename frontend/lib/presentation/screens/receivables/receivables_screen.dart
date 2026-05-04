@@ -11,6 +11,8 @@ import '../../widgets/receivables/edit_receivable_dialog.dart';
 import '../../widgets/receivables/receivable_table.dart';
 import '../../widgets/receivables/view_receviable_details.dart';
 import '../../widgets/receivables/receivables_filter_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ReceivablesPage extends StatefulWidget {
   const ReceivablesPage({super.key});
@@ -93,7 +95,7 @@ class _ReceivablesPageState extends State<ReceivablesPage> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           child: Padding(
             padding: EdgeInsets.all(context.mainPadding),

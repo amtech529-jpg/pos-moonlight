@@ -5,6 +5,8 @@ import '../../../src/providers/category_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewCategoryDetailsDialog extends StatefulWidget {
   final Category category;
@@ -117,7 +119,7 @@ class _ViewCategoryDetailsDialogState extends State<ViewCategoryDetailsDialog>
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildContent(isCompact: true),
           ),
         ),
@@ -131,7 +133,7 @@ class _ViewCategoryDetailsDialogState extends State<ViewCategoryDetailsDialog>
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildContent(isCompact: true),
           ),
         ),
@@ -145,7 +147,7 @@ class _ViewCategoryDetailsDialogState extends State<ViewCategoryDetailsDialog>
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildContent(isCompact: false),
           ),
         ),

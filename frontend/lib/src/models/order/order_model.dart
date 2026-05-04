@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'order_item_model.dart';
 
 enum OrderStatus { PENDING, CONFIRMED, READY, DELIVERED, RETURNED, CANCELLED }
 
@@ -28,6 +29,7 @@ class OrderModel {
   final DateTime? eventDate;
   final DateTime? dispatchDate;
   final DateTime? returnDate;
+  final List<OrderItemModel> items;
 
   // Enhanced Sales Integration Fields
   final String conversionStatus;
@@ -77,53 +79,55 @@ class OrderModel {
     this.eventDate,
     this.dispatchDate,
     this.returnDate,
+    this.items = const [],
   });
 
   // ✅ ADDED: orderNumber getter (Derived from ID for display)
-  String get orderNumber => "ORD-${id.substring(0, 8).toUpperCase()}";
+  String get orderNumber {
+    if (id.isEmpty) return "ORD-NEW";
+    final cleanId = id.replaceAll('-', '').toUpperCase();
+    return "ORD-${cleanId.length >= 8 ? cleanId.substring(0, 8) : cleanId}";
+  }
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
-    // Debug logging for dates
-    if (json.containsKey('event_date') || json.containsKey('return_date')) {
-      debugPrint('OrderModel: Parsing Order ${json['id']}');
-      debugPrint('OrderModel: Raw event_date from JSON: ${json['event_date']}');
-      debugPrint('OrderModel: Raw return_date from JSON: ${json['return_date']}');
-    }
-
     return OrderModel(
-      id: json['id'] as String,
-      customerId: json['customer_id'] as String,
-      customerName: json['customer_name'] as String,
-      customerPhone: json['customer_phone'] as String,
-      customerEmail: json['customer_email'] as String? ?? '',
+      id: json['id']?.toString() ?? '',
+      customerId: json['customer_id']?.toString() ?? json['customer']?.toString() ?? '',
+      customerName: json['customer_name']?.toString() ?? 'Unknown Customer',
+      customerPhone: json['customer_phone']?.toString() ?? '',
+      customerEmail: json['customer_email']?.toString() ?? '',
       advancePayment: _parseDouble(json['advance_payment']),
       totalAmount: _parseDouble(json['total_amount']),
       remainingAmount: _parseDouble(json['remaining_amount']),
       isFullyPaid: json['is_fully_paid'] as bool? ?? false,
-      dateOrdered: DateTime.parse(json['date_ordered'] as String),
-      expectedDeliveryDate: json['expected_delivery_date'] != null ? DateTime.parse(json['expected_delivery_date'] as String) : null,
-      description: json['description'] as String? ?? '',
-      status: _parseOrderStatus(json['status'] as String),
+      dateOrdered: DateTime.tryParse(json['date_ordered']?.toString() ?? '') ?? DateTime.now(),
+      expectedDeliveryDate: json['expected_delivery_date'] != null ? DateTime.tryParse(json['expected_delivery_date'].toString()) : null,
+      description: json['description']?.toString() ?? '',
+      status: _parseOrderStatus(json['status']?.toString() ?? 'PENDING'),
       isActive: json['is_active'] as bool? ?? true,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
-      createdBy: json['created_by'] as String?,
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
+      createdBy: json['created_by']?.toString(),
       createdById: json['created_by_id'] as int?,
-      conversionStatus: json['conversion_status'] as String? ?? 'NOT_CONVERTED',
+      conversionStatus: json['conversion_status']?.toString() ?? 'NOT_CONVERTED',
       convertedSalesAmount: _parseDouble(json['converted_sales_amount']),
-      conversionDate: json['conversion_date'] != null ? DateTime.parse(json['conversion_date'] as String) : null,
+      conversionDate: json['conversion_date'] != null ? DateTime.tryParse(json['conversion_date'].toString()) : null,
       daysSinceOrdered: json['days_since_ordered'] as int? ?? 0,
       daysUntilDelivery: json['days_until_delivery'] as int?,
       isOverdue: json['is_overdue'] as bool? ?? false,
       paymentPercentage: _parseDouble(json['payment_percentage']),
-      orderSummary: json['order_summary'] as Map<String, dynamic>? ?? {},
-      deliveryStatus: json['delivery_status'] as String? ?? 'No delivery date set',
-      returnStatus: json['return_status'] as String? ?? 'NOT_STARTED',
-      eventName: json['event_name']?.toString(),
-      eventLocation: json['event_location']?.toString(),
+      orderSummary: json['order_summary'] != null ? Map<String, dynamic>.from(json['order_summary'] as Map) : {},
+      deliveryStatus: json['delivery_status']?.toString() ?? 'No delivery date set',
+      returnStatus: json['return_status']?.toString() ?? 'NOT_STARTED',
+      eventName: json['event_name']?.toString() ?? 'Unnamed Event',
+      eventLocation: json['event_location']?.toString() ?? 'No Location',
       eventDate: json['event_date'] != null ? DateTime.tryParse(json['event_date'].toString()) : null,
       dispatchDate: json['dispatch_date'] != null ? DateTime.tryParse(json['dispatch_date'].toString()) : null,
       returnDate: json['return_date'] != null ? DateTime.tryParse(json['return_date'].toString()) : null,
+      items: (json['items'] as List<dynamic>? ?? json['order_items'] as List<dynamic>? ?? [])
+          .where((i) => i != null)
+          .map((i) => OrderItemModel.fromJson(i as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -162,6 +166,7 @@ class OrderModel {
       'event_date': eventDate?.toIso8601String().split('T')[0],
       'dispatch_date': dispatchDate?.toIso8601String().split('T')[0],
       'return_date': returnDate?.toIso8601String().split('T')[0],
+      'items': items.map((i) => i.toJson()).toList(),
     };
   }
 
@@ -231,6 +236,7 @@ class OrderModel {
     DateTime? eventDate,
     DateTime? dispatchDate,
     DateTime? returnDate,
+    List<OrderItemModel>? items,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -266,8 +272,10 @@ class OrderModel {
       eventDate: eventDate ?? this.eventDate,
       dispatchDate: dispatchDate ?? this.dispatchDate,
       returnDate: returnDate ?? this.returnDate,
+      items: items ?? this.items,
     );
   }
+
 
   // Helper getters
   String get statusText {

@@ -13,6 +13,8 @@ import '../../widgets/advance payment/advance_payment_table.dart';
 import '../../widgets/advance payment/delete_advance_payment_dialog.dart';
 import '../../widgets/advance payment/edit_advance_payment_dialog.dart';
 import '../../widgets/advance payment/view_receipt_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class AdvancePaymentPage extends StatefulWidget {
   const AdvancePaymentPage({super.key});
@@ -99,7 +101,7 @@ class _AdvancePaymentPageState extends State<AdvancePaymentPage> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           child: Padding(
             padding: EdgeInsets.all(context.mainPadding / 2),

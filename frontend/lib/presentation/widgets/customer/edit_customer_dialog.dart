@@ -8,6 +8,8 @@ import '../../../src/providers/customer_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EditCustomerDialog extends StatefulWidget {
   final Customer customer;
@@ -439,7 +441,7 @@ class _EditCustomerDialogState extends State<EditCustomerDialog> with SingleTick
       trackVisibility: true,
       thickness: 8,
       radius: const Radius.circular(8),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),

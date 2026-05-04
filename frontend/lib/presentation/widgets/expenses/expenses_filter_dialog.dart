@@ -8,6 +8,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
 import '../globals/custom_date_picker.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ExpensesFilterDialog extends StatefulWidget {
   const ExpensesFilterDialog({super.key});
@@ -260,7 +262,7 @@ class _ExpensesFilterDialogState extends State<ExpensesFilterDialog> with Single
   Widget _buildContent() {
     final l10n = AppLocalizations.of(context)!;
 
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(

@@ -17,6 +17,9 @@ import '../globals/drop_down.dart';
 import '../globals/text_button.dart';
 import '../globals/custom_date_picker.dart';
 import 'product_selection_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+import '../../../src/providers/auth_provider.dart';
+
 
 class AddOrderDialog extends StatefulWidget {
   const AddOrderDialog({super.key});
@@ -25,7 +28,8 @@ class AddOrderDialog extends StatefulWidget {
   State<AddOrderDialog> createState() => _AddOrderDialogState();
 }
 
-class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProviderStateMixin {
+class _AddOrderDialogState extends State<AddOrderDialog> with TickerProviderStateMixin {
+  bool get canSeeFinancials => context.watch<AuthProvider>().currentUser?.canSeeFinancials ?? false;
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
   final _scrollController2 = ScrollController();
@@ -415,6 +419,8 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    final canSeeFinancials = currentUser?.canSeeFinancials ?? false;
     final l10n = AppLocalizations.of(context)!;
 
     return AnimatedBuilder(
@@ -451,7 +457,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                     children: [
                       _buildEnhancedHeader(),
                       if (context.shouldShowCompactLayout) _buildProgressIndicator(),
-                      Flexible(child: _buildFormContent()),
+                      Flexible(child: _buildFormContent(canSeeFinancials)),
                     ],
                   ),
                 ),
@@ -618,7 +624,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     );
   }
 
-  Widget _buildFormContent() {
+  Widget _buildFormContent(bool canSeeFinancials) {
     return Column(
       children: [
         Expanded(
@@ -629,8 +635,8 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
               physics: const NeverScrollableScrollPhysics(),
               children: [
                 _buildStep1CustomerDetails(),
-                _buildStep2ProductSelection(),
-                _buildStep3ReviewOrder(),
+                _buildStep2ProductSelection(canSeeFinancials),
+                _buildStep3ReviewOrder(canSeeFinancials),
               ],
             ),
           ),
@@ -647,7 +653,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
       controller: _scrollController,
       thumbVisibility: true,
       trackVisibility: true,
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding).copyWith(top: context.cardPadding),
@@ -740,6 +746,33 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                   children: [
                     Expanded(
                       child: Focus(
+                        focusNode: _dispatchDateFocusNode,
+                        onKeyEvent: (node, event) {
+                          if (event is KeyDownEvent && 
+                              (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
+                            _selectDispatchDate(context);
+                            return KeyEventResult.handled;
+                          }
+                          return KeyEventResult.ignored;
+                        },
+                        child: GestureDetector(
+                          onTap: () => _selectDispatchDate(context),
+                          child: AbsorbPointer(
+                            child: PremiumTextField(
+                              label: 'Dispatch Date',
+                              hint: 'Select Date',
+                              controller: _dispatchDateController,
+                              prefixIcon: Icons.local_shipping_rounded,
+                              focusNode: FocusNode(), // Dummy focus node
+                              enabled: true,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: context.smallPadding),
+                    Expanded(
+                      child: Focus(
                         focusNode: _eventDateFocusNode,
                         onKeyEvent: (node, event) {
                           if (event is KeyDownEvent && 
@@ -760,33 +793,6 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                               focusNode: FocusNode(), // Dummy focus node
                               enabled: true,
                               validator: (value) => value == null || value.isEmpty ? "Required" : null,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: context.smallPadding),
-                    Expanded(
-                      child: Focus(
-                        focusNode: _dispatchDateFocusNode,
-                        onKeyEvent: (node, event) {
-                          if (event is KeyDownEvent && 
-                              (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
-                            _selectDispatchDate(context);
-                            return KeyEventResult.handled;
-                          }
-                          return KeyEventResult.ignored;
-                        },
-                        child: GestureDetector(
-                          onTap: () => _selectDispatchDate(context),
-                          child: AbsorbPointer(
-                            child: PremiumTextField(
-                              label: 'Dispatch Date',
-                              hint: 'Select Date',
-                              controller: _dispatchDateController,
-                              prefixIcon: Icons.local_shipping_rounded,
-                              focusNode: FocusNode(), // Dummy focus node
-                              enabled: true,
                             ),
                           ),
                         ),
@@ -882,7 +888,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
 );
 }
 
-  Widget _buildStep2ProductSelection() {
+  Widget _buildStep2ProductSelection(bool canSeeFinancials) {
     final l10n = AppLocalizations.of(context)!;
 
     return Scrollbar(
@@ -891,7 +897,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
       trackVisibility: true,
       thickness: 8,
       radius: const Radius.circular(4),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController2,
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),
@@ -962,10 +968,11 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                   ),
                   SizedBox(height: context.cardPadding),
 
-                  ..._orderItems.map((item) => _buildProductCard(item)).toList(),
+                  ..._orderItems.map((item) => _buildProductCard(item, canSeeFinancials)).toList(),
 
                   SizedBox(height: context.cardPadding),
-                  _buildTotalAmountCard(),
+                  if (canSeeFinancials)
+                    _buildTotalAmountCard(),
                 ] else ...[
                   _buildEmptyProductsState(),
                 ],
@@ -973,7 +980,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
             ),
           ),
 
-          if (_orderItems.isNotEmpty) ...[
+          if (_orderItems.isNotEmpty && canSeeFinancials) ...[
             SizedBox(height: context.cardPadding),
             _buildFormCard(
               child: Column(
@@ -1051,7 +1058,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
 );
 }
 
-  Widget _buildStep3ReviewOrder() {
+  Widget _buildStep3ReviewOrder(bool canSeeFinancials) {
     final l10n = AppLocalizations.of(context)!;
 
     return Scrollbar(
@@ -1060,7 +1067,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
       trackVisibility: true,
       thickness: 8,
       radius: const Radius.circular(4),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController3,
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),
@@ -1152,17 +1159,19 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                     ],
                   ),
                 ),
-                _buildSummaryRow('${l10n.total} ${l10n.amount}', 'PKR ${_totalAmount.toStringAsFixed(2)}', Icons.attach_money,
-                    valueColor: AppTheme.primaryMaroon, isBold: true),
+                if (canSeeFinancials) ...[
+                  _buildSummaryRow('${l10n.total} ${l10n.amount}', 'PKR ${_totalAmount.toStringAsFixed(2)}', Icons.attach_money,
+                      valueColor: AppTheme.primaryMaroon, isBold: true),
 
-                if (_advancePaymentController.text.isNotEmpty) ...[
-                  _buildSummaryRow(l10n.advancePayment,
-                      'PKR ${double.tryParse(_advancePaymentController.text)?.toStringAsFixed(2) ?? '0.00'}',
-                      Icons.payment),
-                  _buildSummaryRow(l10n.remainingAmount,
-                      'PKR ${(_totalAmount - (double.tryParse(_advancePaymentController.text) ?? 0.0)).toStringAsFixed(2)}',
-                      Icons.account_balance_outlined,
-                      valueColor: Colors.orange[800]),
+                  if (_advancePaymentController.text.isNotEmpty) ...[
+                    _buildSummaryRow(l10n.advancePayment,
+                        'PKR ${double.tryParse(_advancePaymentController.text)?.toStringAsFixed(2) ?? '0.00'}',
+                        Icons.payment),
+                    _buildSummaryRow(l10n.remainingAmount,
+                        'PKR ${(_totalAmount - (double.tryParse(_advancePaymentController.text) ?? 0.0)).toStringAsFixed(2)}',
+                        Icons.account_balance_outlined,
+                        valueColor: Colors.orange[800]),
+                  ],
                 ],
 
 /*
@@ -1489,7 +1498,7 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
     );
   }
 
-  Widget _buildProductCard(OrderItemModel item) {
+  Widget _buildProductCard(OrderItemModel item, bool canSeeFinancials) {
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
@@ -1556,14 +1565,16 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
                         ),
                       ),
                     ),
-                    SizedBox(width: context.smallPadding),
-                    Text(
-                      'PKR ${item.unitPrice.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: context.subtitleFontSize,
-                        color: Colors.grey[700],
+                    if (canSeeFinancials) ...[
+                      SizedBox(width: context.smallPadding),
+                      Text(
+                        'PKR ${item.unitPrice.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: context.subtitleFontSize,
+                          color: Colors.grey[700],
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
                 if (item.rentedFromPartner) ...[
@@ -1606,14 +1617,15 @@ class _AddOrderDialogState extends State<AddOrderDialog> with SingleTickerProvid
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                'PKR ${item.lineTotal.toStringAsFixed(2)}',
-                style: TextStyle(
-                  fontSize: context.bodyFontSize,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.primaryMaroon,
+              if (canSeeFinancials)
+                Text(
+                  'PKR ${item.lineTotal.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: context.bodyFontSize,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primaryMaroon,
+                  ),
                 ),
-              ),
               SizedBox(height: context.smallPadding),
               Material(
                 color: Colors.transparent,

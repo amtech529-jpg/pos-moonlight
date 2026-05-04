@@ -19,6 +19,8 @@ import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import '../globals/drop_down.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class AddPaymentDialog extends StatefulWidget {
   final String? preSelectedOrderId;
@@ -538,7 +540,7 @@ class _AddPaymentDialogState extends State<AddPaymentDialog>
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         padding: EdgeInsets.all(context.cardPadding),
         child: Form(
@@ -566,7 +568,7 @@ class _AddPaymentDialogState extends State<AddPaymentDialog>
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         padding: EdgeInsets.all(context.cardPadding),
         child: Form(

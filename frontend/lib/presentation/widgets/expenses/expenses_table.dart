@@ -6,6 +6,8 @@ import '../../../src/models/expenses/expenses_model.dart';
 import '../../../src/providers/expenses_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ExpensesTable extends StatefulWidget {
   final Function(Expense) onEdit;
@@ -88,7 +90,7 @@ class _ExpensesTableState extends State<ExpensesTable> {
                     topRight: Radius.circular(context.borderRadius('large')),
                   ),
                 ),
-                child: SingleChildScrollView(
+                child: KeyboardScrollable(
                   controller: _headerHorizontalController,
                   scrollDirection: Axis.horizontal,
                   physics: const ClampingScrollPhysics(),
@@ -106,14 +108,14 @@ class _ExpensesTableState extends State<ExpensesTable> {
                   controller: _verticalController,
                   thumbVisibility: true,
                   trackVisibility: true,
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     controller: _verticalController,
                     scrollDirection: Axis.vertical,
                     child: Scrollbar(
                       controller: _contentHorizontalController,
                       thumbVisibility: true,
                       notificationPredicate: (notification) => notification.depth == 1,
-                      child: SingleChildScrollView(
+                      child: KeyboardScrollable(
                         controller: _contentHorizontalController,
                         scrollDirection: Axis.horizontal,
                         physics: const ClampingScrollPhysics(),

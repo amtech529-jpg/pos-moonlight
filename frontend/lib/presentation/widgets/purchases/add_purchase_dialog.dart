@@ -17,6 +17,8 @@ import '../vendor/add_vendor_dialog.dart';
 import '../product/add_product_dialog.dart';
 import '../../../src/models/product/product_model.dart';
 import '../../../src/models/vendor/vendor_model.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 import '../../../src/models/category/category_model.dart'; // ✅ Added import
 import '../../../src/services/category_service.dart'; // ✅ Added import
 import '../../../src/providers/category_provider.dart'; // ✅ Added import
@@ -168,7 +170,7 @@ class _AddPurchaseDialogState extends State<AddPurchaseDialog> {
                   thumbVisibility: true,
                   child: ScrollConfiguration(
                     behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
-                    child: SingleChildScrollView(
+                    child: KeyboardScrollable(
                       padding: EdgeInsets.only(top: 10, left: context.mainPadding, right: context.mainPadding, bottom: 10),
                       child: Column(
                         children: [

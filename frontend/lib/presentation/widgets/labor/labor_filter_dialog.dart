@@ -6,6 +6,8 @@ import '../../../src/providers/labor_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedLaborFilterDialog extends StatefulWidget {
   const EnhancedLaborFilterDialog({super.key});
@@ -249,7 +251,7 @@ class _EnhancedLaborFilterDialogState extends State<EnhancedLaborFilterDialog>
   }
 
   Widget _buildContent() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(

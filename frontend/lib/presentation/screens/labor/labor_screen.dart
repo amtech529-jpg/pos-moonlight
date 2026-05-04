@@ -14,6 +14,8 @@ import '../../../src/models/labor/labor_model.dart';
 import '../../../src/services/labor/labor_service.dart';
 import '../../../src/services/labor/salary_slip_pdf_service.dart';
 import '../../../src/utils/debug_helper.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class LaborPage extends StatefulWidget {
   const LaborPage({super.key});
@@ -225,7 +227,7 @@ class _LaborPageState extends State<LaborPage> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
           child: Column(

@@ -12,6 +12,8 @@ import '../../widgets/customer/delete_customer_dialog.dart';
 import '../../widgets/customer/edit_customer_dialog.dart';
 import '../../widgets/customer/view_customer_dialog.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class CustomerPage extends StatefulWidget {
   const CustomerPage({super.key});
@@ -187,7 +189,7 @@ class _CustomerPageState extends State<CustomerPage> {
     return RefreshIndicator(
       onRefresh: _handleRefresh,
       color: AppTheme.primaryMaroon,
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         physics: const AlwaysScrollableScrollPhysics(),
         child: Padding(
           padding: EdgeInsets.all(context.mainPadding / 2),

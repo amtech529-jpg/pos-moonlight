@@ -5,6 +5,8 @@ import 'package:sizer/sizer.dart';
 import '../../../src/models/advance_payment/advance_payment_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewAdvancePaymentDialog extends StatefulWidget {
   final AdvancePayment payment;
@@ -53,7 +55,7 @@ class _ViewAdvancePaymentDialogState extends State<ViewAdvancePaymentDialog> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: true))),
       ],
     );
   }
@@ -63,7 +65,7 @@ class _ViewAdvancePaymentDialogState extends State<ViewAdvancePaymentDialog> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: true))),
       ],
     );
   }
@@ -73,7 +75,7 @@ class _ViewAdvancePaymentDialogState extends State<ViewAdvancePaymentDialog> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: false))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: false))),
       ],
     );
   }

@@ -11,6 +11,12 @@ import '../../widgets/inventory/real_time_inventory_widget.dart';
 import '../../widgets/product/add_product_dialog.dart';
 import '../../widgets/product/edit_product_dialog.dart';
 import '../../widgets/product/delete_product_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+import '../../widgets/inventory/add_dispatch_form_dialog.dart';
+import '../../widgets/inventory/dispatch_history_dialog.dart';
+import '../../../src/providers/dispatch_provider.dart';
+
+
 
 class InventoryManagementScreen extends StatefulWidget {
   const InventoryManagementScreen({super.key});
@@ -146,7 +152,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
           controller: _scrollController,
           thumbVisibility: true,
           trackVisibility: true,
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             controller: _scrollController,
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
             physics: const AlwaysScrollableScrollPhysics(),
@@ -200,10 +206,75 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
             ),
           ],
         ),
-        // if (canAdd) _buildAddButton(),
+        Row(
+          children: [
+            _buildFormsButton(),
+            const SizedBox(width: 8),
+            _buildViewFormsButton(),
+            const SizedBox(width: 16),
+            if (canAdd) _buildAddButton(),
+          ],
+        ),
       ],
     );
   }
+
+  Widget _buildFormsButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _showDispatchFormsDialog,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFBD0D1D),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.assignment_outlined, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                "Gate Pass Forms",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDispatchFormsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const AddDispatchFormDialog(),
+    );
+  }
+
+  Widget _buildViewFormsButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFBD0D1D)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: IconButton(
+        onPressed: _showDispatchHistoryDialog,
+        icon: const Icon(Icons.history, color: Color(0xFFBD0D1D)),
+        tooltip: "Gate Pass History",
+      ),
+    );
+  }
+
+  void _showDispatchHistoryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const DispatchHistoryDialog(),
+    );
+  }
+
 
   Widget _buildAddButton() {
     return Material(

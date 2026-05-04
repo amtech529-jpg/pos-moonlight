@@ -1,3 +1,4 @@
+import 'package:frontend/src/models/user_model.dart';
 import 'package:frontend/src/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +13,8 @@ import '../../widgets/order/view_order_dialog.dart';
 import '../../widgets/order/edit_order_dialog.dart';
 import '../../widgets/globals/confirmation_dialog.dart';
 import 'package:frontend/src/providers/customer_provider.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -21,6 +24,7 @@ class OrderPage extends StatefulWidget {
 }
 
 class _OrderPageState extends State<OrderPage> {
+  UserModel? get currentUser => context.watch<AuthProvider>().currentUser;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -60,7 +64,7 @@ class _OrderPageState extends State<OrderPage> {
 
     return Scaffold(
       backgroundColor: Colors.transparent, // Inherit global pinkish/beige background
-      body: SingleChildScrollView(
+      body: KeyboardScrollable(
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,15 +250,17 @@ class _OrderPageState extends State<OrderPage> {
                 color: const Color(0xFFF2F2F2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Expanded(flex: 2, child: Text("Quote ID", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-                  Expanded(flex: 4, child: Text("Client", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-                  Expanded(flex: 2, child: Text("Items", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)), textAlign: TextAlign.center)),
-                  Expanded(flex: 3, child: Text("Amount", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-                  Expanded(flex: 3, child: Text("Date", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-                  Expanded(flex: 2, child: Text("Status", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
-                  Expanded(flex: 4, child: Text("Actions", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)), textAlign: TextAlign.center)),
+                  const Expanded(flex: 2, child: Text("Quote ID", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+                  const Expanded(flex: 4, child: Text("Client", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+                  const Expanded(flex: 2, child: Text("Items", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)), textAlign: TextAlign.center)),
+                  const Expanded(flex: 3, child: Text("Location", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+                  if (currentUser?.canSeeFinancials ?? false)
+                    const Expanded(flex: 3, child: Text("Amount", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+                  const Expanded(flex: 3, child: Text("Date", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+                  const Expanded(flex: 2, child: Text("Status", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)))),
+                  const Expanded(flex: 4, child: Text("Actions", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF666666)), textAlign: TextAlign.center)),
                 ],
               ),
             ),
@@ -294,6 +300,7 @@ class _OrderPageState extends State<OrderPage> {
                       order.orderSummary['total_items']?.toString() ?? "0",
                       _getStatusColor(order.status),
                       canEdit,
+                      currentUser?.canSeeFinancials ?? false,
                     ),
                   );
                 },
@@ -320,13 +327,14 @@ class _OrderPageState extends State<OrderPage> {
     }
   }
 
-  Widget _buildOrderRow(BuildContext context, OrderModel order, String itemsCount, Color statusColor, bool canEdit) {
+  Widget _buildOrderRow(BuildContext context, OrderModel order, String itemsCount, Color statusColor, bool canEdit, bool canSeeFinancials) {
     final String id = order.id.substring(0, 8).toUpperCase();
     
     final customerProvider = Provider.of<CustomerProvider>(context, listen: false);
     final customer = customerProvider.allCustomers.where((c) => c.id == order.customerId).firstOrNull;
     final String client = customer?.orderDisplayName ?? order.customerName;
     
+    final String location = order.eventLocation != null && order.eventLocation!.isNotEmpty ? order.eventLocation! : 'No location';
     final String amount = "PKR ${order.totalAmount.toStringAsFixed(0)}";
     final String date = order.dateOrdered.toString().split(' ')[0];
     final String status = order.status.name;
@@ -350,7 +358,9 @@ class _OrderPageState extends State<OrderPage> {
           Expanded(flex: 2, child: Text(id, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
           Expanded(flex: 4, child: Text(client, style: const TextStyle(color: Color(0xFF666666), fontSize: 14))),
           Expanded(flex: 2, child: Text(itemsCount, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14), textAlign: TextAlign.center)),
-          Expanded(flex: 3, child: Text(amount, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
+          Expanded(flex: 3, child: Row(children: [Icon(Icons.location_on_outlined, size: 14, color: order.eventLocation != null && order.eventLocation!.isNotEmpty ? const Color(0xFFE74C3C) : Colors.grey), const SizedBox(width: 4), Expanded(child: Text(location, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: order.eventLocation != null && order.eventLocation!.isNotEmpty ? const Color(0xFF333333) : Colors.grey), maxLines: 2, overflow: TextOverflow.ellipsis))])),
+          if (canSeeFinancials)
+            Expanded(flex: 3, child: Text(amount, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
           Expanded(flex: 3, child: Text(date, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF666666)))),
           Expanded(
             flex: 2,

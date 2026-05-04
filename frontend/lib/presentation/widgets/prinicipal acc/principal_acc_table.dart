@@ -6,6 +6,8 @@ import '../../../src/providers/prinicipal_acc_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../src/models/principal_account/principal_account_model.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class PrincipalAccountTable extends StatefulWidget {
   final Function(PrincipalAccount) onEdit;
@@ -73,7 +75,7 @@ class _PrincipalAccountTableState extends State<PrincipalAccountTable> {
                 color: AppTheme.lightGray.withOpacity(0.5),
                 border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
               ),
-              child: SingleChildScrollView(
+              child: KeyboardScrollable(
                 controller: _headerHorizontalController,
                 scrollDirection: Axis.horizontal,
                 physics: const ClampingScrollPhysics(),
@@ -109,14 +111,14 @@ class _PrincipalAccountTableState extends State<PrincipalAccountTable> {
                     controller: _verticalController,
                     thumbVisibility: true,
                     trackVisibility: true,
-                    child: SingleChildScrollView(
+                    child: KeyboardScrollable(
                       controller: _verticalController,
                       scrollDirection: Axis.vertical,
                       child: Scrollbar(
                         controller: _contentHorizontalController,
                         thumbVisibility: true,
                         notificationPredicate: (notification) => notification.depth == 1,
-                        child: SingleChildScrollView(
+                        child: KeyboardScrollable(
                           controller: _contentHorizontalController,
                           scrollDirection: Axis.horizontal,
                           physics: const ClampingScrollPhysics(),
@@ -490,7 +492,7 @@ class _PrincipalAccountTableState extends State<PrincipalAccountTable> {
     final l10n = AppLocalizations.of(context)!;
 
     return Center(
-      child: SingleChildScrollView( // Add SingleChildScrollView to prevent overflow
+      child: KeyboardScrollable( // Add SingleChildScrollView to prevent overflow
         child: ConstrainedBox( // Constrain the content
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.5, // Max 50% of screen height

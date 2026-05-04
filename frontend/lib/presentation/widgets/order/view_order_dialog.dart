@@ -5,10 +5,13 @@ import '../../../src/models/order/order_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../src/providers/auth_provider.dart';
 import '../globals/text_button.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/src/providers/order_provider.dart';
 import 'package:frontend/src/providers/invoice_provider.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewOrderDialog extends StatefulWidget {
   final OrderModel order;
@@ -20,6 +23,7 @@ class ViewOrderDialog extends StatefulWidget {
 }
 
 class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProviderStateMixin {
+  bool get canSeeFinancials => context.watch<AuthProvider>().currentUser?.canSeeFinancials ?? false;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
@@ -52,6 +56,9 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    final canSeeFinancials = currentUser?.canSeeFinancials ?? false;
+
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
@@ -183,7 +190,7 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
       thumbVisibility: true,
       thickness: 8,
       radius: const Radius.circular(4),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
@@ -194,15 +201,16 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
 
             SizedBox(height: context.cardPadding),
 
-            _buildOrderItemsSection(),
+             _buildOrderItemsSection(),
 
             SizedBox(height: context.cardPadding),
 
             _buildCustomerInfoSection(),
 
-            SizedBox(height: context.cardPadding),
-
-            _buildFinancialInfoSection(),
+            if (canSeeFinancials) ...[
+              SizedBox(height: context.cardPadding),
+              _buildFinancialInfoSection(),
+            ],
 
             SizedBox(height: context.cardPadding),
 
@@ -358,7 +366,9 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '${widget.order.orderSummary['total_items'] ?? 0} items · Qty: ${widget.order.orderSummary['total_quantity'] ?? 0}',
+                  canSeeFinancials 
+                    ? '${widget.order.orderSummary['total_items'] ?? 0} items · Qty: ${widget.order.orderSummary['total_quantity'] ?? 0}'
+                    : 'Items: ${widget.order.orderSummary['total_items'] ?? 0}',
                   style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w600, color: Colors.purple[700]),
                 ),
               ),
@@ -400,7 +410,8 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
                       children: [
                         Expanded(flex: 3, child: Text('Product', style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w700, color: Colors.purple[800]))),
                         Expanded(flex: 1, child: Text('Qty', textAlign: TextAlign.center, style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w700, color: Colors.purple[800]))),
-                        Expanded(flex: 2, child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w700, color: Colors.purple[800]))),
+                        if (canSeeFinancials)
+                          Expanded(flex: 2, child: Text('Total', textAlign: TextAlign.right, style: TextStyle(fontSize: context.captionFontSize, fontWeight: FontWeight.w700, color: Colors.purple[800]))),
                       ],
                     ),
                   ),
@@ -457,14 +468,15 @@ class _ViewOrderDialogState extends State<ViewOrderDialog> with SingleTickerProv
                               style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: Colors.blue[700]),
                             ),
                           ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              'PKR ${lineTotal.toStringAsFixed(0)}',
-                              textAlign: TextAlign.right,
-                              style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: AppTheme.primaryMaroon),
+                          if (canSeeFinancials)
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                'PKR ${lineTotal.toStringAsFixed(0)}',
+                                textAlign: TextAlign.right,
+                                style: TextStyle(fontSize: context.subtitleFontSize, fontWeight: FontWeight.w600, color: AppTheme.primaryMaroon),
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     );

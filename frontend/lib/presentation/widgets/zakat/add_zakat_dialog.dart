@@ -9,6 +9,8 @@ import '../../../src/models/zakat/zakat_model.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class AddZakatDialog extends StatefulWidget {
   const AddZakatDialog({super.key});
@@ -206,19 +208,19 @@ class _AddZakatDialogState extends State<AddZakatDialog> with SingleTickerProvid
   }
 
   Widget _buildTabletLayout() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: true)]),
     );
   }
 
   Widget _buildMobileLayout() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: true)]),
     );
   }
 
   Widget _buildDesktopLayout() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: false)]),
     );
   }

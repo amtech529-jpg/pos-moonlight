@@ -3,6 +3,8 @@ import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class SyncfusionDateTimePicker extends StatefulWidget {
   final DateTime initialDate;
@@ -60,7 +62,7 @@ class _SyncfusionDateTimePickerState extends State<SyncfusionDateTimePicker> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildHeader(),
-            Flexible(child: SingleChildScrollView(child: _buildContent())),
+            Flexible(child: KeyboardScrollable(child: _buildContent())),
             _buildActions(),
           ],
         ),

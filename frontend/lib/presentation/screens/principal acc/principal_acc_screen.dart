@@ -12,6 +12,8 @@ import '../../widgets/prinicipal acc/edit_principal_acc_dialog.dart';
 import '../../widgets/prinicipal acc/principal_acc_table.dart';
 import '../../widgets/prinicipal acc/view_principal_acc_dialog.dart';
 import '../../widgets/principal_acc/principal_account_filter_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class PrincipalAccountPage extends StatefulWidget {
   const PrincipalAccountPage({super.key});
@@ -84,7 +86,7 @@ class _PrincipalAccountPageState extends State<PrincipalAccountPage> {
 
     return Scaffold(
       backgroundColor: AppTheme.creamWhite,
-      body: SingleChildScrollView( // Make entire screen scrollable
+      body: KeyboardScrollable( // Make entire screen scrollable
         child: Padding(
           padding: EdgeInsets.all(context.mainPadding),
           child: Column(

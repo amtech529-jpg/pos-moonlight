@@ -5,6 +5,8 @@ import '../../../src/providers/sales_provider.dart';
 import '../../../src/models/sales/sale_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 import '../../widgets/globals/text_field.dart'; // ✅ PremiumTextField
 import '../../widgets/globals/text_button.dart'; // ✅ PremiumButton
 
@@ -100,7 +102,7 @@ class _CreateSimpleReceiptDialogState extends State<CreateSimpleReceiptDialog> {
 
                 // --- Content in Expanded to prevent overflow ---
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,

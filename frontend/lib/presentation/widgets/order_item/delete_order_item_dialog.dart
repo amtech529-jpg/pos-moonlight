@@ -7,6 +7,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../src/models/order/order_item_model.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DeleteOrderItemDialog extends StatefulWidget {
   final OrderItemModel orderItem;
@@ -235,7 +237,7 @@ class _DeleteOrderItemDialogState extends State<DeleteOrderItemDialog> with Sing
   Widget _buildContent() {
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),
           child: Column(

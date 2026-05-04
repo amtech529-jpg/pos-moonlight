@@ -300,14 +300,49 @@ class OrderProvider extends ChangeNotifier {
   Timer? _searchTimer;
 
   /// Search orders
-  Future<void> searchOrders(String query) async {
+  Future<void> searchOrders(String query, {bool excludeDispatched = false}) async {
     _searchQuery = query;
     _currentPage = 1; // Reset to first page when searching
     
     _searchTimer?.cancel();
     _searchTimer = Timer(const Duration(milliseconds: 500), () {
-      _loadOrders(); // Reload from API with search query
+      _loadOrdersWithParams(excludeDispatched: excludeDispatched); 
     });
+  }
+
+  /// Helper to load orders with specific parameters
+  Future<void> _loadOrdersWithParams({bool excludeDispatched = false}) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final params = OrderListParams(
+        page: _currentPage,
+        pageSize: _pageSize,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+        status: _currentStatusFilter,
+        sortBy: _getApiSortKey(_sortBy),
+        sortOrder: _sortAscending ? 'asc' : 'desc',
+        excludeDispatched: excludeDispatched,
+      );
+
+      final response = await OrderService().getOrders(params: params);
+
+      if (response.success && response.data != null) {
+        final ordersResponse = response.data!;
+        _orders = ordersResponse.orders;
+        _totalCount = ordersResponse.pagination.totalCount;
+        _filteredOrders = List.from(_orders);
+        _setLoading(false);
+        notifyListeners();
+      } else {
+        _setError(response.message ?? 'Failed to load orders');
+        _setLoading(false);
+      }
+    } catch (e) {
+      _setError('Error loading orders: ${e.toString()}');
+      _setLoading(false);
+    }
   }
 
   /// Filter orders by status

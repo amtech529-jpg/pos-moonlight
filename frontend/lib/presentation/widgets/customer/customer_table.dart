@@ -8,6 +8,8 @@ import '../../../src/models/customer/customer_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../screens/customer_ledger_screen/customer_ledger.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedCustomerTable extends StatefulWidget {
   final Function(Customer) onEdit;
@@ -117,7 +119,7 @@ class _EnhancedCustomerTableState extends State<EnhancedCustomerTable> {
                   thickness: 8.0,
                   radius: const Radius.circular(4),
                   interactive: true,
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     controller: _contentHorizontalController,
                     scrollDirection: Axis.horizontal,
                     physics: const BouncingScrollPhysics(),

@@ -8,6 +8,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedAddVendorDialog extends StatefulWidget {
   const EnhancedAddVendorDialog({super.key});
@@ -333,7 +335,7 @@ class _EnhancedAddVendorDialogState extends State<EnhancedAddVendorDialog>
       trackVisibility: true,
       thickness: 8,
       radius: const Radius.circular(4),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),

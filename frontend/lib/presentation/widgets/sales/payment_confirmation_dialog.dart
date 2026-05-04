@@ -7,6 +7,8 @@ import '../../../src/providers/sales_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class PaymentConfirmationDialog extends StatefulWidget {
   final String saleId;
@@ -362,7 +364,7 @@ class _PaymentConfirmationDialogState extends State<PaymentConfirmationDialog> w
 
                 // --- Content ---
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     padding: const EdgeInsets.all(24),
                     child: Form(
                       key: _formKey,

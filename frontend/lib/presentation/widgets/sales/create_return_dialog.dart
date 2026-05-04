@@ -6,6 +6,8 @@ import '../../../src/providers/sales_provider.dart';
 import '../../../src/models/sales/sale_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../widgets/globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class CreateReturnDialog extends StatefulWidget {
   final SaleModel? sale;
@@ -135,7 +137,7 @@ class _CreateReturnDialogState extends State<CreateReturnDialog> {
           children: [
             _buildHeader(),
             Flexible(
-              child: SingleChildScrollView(
+              child: KeyboardScrollable(
                 padding: const EdgeInsets.all(16.0),
                 child: Form(
                   key: _formKey,

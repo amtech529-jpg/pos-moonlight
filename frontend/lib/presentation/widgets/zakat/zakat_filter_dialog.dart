@@ -8,6 +8,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
 import '../globals/custom_date_picker.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ZakatFilterDialog extends StatefulWidget {
   const ZakatFilterDialog({super.key});
@@ -267,7 +269,7 @@ class _ZakatFilterDialogState extends State<ZakatFilterDialog> with SingleTicker
   Widget _buildContent() {
     final l10n = AppLocalizations.of(context)!;
 
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(

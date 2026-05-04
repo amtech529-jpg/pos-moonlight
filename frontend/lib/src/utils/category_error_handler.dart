@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/api_response.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class CategoryErrorHandler {
   static void showErrorSnackBar(
@@ -385,7 +387,7 @@ class CategoryErrorHandler {
             Text('Validation Error'),
           ],
         ),
-        content: SingleChildScrollView(
+        content: KeyboardScrollable(
           child: Text(
             errorMessages.join('\n'),
             style: const TextStyle(fontSize: 14),

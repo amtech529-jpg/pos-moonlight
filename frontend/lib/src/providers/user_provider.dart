@@ -14,6 +14,8 @@ class UserProvider extends ChangeNotifier {
   List<RoleModel> get roles => _roles;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  Map<String, String> _fieldErrors = {};
+  Map<String, String> get fieldErrors => _fieldErrors;
 
   // Master List of 17 Modules in the POS
   final List<String> availableModules = [
@@ -90,6 +92,7 @@ class UserProvider extends ChangeNotifier {
   Future<bool> createUser(Map<String, dynamic> userData) async {
     _isLoading = true;
     _errorMessage = null;
+    _fieldErrors = {};
     notifyListeners();
 
     try {
@@ -98,11 +101,47 @@ class UserProvider extends ChangeNotifier {
         await fetchUsers(); // Refresh list
         return true;
       } else {
-        _errorMessage = response.data['message'] ?? 'Failed to create user';
+        final data = response.data;
+        // Backend wraps field errors under 'errors' key
+        final errorsMap = data['errors'] ?? data;
+        final Map<String, String> fieldErrs = {};
+        if (errorsMap is Map) {
+          errorsMap.forEach((key, value) {
+            if (key != 'detail') {
+              final errText = value is List ? value.join(', ') : value.toString();
+              fieldErrs[key.toString()] = errText;
+            }
+          });
+        }
+        _fieldErrors = fieldErrs;
+        _errorMessage = data['message']?.toString() ??
+            data['detail']?.toString() ??
+            (fieldErrs.isNotEmpty ? fieldErrs.values.first : 'Failed to create user');
         return false;
       }
     } catch (e) {
-      _errorMessage = 'Error creating user: $e';
+      // Try to extract field-level errors from DioException response body
+      dynamic errData;
+      try {
+        final dio = e as dynamic;
+        errData = dio.response?.data;
+      } catch (_) {}
+
+      if (errData is Map) {
+        final Map<String, String> fieldErrs = {};
+        errData.forEach((key, value) {
+          if (key != 'message' && key != 'detail') {
+            final errText = value is List ? value.join(', ') : value.toString();
+            fieldErrs[key.toString()] = errText;
+          }
+        });
+        _fieldErrors = fieldErrs;
+        _errorMessage = errData['message']?.toString() ??
+            errData['detail']?.toString() ??
+            (fieldErrs.isNotEmpty ? fieldErrs.values.first : 'Failed to create user');
+      } else {
+        _errorMessage = 'Error creating user: $e';
+      }
       return false;
     } finally {
       _isLoading = false;

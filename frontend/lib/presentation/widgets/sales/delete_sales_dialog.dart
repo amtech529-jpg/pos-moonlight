@@ -8,6 +8,8 @@ import '../../../src/providers/sales_provider.dart';
 import '../../../src/models/sales/sale_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DeleteSaleDialog extends StatefulWidget {
   final SaleModel sale;
@@ -119,7 +121,7 @@ class _DeleteSaleDialogState extends State<DeleteSaleDialog> with SingleTickerPr
                     children: [
                       _buildHeader(),
                       Flexible(
-                        child: SingleChildScrollView(
+                        child: KeyboardScrollable(
                           child: ResponsiveBreakpoints.responsive(
                             context,
                             tablet: _buildCompactContent(),

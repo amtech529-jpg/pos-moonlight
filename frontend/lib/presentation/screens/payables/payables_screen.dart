@@ -7,6 +7,8 @@ import '../../../src/models/payable/payable_model.dart';
 import '../../widgets/payables/add_payable_dialog.dart';
 import '../../widgets/payables/edit_payable_dialog.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class PayablesPage extends StatefulWidget {
   const PayablesPage({super.key});
@@ -58,7 +60,7 @@ class _PayablesPageState extends State<PayablesPage> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
           child: Column(
@@ -159,7 +161,7 @@ class _PayablesPageState extends State<PayablesPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SingleChildScrollView(
+            KeyboardScrollable(
               scrollDirection: Axis.horizontal,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,

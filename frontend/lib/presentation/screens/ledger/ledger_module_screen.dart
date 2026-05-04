@@ -14,6 +14,8 @@ import '../../../src/models/api_response.dart';
 import '../../../src/models/sales/sale_model.dart';
 import '../../../src/services/ledger_pdf_service.dart';
 import '../../../src/utils/debug_helper.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class LedgerModuleScreen extends StatefulWidget {
   const LedgerModuleScreen({super.key});
@@ -265,7 +267,7 @@ class _LedgerModuleScreenState extends State<LedgerModuleScreen> {
             controller: _scrollController,
             thumbVisibility: true,
             trackVisibility: true,
-            child: SingleChildScrollView(
+            child: KeyboardScrollable(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
               child: Column(

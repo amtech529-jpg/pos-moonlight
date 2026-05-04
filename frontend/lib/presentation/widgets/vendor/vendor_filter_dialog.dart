@@ -6,6 +6,8 @@ import '../../../src/providers/vendor_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class VendorFilterDialog extends StatefulWidget {
   const VendorFilterDialog({super.key});
@@ -246,7 +248,7 @@ class _VendorFilterDialogState extends State<VendorFilterDialog> with SingleTick
   Widget _buildContent() {
     final l10n = AppLocalizations.of(context)!;
 
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(

@@ -7,6 +7,8 @@ import '../../../src/providers/payment_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import 'payment_receipt_content.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewPaymentReceiptDialog extends StatefulWidget {
   final PaymentModel payment;
@@ -92,7 +94,7 @@ class _ViewPaymentReceiptDialogState extends State<ViewPaymentReceiptDialog> wit
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: PaymentReceiptContent(payment: widget.payment, isCompact: true, onClose: _handleClose),
           ),
         ),
@@ -106,7 +108,7 @@ class _ViewPaymentReceiptDialogState extends State<ViewPaymentReceiptDialog> wit
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: PaymentReceiptContent(payment: widget.payment, isCompact: true, onClose: _handleClose),
           ),
         ),
@@ -120,7 +122,7 @@ class _ViewPaymentReceiptDialogState extends State<ViewPaymentReceiptDialog> wit
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: PaymentReceiptContent(payment: widget.payment, isCompact: false, onClose: _handleClose),
           ),
         ),

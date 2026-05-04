@@ -11,6 +11,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../src/providers/order_provider.dart';
 import '../../../src/providers/customer_provider.dart';
 import '../../../src/models/order/order_model.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class SalesTable extends StatefulWidget {
   final Function(SaleModel) onEdit;
@@ -114,7 +116,7 @@ class _SalesTableState extends State<SalesTable> {
                     topRight: Radius.circular(context.borderRadius('large')),
                   ),
                 ),
-                child: SingleChildScrollView(
+                child: KeyboardScrollable(
                   controller: _headerScrollController, // Controlled by header controller
                   scrollDirection: Axis.horizontal,
                   physics: const ClampingScrollPhysics(),
@@ -132,14 +134,14 @@ class _SalesTableState extends State<SalesTable> {
                   controller: _verticalScrollController,
                   thumbVisibility: true,
                   trackVisibility: true,
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     controller: _verticalScrollController, // Vertical Scrolling
                     scrollDirection: Axis.vertical,
                     child: Scrollbar(
                       controller: _contentHorizontalScrollController,
                       thumbVisibility: true,
                       notificationPredicate: (notification) => notification.depth == 1,
-                      child: SingleChildScrollView(
+                      child: KeyboardScrollable(
                         controller: _contentHorizontalScrollController, // Controlled by content horizontal controller
                         scrollDirection: Axis.horizontal,
                         physics: const ClampingScrollPhysics(),

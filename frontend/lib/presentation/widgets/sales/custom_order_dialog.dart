@@ -12,6 +12,8 @@ import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import 'order_success_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class CreateCustomOrderDialog extends StatefulWidget {
   final ProductModel product;
@@ -357,7 +359,7 @@ class _CreateCustomOrderDialogState extends State<CreateCustomOrderDialog>
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         padding: EdgeInsets.all(context.cardPadding),
         child: Form(
@@ -387,7 +389,7 @@ class _CreateCustomOrderDialogState extends State<CreateCustomOrderDialog>
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         padding: EdgeInsets.all(context.cardPadding),
         child: Form(

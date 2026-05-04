@@ -6,6 +6,8 @@ import '../../../src/providers/category_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../category/category_filter_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedCategoryTable extends StatefulWidget {
   final Function(Category) onEdit;
@@ -187,7 +189,7 @@ class _EnhancedCategoryTableState extends State<EnhancedCategoryTable> {
                     topRight: Radius.circular(context.borderRadius('large')),
                   ),
                 ),
-                child: SingleChildScrollView(
+                child: KeyboardScrollable(
                   controller: _headerHorizontalController,
                   scrollDirection: Axis.horizontal,
                   physics: const ClampingScrollPhysics(),
@@ -203,7 +205,7 @@ class _EnhancedCategoryTableState extends State<EnhancedCategoryTable> {
               ),
 
               // 2. Table Content — horizontal scroll only (vertical handled by parent screen)
-              SingleChildScrollView(
+              KeyboardScrollable(
                 controller: _contentHorizontalController,
                 scrollDirection: Axis.horizontal,
                 physics: const ClampingScrollPhysics(),

@@ -9,6 +9,8 @@ import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import '../../../src/models/principal_account/principal_account_model.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class AddPrincipalAccountDialog extends StatefulWidget {
   const AddPrincipalAccountDialog({super.key});
@@ -211,19 +213,19 @@ class _AddPrincipalAccountDialogState extends State<AddPrincipalAccountDialog> w
   }
 
   Widget _buildTabletLayout() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: true)]),
     );
   }
 
   Widget _buildMobileLayout() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: true)]),
     );
   }
 
   Widget _buildDesktopLayout() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: false)]),
     );
   }

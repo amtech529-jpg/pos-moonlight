@@ -7,6 +7,8 @@ import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../../../src/models/principal_account/principal_account_model.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DeletePrincipalAccountDialog extends StatefulWidget {
   final PrincipalAccount account;
@@ -110,7 +112,7 @@ class _DeletePrincipalAccountDialogState extends State<DeletePrincipalAccountDia
                       ),
                     ],
                   ),
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildContent()]),
                   ),
                 ),

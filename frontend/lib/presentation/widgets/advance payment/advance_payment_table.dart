@@ -7,6 +7,8 @@ import '../../../src/models/advance_payment/advance_payment_model.dart';
 import '../../../src/providers/advance_payment_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import 'advance_payment_table_helpers.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class AdvancePaymentTable extends StatefulWidget {
   final Function(AdvancePayment) onEdit;
@@ -92,7 +94,7 @@ class _AdvancePaymentTableState extends State<AdvancePaymentTable> {
                     topRight: Radius.circular(context.borderRadius('large')),
                   ),
                 ),
-                child: SingleChildScrollView(
+                child: KeyboardScrollable(
                   controller: _headerHorizontalController,
                   scrollDirection: Axis.horizontal,
                   physics: const ClampingScrollPhysics(),
@@ -110,14 +112,14 @@ class _AdvancePaymentTableState extends State<AdvancePaymentTable> {
                   controller: _verticalController,
                   thumbVisibility: true,
                   trackVisibility: true,
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     controller: _verticalController,
                     scrollDirection: Axis.vertical,
                     child: Scrollbar(
                       controller: _contentHorizontalController,
                       thumbVisibility: true,
                       notificationPredicate: (notification) => notification.depth == 1,
-                      child: SingleChildScrollView(
+                      child: KeyboardScrollable(
                         controller: _contentHorizontalController,
                         scrollDirection: Axis.horizontal,
                         physics: const ClampingScrollPhysics(),

@@ -42,6 +42,7 @@ import 'package:frontend/src/providers/ledger_provider.dart';
 import 'package:frontend/src/providers/import_export_provider.dart';
 import 'package:frontend/src/providers/report_provider.dart';
 import 'package:frontend/src/providers/user_provider.dart';
+import 'package:frontend/src/providers/dispatch_provider.dart';
 import 'package:frontend/src/services/api_client.dart';
 import 'package:frontend/src/theme/app_theme.dart';
 import 'package:frontend/src/utils/storage_service.dart';
@@ -117,6 +118,7 @@ class AlNoorApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ImportExportProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),
+        ChangeNotifierProvider(create: (_) => DispatchProvider()),
       ],
       child: Consumer3<AuthProvider, ProfitLossProvider, AppProvider>(
         builder: (context, authProvider, profitLossProvider, appProvider, child) {

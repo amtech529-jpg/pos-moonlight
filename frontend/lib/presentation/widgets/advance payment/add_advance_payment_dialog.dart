@@ -13,6 +13,8 @@ import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import '../globals/drop_down.dart';
 import '../globals/custom_date_picker.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class AddAdvancePaymentDialog extends StatefulWidget {
   const AddAdvancePaymentDialog({super.key});
@@ -329,7 +331,7 @@ class _AddAdvancePaymentDialogState extends State<AddAdvancePaymentDialog> with 
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         padding: EdgeInsets.all(context.cardPadding),
         child: Form(

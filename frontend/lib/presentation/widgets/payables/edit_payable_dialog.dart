@@ -7,6 +7,8 @@ import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EditPayableDialog extends StatefulWidget {
   final Payable payable;
@@ -198,7 +200,7 @@ class _EditPayableDialogState extends State<EditPayableDialog>
                     ),
 
                     Flexible(
-                      child: SingleChildScrollView(
+                      child: KeyboardScrollable(
                         padding: const EdgeInsets.all(24),
                         child: Form(
                           key: _formKey,

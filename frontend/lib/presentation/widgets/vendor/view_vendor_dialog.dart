@@ -7,6 +7,8 @@ import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewVendorDetailsDialog extends StatefulWidget {
   final VendorModel vendor;
@@ -348,7 +350,7 @@ class _ViewVendorDetailsDialogState extends State<ViewVendorDetailsDialog>
       trackVisibility: true,
       thickness: 6,
       radius: const Radius.circular(3),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),

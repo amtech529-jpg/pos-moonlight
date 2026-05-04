@@ -9,6 +9,8 @@ import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import '../globals/drop_down.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EditPaymentDialog extends StatefulWidget {
   final PaymentModel payment;
@@ -338,7 +340,7 @@ class _EditPaymentDialogState extends State<EditPaymentDialog> with SingleTicker
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildFormContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildFormContent(isCompact: true))),
       ],
     );
   }
@@ -348,7 +350,7 @@ class _EditPaymentDialogState extends State<EditPaymentDialog> with SingleTicker
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildFormContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildFormContent(isCompact: true))),
       ],
     );
   }
@@ -358,7 +360,7 @@ class _EditPaymentDialogState extends State<EditPaymentDialog> with SingleTicker
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildFormContent(isCompact: false))),
+        Flexible(child: KeyboardScrollable(child: _buildFormContent(isCompact: false))),
       ],
     );
   }

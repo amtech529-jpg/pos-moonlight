@@ -13,6 +13,9 @@ import '../globals/drop_down.dart';
 import '../../../src/providers/vendor_provider.dart';
 import '../../../src/models/vendor/vendor_model.dart';
 import '../product/add_product_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+import '../../../src/providers/auth_provider.dart';
+
 
 class ProductSelectionDialog extends StatefulWidget {
   final List<String>? excludeProductIds;
@@ -32,6 +35,7 @@ class ProductSelectionDialog extends StatefulWidget {
 
 class _ProductSelectionDialogState extends State<ProductSelectionDialog>
     with SingleTickerProviderStateMixin {
+  bool get canSeeFinancials => context.watch<AuthProvider>().currentUser?.canSeeFinancials ?? false;
   final _formKey = GlobalKey<FormState>();
   final _searchController = TextEditingController();
   final _quantityController = TextEditingController();
@@ -267,34 +271,80 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
       // Get real-time availability for today (same as shown in list)
       int availableQty = _selectedProduct!.dateAvailableQuantity ?? _selectedProduct!.quantityAvailable;
       
-      List<Map<String, dynamic>> selectedItems = [];
-      
-      int partnerQty = 0;
-      if (_rentedFromPartner) {
-        if (totalQuantity > availableQty && availableQty > 0) {
-          partnerQty = totalQuantity - availableQty;
-        } else if (availableQty <= 0) {
-          partnerQty = totalQuantity;
-        } else {
-          partnerQty = totalQuantity;
-        }
+      if (!_rentedFromPartner && totalQuantity > availableQty) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                const SizedBox(width: 10),
+                const Text('Low Stock Alert', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 20)),
+              ],
+            ),
+            content: Text(
+              'Aap ke paas stock mein kam items hain.\n\nAvailable Stock: $availableQty\nRequested: $totalQuantity',
+              style: const TextStyle(fontSize: 16),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel', style: TextStyle(fontSize: 16, color: Colors.grey)),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Auto-enable Partner Rental so user can proceed
+                  setState(() {
+                    _rentedFromPartner = true;
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryMaroon,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                ),
+                child: const Text('Use Partner Rental', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+        );
+        return;
       }
-
-      selectedItems.add({
-        'product': _selectedProduct!,
-        'quantity': totalQuantity,
-        'unitPrice': unitPrice,
-        'customizationNotes': customizationNotes.isNotEmpty ? customizationNotes : null,
-        'rentedFromPartner': _rentedFromPartner,
-        'partnerId': _selectedPartnerId,
-        'partnerRate': double.tryParse(_partnerRateController.text),
-        'partnerQuantity': partnerQty > 0 ? partnerQty : null,
-      });
-
-      _animationController.reverse().then((_) {
-        if (mounted) Navigator.of(context).pop(selectedItems);
-      });
+      
+      _finalizeAdd(totalQuantity, unitPrice, customizationNotes, availableQty);
     }
+  }
+
+  void _finalizeAdd(int totalQuantity, double unitPrice, String customizationNotes, int availableQty) {
+    List<Map<String, dynamic>> selectedItems = [];
+    
+    int partnerQty = 0;
+    if (_rentedFromPartner) {
+      if (totalQuantity > availableQty && availableQty > 0) {
+        partnerQty = totalQuantity - availableQty;
+      } else if (availableQty <= 0) {
+        partnerQty = totalQuantity;
+      } else {
+        partnerQty = totalQuantity;
+      }
+    }
+
+    selectedItems.add({
+      'product': _selectedProduct!,
+      'quantity': totalQuantity,
+      'unitPrice': unitPrice,
+      'customizationNotes': customizationNotes.isNotEmpty ? customizationNotes : null,
+      'rentedFromPartner': _rentedFromPartner,
+      'partnerId': _selectedPartnerId,
+      'partnerRate': double.tryParse(_partnerRateController.text),
+      'partnerQuantity': partnerQty > 0 ? partnerQty : null,
+    });
+
+    _animationController.reverse().then((_) {
+      if (mounted) Navigator.of(context).pop(selectedItems);
+    });
   }
 
   void _handleCancel() {
@@ -464,12 +514,11 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
   }
 
   Widget _buildFormContent() {
-    return Scrollbar(
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    final canSeeFinancials = currentUser?.canSeeFinancials ?? false;
+
+    return KeyboardScrollable(
       controller: _scrollController,
-      thumbVisibility: true,
-      trackVisibility: true,
-      child: SingleChildScrollView(
-        controller: _scrollController,
         child: Padding(
           padding: EdgeInsets.all(context.smallPadding),
           child: Form(
@@ -501,7 +550,6 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
             ),
           ),
         ),
-      ),
     );
   }
 
@@ -641,18 +689,10 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
                 );
               }
 
-              return SizedBox(
-                height: ResponsiveBreakpoints.responsive(
-                  context,
-                  tablet: 50.h,
-                  small: 45.h,
-                  medium: 40.h,
-                  large: 35.h,
-                  ultrawide: 30.h,
-                ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: products.length,
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: products.length,
                   itemBuilder: (context, index) {
                     final product = products[index];
                     final isSelected = _selectedProduct?.id == product.id;
@@ -754,15 +794,17 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
                                       SizedBox(height: context.smallPadding / 2),
                                     Row(
                                       children: [
-                                        Text(
-                                          'PKR ${product.price.toStringAsFixed(2)}',
-                                          style: TextStyle(
-                                            fontSize: context.bodyFontSize,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.primaryMaroon,
+                                        if (canSeeFinancials)
+                                          Text(
+                                            'PKR ${product.price.toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              fontSize: context.bodyFontSize,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppTheme.primaryMaroon,
+                                            ),
                                           ),
-                                        ),
-                                        SizedBox(width: context.cardPadding),
+                                        if (canSeeFinancials)
+                                          SizedBox(width: context.cardPadding),
                                         Container(
                                           padding: EdgeInsets.symmetric(
                                             horizontal: context.smallPadding,
@@ -821,8 +863,7 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
                       ),
                     );
                   },
-                ),
-              );
+                );
             },
           ),
         ],
@@ -971,11 +1012,11 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
           SizedBox(height: context.smallPadding),
           ResponsiveBreakpoints.responsive(
             context,
-            tablet: _buildFormFieldsColumn(),
-            small: _buildFormFieldsColumn(),
-            medium: _buildFormFieldsRow(),
-            large: _buildFormFieldsRow(),
-            ultrawide: _buildFormFieldsRow(),
+            tablet: _buildFormFieldsColumn(canSeeFinancials),
+            small: _buildFormFieldsColumn(canSeeFinancials),
+            medium: _buildFormFieldsRow(canSeeFinancials),
+            large: _buildFormFieldsRow(canSeeFinancials),
+            ultrawide: _buildFormFieldsRow(canSeeFinancials),
           ),
           SizedBox(height: context.smallPadding),
           PremiumTextField(
@@ -1003,91 +1044,97 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
             },
           ),
           
-          SizedBox(height: context.cardPadding),
-          _buildPartnerRentalSection(),
-          SizedBox(height: context.smallPadding),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: context.cardPadding, vertical: context.smallPadding * 0.7),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.primaryMaroon.withOpacity(0.1),
-                  AppTheme.secondaryMaroon.withOpacity(0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(context.borderRadius()),
-              border: Border.all(
-                color: AppTheme.primaryMaroon.withOpacity(0.3),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.account_balance_wallet,
-                      color: AppTheme.primaryMaroon,
-                      size: context.iconSize('medium'),
-                    ),
-                    SizedBox(width: context.smallPadding),
-                    Text(
-                      '${l10n.totalAmount}:',
-                      style: TextStyle(
-                        fontSize: context.bodyFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
+          if (canSeeFinancials) ...[
+            SizedBox(height: context.cardPadding),
+            _buildPartnerRentalSection(),
+            SizedBox(height: context.smallPadding),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: context.cardPadding, vertical: context.smallPadding * 0.7),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primaryMaroon.withOpacity(0.1),
+                    AppTheme.secondaryMaroon.withOpacity(0.05),
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                Builder(
-                  builder: (context) {
-                    int previewDays = 1;
-                    if (_selectedProduct!.pricingType == 'PER_DAY' && widget.eventDate != null && widget.returnDate != null) {
-                      previewDays = widget.returnDate!.difference(widget.eventDate!).inDays;
-                      if (previewDays < 1) previewDays = 1;
-                    }
-                    final quantity = int.tryParse(_quantityController.text) ?? 1;
-                    final unitPrice = double.tryParse(_unitPriceController.text) ?? _selectedProduct!.price;
-                    final total = unitPrice * quantity * previewDays;
-                    
-                    return Text(
-                      'PKR ${total.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: context.headerFontSize,
-                        fontWeight: FontWeight.w700,
+                borderRadius: BorderRadius.circular(context.borderRadius()),
+                border: Border.all(
+                  color: AppTheme.primaryMaroon.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.account_balance_wallet,
                         color: AppTheme.primaryMaroon,
+                        size: context.iconSize('medium'),
                       ),
-                    );
-                  }
-                ),
-              ],
+                      SizedBox(width: context.smallPadding),
+                      Text(
+                        '${l10n.totalAmount}:',
+                        style: TextStyle(
+                          fontSize: context.bodyFontSize,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Builder(
+                    builder: (context) {
+                      int previewDays = 1;
+                      if (_selectedProduct!.pricingType == 'PER_DAY' && widget.eventDate != null && widget.returnDate != null) {
+                        previewDays = widget.returnDate!.difference(widget.eventDate!).inDays;
+                        if (previewDays < 1) previewDays = 1;
+                      }
+                      final quantity = int.tryParse(_quantityController.text) ?? 1;
+                      final unitPrice = double.tryParse(_unitPriceController.text) ?? _selectedProduct!.price;
+                      final total = unitPrice * quantity * previewDays;
+                      
+                      return Text(
+                        'PKR ${total.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: context.headerFontSize,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.primaryMaroon,
+                        ),
+                      );
+                    }
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildFormFieldsRow() {
+  Widget _buildFormFieldsRow(bool canSeeFinancials) {
     return Row(
       children: [
         Expanded(child: _buildQuantityField()),
-        SizedBox(width: context.cardPadding),
-        Expanded(child: _buildUnitPriceField()),
+        if (canSeeFinancials) ...[
+          SizedBox(width: context.cardPadding),
+          Expanded(child: _buildUnitPriceField()),
+        ],
       ],
     );
   }
 
-  Widget _buildFormFieldsColumn() {
+  Widget _buildFormFieldsColumn(bool canSeeFinancials) {
     return Column(
       children: [
         _buildQuantityField(),
-        SizedBox(height: context.cardPadding),
-        _buildUnitPriceField(),
+        if (canSeeFinancials) ...[
+          SizedBox(height: context.cardPadding),
+          _buildUnitPriceField(),
+        ],
       ],
     );
   }
@@ -1113,13 +1160,6 @@ class _ProductSelectionDialogState extends State<ProductSelectionDialog>
         final quantity = int.tryParse(value!);
         if (quantity == null) {
           return l10n.pleaseEnterValidNumber;
-        }
-        
-        // Use today's availability (dateAvailableQuantity) or current available quantity
-        final int availableToday = _selectedProduct?.dateAvailableQuantity ?? _selectedProduct?.quantityAvailable ?? 0;
-        
-        if (!_rentedFromPartner && quantity > availableToday) {
-          return 'Only $availableToday available. Use "Partner Rental" for more.';
         }
         return null;
       },

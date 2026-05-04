@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, date
-from .models import Order
+from .models import Order, DispatchForm
 from .serializers import (
     OrderSerializer,
     OrderCreateSerializer,
@@ -19,7 +19,8 @@ from .serializers import (
     OrderStatusUpdateSerializer,
     OrderBulkActionSerializer,
     OrderSearchSerializer,
-    OrderCustomerUpdateSerializer
+    OrderCustomerUpdateSerializer,
+    DispatchFormSerializer
 )
 
 
@@ -43,6 +44,7 @@ def list_orders(request):
         status_filter = request.GET.get('status', '').strip()
         payment_status = request.GET.get('payment_status', '').strip()
         delivery_status = request.GET.get('delivery_status', '').strip()
+        exclude_dispatched = request.GET.get('exclude_dispatched', 'false').lower() == 'true'
         
         # Date range
         date_from = request.GET.get('date_from', '').strip()
@@ -99,6 +101,10 @@ def list_orders(request):
             orders = orders.due_today()
         elif delivery_status == 'upcoming':
             orders = orders.due_this_week()
+        
+        # Apply dispatch filter
+        if exclude_dispatched:
+            orders = orders.filter(dispatch_forms__isnull=True)
         
         # Apply date range filter
         try:
@@ -1352,4 +1358,140 @@ def generate_invoice(request, order_id):
             'message': 'Failed to generate invoice.',
             'errors': {'detail': str(e)}
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Dispatch Form Views
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_dispatch_forms(request):
+    """List all dispatch forms"""
+    try:
+        page_size = min(int(request.GET.get('page_size', 20)), 100)
+        page = int(request.GET.get('page', 1))
+        
+        forms = DispatchForm.objects.select_related('order', 'order__customer', 'created_by').all()
+        
+        # Simple search
+        search = request.GET.get('search', '').strip()
+        if search:
+            forms = forms.filter(
+                Q(driver_name__icontains=search) |
+                Q(vehicle_number__icontains=search) |
+                Q(staff_name__icontains=search) |
+                Q(order__id__icontains=search) |
+                Q(order__customer_name__icontains=search)
+            )
+
+        total_count = forms.count()
+        start_index = (page - 1) * page_size
+        end_index = start_index + page_size
+        
+        forms = forms[start_index:end_index]
+        serializer = DispatchFormSerializer(forms, many=True)
+        
+        return Response({
+            'success': True,
+            'data': {
+                'forms': serializer.data,
+                'pagination': {
+                    'current_page': page,
+                    'page_size': page_size,
+                    'total_count': total_count,
+                    'total_pages': (total_count + page_size - 1) // page_size,
+                    'has_next': end_index < total_count,
+                    'has_previous': page > 1
+                }
+            }
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': 'Failed to retrieve dispatch forms.',
+            'errors': {'detail': str(e)}
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_dispatch_form(request):
+    """Create a new dispatch form"""
+    serializer = DispatchFormSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+        try:
+            form = serializer.save()
+            return Response({
+                'success': True,
+                'message': 'Dispatch form created successfully.',
+                'data': DispatchFormSerializer(form).data
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': 'Creation failed.',
+                'errors': {'detail': str(e)}
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response({
+        'success': False,
+        'message': 'Validation failed.',
+        'errors': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_dispatch_form(request, dispatch_id):
+    """Get a specific dispatch form"""
+    try:
+        form = DispatchForm.objects.select_related('order', 'order__customer', 'created_by').get(id=dispatch_id)
+        return Response({
+            'success': True,
+            'data': DispatchFormSerializer(form).data
+        }, status=status.HTTP_200_OK)
+    except DispatchForm.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Not found.'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def update_dispatch_form(request, dispatch_id):
+    """Update an existing dispatch form"""
+    try:
+        form = DispatchForm.objects.get(id=dispatch_id)
+        serializer = DispatchFormSerializer(form, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'message': 'Dispatch form updated successfully.',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        return Response({
+            'success': False,
+            'message': 'Validation failed.',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    except DispatchForm.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Not found.'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_dispatch_form(request, dispatch_id):
+    """Delete a dispatch form"""
+    try:
+        form = DispatchForm.objects.get(id=dispatch_id)
+        form.delete()
+        return Response({
+            'success': True,
+            'message': 'Dispatch form deleted successfully.'
+        }, status=status.HTTP_200_OK)
+    except DispatchForm.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Not found.'
+        }, status=status.HTTP_404_NOT_FOUND)
+
     

@@ -10,6 +10,8 @@ import '../globals/confirmation_dialog.dart';
 import 'package:frontend/presentation/widgets/payment/add_payment_dialog.dart';
 import '../../../src/providers/product_provider.dart';
 import 'order_items_management_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class OrderTableHelpers {
   final Function(OrderModel) onEdit;
@@ -272,7 +274,7 @@ class OrderTableHelpers {
           context: context,
           builder: (context) => AlertDialog(
             title: Text('${l10n.invoice} ${l10n.generated}'),
-            content: SingleChildScrollView(
+            content: KeyboardScrollable(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,

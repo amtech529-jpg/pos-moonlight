@@ -9,6 +9,8 @@ import '../../../src/utils/debug_helper.dart';
 import '../../../src/providers/report_provider.dart';
 import '../../../src/providers/auth_provider.dart';
 import '../../widgets/product/add_product_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ToolsInventoryScreen extends StatefulWidget {
   const ToolsInventoryScreen({super.key});
@@ -169,7 +171,7 @@ class _ToolsInventoryScreenState extends State<ToolsInventoryScreen> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
           child: Column(

@@ -6,6 +6,8 @@ import '../../../src/providers/expenses_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewExpenseDetailsDialog extends StatefulWidget {
   final Expense expense;
@@ -118,7 +120,7 @@ class _ViewExpenseDetailsDialogState extends State<ViewExpenseDetailsDialog>
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildContent(isCompact: true),
           ),
         ),
@@ -132,7 +134,7 @@ class _ViewExpenseDetailsDialogState extends State<ViewExpenseDetailsDialog>
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildContent(isCompact: true),
           ),
         ),
@@ -146,7 +148,7 @@ class _ViewExpenseDetailsDialogState extends State<ViewExpenseDetailsDialog>
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildContent(isCompact: false),
           ),
         ),

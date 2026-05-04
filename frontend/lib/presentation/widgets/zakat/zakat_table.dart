@@ -7,6 +7,8 @@ import '../../../src/providers/zakat_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import 'zakat_table_helpers.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedZakatTable extends StatefulWidget {
   final Function(Zakat) onEdit;
@@ -80,7 +82,7 @@ class _EnhancedZakatTableState extends State<EnhancedZakatTable> {
                       topRight: Radius.circular(context.borderRadius('large')),
                     ),
                   ),
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     controller: _headerHorizontalController,
                     scrollDirection: Axis.horizontal,
                     physics: const ClampingScrollPhysics(),
@@ -96,7 +98,7 @@ class _EnhancedZakatTableState extends State<EnhancedZakatTable> {
                   child: Scrollbar(
                     controller: _verticalController,
                     thumbVisibility: true,
-                    child: SingleChildScrollView(
+                    child: KeyboardScrollable(
                       controller: _contentHorizontalController,
                       scrollDirection: Axis.horizontal,
                       physics: const ClampingScrollPhysics(),

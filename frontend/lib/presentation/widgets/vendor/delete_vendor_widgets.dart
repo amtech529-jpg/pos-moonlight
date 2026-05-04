@@ -7,6 +7,8 @@ import '../../../src/models/vendor/vendor_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DeleteVendorHeader extends StatelessWidget {
   final VendorModel vendor;
@@ -151,7 +153,7 @@ class DeleteVendorContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(

@@ -11,6 +11,8 @@ import 'package:provider/provider.dart';
 import '../../../src/providers/order_provider.dart';
 import '../../../src/models/order/order_model.dart';
 import '../../../src/providers/customer_provider.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewSaleDialog extends StatefulWidget {
   final SaleModel sale;
@@ -112,7 +114,7 @@ class _ViewSaleDialogState extends State<ViewSaleDialog> with SingleTickerProvid
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(controller: _scrollController, child: _buildContent(isCompact: true)),
+          child: KeyboardScrollable(controller: _scrollController, child: _buildContent(isCompact: true)),
         ),
       ],
     );
@@ -124,7 +126,7 @@ class _ViewSaleDialogState extends State<ViewSaleDialog> with SingleTickerProvid
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(controller: _scrollController, child: _buildContent(isCompact: false)),
+          child: KeyboardScrollable(controller: _scrollController, child: _buildContent(isCompact: false)),
         ),
       ],
     );

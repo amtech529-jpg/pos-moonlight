@@ -15,6 +15,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 
 class AddExpenseDialog extends StatefulWidget {
@@ -335,21 +337,21 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> with SingleTickerPr
   }
 
   Widget _buildTabletLayout() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       controller: _scrollController,
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: true)]),
     );
   }
 
   Widget _buildMobileLayout() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       controller: _scrollController,
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: true)]),
     );
   }
 
   Widget _buildDesktopLayout() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       controller: _scrollController,
       child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent(isCompact: false)]),
     );

@@ -13,6 +13,8 @@ import '../globals/text_field.dart';
 import '../../../src/services/category_service.dart';
 import '../../../src/models/category/category_model.dart';
 import '../../../src/models/product/product_model.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EditProductDialog extends StatefulWidget {
   final ProductModel product;
@@ -134,6 +136,14 @@ class _EditProductDialogState extends State<EditProductDialog>
     });
 
     _setupKeyboardNavigation();
+    
+    // Load categories to ensure they are available in the dropdown
+    Future.microtask(() {
+      if (mounted) {
+        context.read<ProductProvider>().loadCategories();
+      }
+    });
+
     _animationController.forward();
   }
 
@@ -364,7 +374,7 @@ class _EditProductDialogState extends State<EditProductDialog>
                       ),
                     ],
                   ),
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [_buildHeader(), _buildFormContent()],
@@ -793,14 +803,21 @@ class _EditProductDialogState extends State<EditProductDialog>
                           label: l10n.category,
                           hint: "Type category...",
                           prefixIcon: Icons.category_outlined,
+                          onTap: () {
+                            // Force suggestions to appear by triggering a change if empty
+                            if (controller.text.isEmpty) {
+                              controller.text = ' ';
+                              controller.text = '';
+                            }
+                          },
                           onChanged: (text) {
                             _categorySearchText = text;
                             _categoryController.text = text; // Sync
                              _selectedCategoryId = null; 
                           },
-                          onSubmitted: (val) {
+                          onSubmitted: (_) {
                             onFieldSubmitted();
-                            _saveFocusNode.requestFocus();
+                            _minStockFocusNode.requestFocus();
                           },
                           containerDecoration: focusNode.hasFocus ? BoxDecoration(
                             borderRadius: BorderRadius.circular(context.borderRadius()),

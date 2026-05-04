@@ -24,6 +24,7 @@ class PremiumTextField extends StatefulWidget {
   final double? labelFontSize;
   final BoxDecoration? containerDecoration;
   final bool readOnly;
+  final VoidCallback? onTap;
 
   const PremiumTextField({
     super.key,
@@ -48,6 +49,7 @@ class PremiumTextField extends StatefulWidget {
     this.labelFontSize,
     this.containerDecoration,
     this.readOnly = false,
+    this.onTap,
   });
 
   @override
@@ -179,6 +181,7 @@ class _PremiumTextFieldState extends State<PremiumTextField>
             initialValue: widget.controller != null ? null : widget.initialValue,
             onChanged: widget.onChanged,
             onFieldSubmitted: widget.onSubmitted,
+            onTap: widget.onTap,
             maxLines: widget.maxLines,
             style: TextStyle(
               fontSize: widget.fontSize ?? 12.sp,

@@ -15,6 +15,9 @@ import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../globals/drop_down.dart';
 import '../customer/add_customer_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+import '../../../src/providers/auth_provider.dart';
+
 
 class AddQuotationDialog extends StatefulWidget {
   const AddQuotationDialog({super.key});
@@ -24,6 +27,7 @@ class AddQuotationDialog extends StatefulWidget {
 }
 
 class _AddQuotationDialogState extends State<AddQuotationDialog> {
+  bool get canSeeFinancials => context.watch<AuthProvider>().currentUser?.canSeeFinancials ?? false;
   final _formKey = GlobalKey<FormState>();
   
   // Controllers
@@ -185,6 +189,7 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
         eventDate: _eventDate,
         returnDate: _returnDate,
         currentItems: _items,
+        canSeeFinancials: canSeeFinancials,
       ),
     );
 
@@ -322,7 +327,7 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
                   radius: const Radius.circular(8),
                   child: ScrollConfiguration(
                     behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
-                    child: SingleChildScrollView(
+                    child: KeyboardScrollable(
                       controller: _scrollController,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0).copyWith(bottom: 24),
                       child: Row(
@@ -361,9 +366,10 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
                               children: [
                                 _buildSectionTitle("Quotation Items"),
                                 const SizedBox(height: 8),
-                                _buildItemsTable(),
+                                _buildItemsTable(canSeeFinancials),
                                 const SizedBox(height: 8),
-                                _buildSummary(),
+                                if (canSeeFinancials)
+                                  _buildSummary(),
                               ],
                             ),
                           ),
@@ -709,7 +715,7 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
     );
   }
 
-  Widget _buildItemsTable() {
+  Widget _buildItemsTable(bool canSeeFinancials) {
     return Container(
       decoration: BoxDecoration(border: Border.all(color: Colors.grey[200]!), borderRadius: BorderRadius.circular(10)),
       child: Column(
@@ -720,15 +726,17 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
               color: AppTheme.primaryMaroon,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Expanded(flex: 3, child: Text("Product / Service", style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
                 Expanded(child: Text("Qty", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
-                Expanded(child: Text("Rate", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
+                if (canSeeFinancials)
+                  Expanded(child: Text("Rate", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
                 Expanded(child: Text("Days", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
                 Expanded(child: Text("Event", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
-                Expanded(child: Text("Total", textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
-                SizedBox(width: 30),
+                if (canSeeFinancials)
+                  Expanded(child: Text("Total", textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
+                const SizedBox(width: 30),
               ],
             ),
           ),
@@ -781,7 +789,8 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
                           },
                         ),
                       ),
-                      Expanded(child: _buildInlineField(item.rate.toString(), (v) => _updateItem(index, rate: double.tryParse(v)))),
+                      if (canSeeFinancials)
+                        Expanded(child: _buildInlineField(item.rate.toString(), (v) => _updateItem(index, rate: double.tryParse(v)))),
                       Expanded(
                         child: item.pricingType == 'PER_DAY'
                             ? _buildInlineField(item.days.toString(), (v) => _updateItem(index, days: int.tryParse(v)))
@@ -792,13 +801,14 @@ class _AddQuotationDialogState extends State<AddQuotationDialog> {
                             ? _buildInlineField(item.days.toString(), (v) => _updateItem(index, days: int.tryParse(v)))
                             : const Center(child: Text("-", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
                       ),
-                      Expanded(
-                        child: Text(
-                          "Rs. ${item.total.toStringAsFixed(0)}",
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppTheme.primaryMaroon),
+                      if (canSeeFinancials)
+                        Expanded(
+                          child: Text(
+                            "Rs. ${item.total.toStringAsFixed(0)}",
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppTheme.primaryMaroon),
+                          ),
                         ),
-                      ),
                       InkWell(
                         onTap: () => setState(() => _items.removeAt(index)),
                         borderRadius: BorderRadius.circular(6),
@@ -975,11 +985,13 @@ class _ManualItemEntryDialog extends StatefulWidget {
   final DateTime eventDate;
   final DateTime returnDate;
   final List<QuotationItemModel> currentItems;
+  final bool canSeeFinancials;
 
   const _ManualItemEntryDialog({
     required this.eventDate,
     required this.returnDate,
     required this.currentItems,
+    this.canSeeFinancials = true,
   });
 
   @override
@@ -1176,7 +1188,7 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
             trackVisibility: true,
             child: ScrollConfiguration(
               behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
-              child: SingleChildScrollView(
+              child: KeyboardScrollable(
                 controller: _scrollController,
                 padding: const EdgeInsets.all(32),
                 child: Column(
@@ -1551,25 +1563,26 @@ class _ManualItemEntryDialogState extends State<_ManualItemEntryDialog> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildField(
-                            _pricingType == 'PER_DAY' ? "Rate / Day *" : "Rate / Event *",
-                            _rateController,
-                            "5000",
-                            isNumber: true,
-                            required: true,
-                            focusNode: _rateFocusNode,
-                            textInputAction: _pricingType == 'PER_DAY' ? TextInputAction.next : TextInputAction.done,
-                            isExternalFocus: _rateFocusNode.hasFocus,
-                            onSubmitted: () {
-                              if (_pricingType == 'PER_DAY') {
-                                _daysFocusNode.requestFocus();
-                              } else {
-                                _submitFocusNode.requestFocus();
-                              }
-                            },
+                        if (widget.canSeeFinancials)
+                          Expanded(
+                            child: _buildField(
+                              _pricingType == 'PER_DAY' ? "Rate / Day *" : "Rate / Event *",
+                              _rateController,
+                              "5000",
+                              isNumber: true,
+                              required: true,
+                              focusNode: _rateFocusNode,
+                              textInputAction: _pricingType == 'PER_DAY' ? TextInputAction.next : TextInputAction.done,
+                              isExternalFocus: _rateFocusNode.hasFocus,
+                              onSubmitted: () {
+                                if (_pricingType == 'PER_DAY') {
+                                  _daysFocusNode.requestFocus();
+                                } else {
+                                  _submitFocusNode.requestFocus();
+                                }
+                              },
+                            ),
                           ),
-                        ),
                       ],
                     ),
                     if (_pricingType == 'PER_DAY') ...[

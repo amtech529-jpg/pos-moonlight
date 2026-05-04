@@ -11,6 +11,8 @@ import '../globals/text_field.dart';
 import '../globals/drop_down.dart';
 import '../globals/custom_date_picker.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class AddPayableDialog extends StatefulWidget {
   const AddPayableDialog({super.key});
@@ -415,7 +417,7 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         padding: EdgeInsets.all(context.cardPadding),
         child: Form(
@@ -441,7 +443,7 @@ class _AddPayableDialogState extends State<AddPayableDialog> with SingleTickerPr
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         padding: EdgeInsets.all(context.cardPadding),
         child: Form(

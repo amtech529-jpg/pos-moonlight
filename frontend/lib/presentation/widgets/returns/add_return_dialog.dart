@@ -15,6 +15,8 @@ import '../../../src/utils/responsive_breakpoints.dart';
 import '../globals/text_field.dart';
 import '../globals/drop_down.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ReturnItemInput {
   final OrderItemModel originalItem;
@@ -347,7 +349,7 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
                   Flexible(
                     child: ScrollConfiguration(
                       behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                      child: SingleChildScrollView(
+                      child: KeyboardScrollable(
                         controller: _scrollController,
                       child: Padding(
                         padding: EdgeInsets.all(context.cardPadding),

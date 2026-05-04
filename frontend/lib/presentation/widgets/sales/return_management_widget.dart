@@ -7,6 +7,8 @@ import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import 'create_return_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 
 class ReturnManagementWidget extends StatefulWidget {
@@ -428,7 +430,7 @@ class _ReturnManagementWidgetState extends State<ReturnManagementWidget> with Si
               children: [
                 // Wrap action buttons in a flexible container
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     scrollDirection: Axis.horizontal,
                     reverse: true, // Align to right
                     child: Row(
@@ -740,7 +742,7 @@ class _ReturnManagementWidgetState extends State<ReturnManagementWidget> with Si
           return const Center(child: CircularProgressIndicator());
         }
 
-        return SingleChildScrollView(
+        return KeyboardScrollable(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -849,7 +851,7 @@ class _ReturnManagementWidgetState extends State<ReturnManagementWidget> with Si
         title: Text(l10n.returnDetails(returnItem.returnNumber)),
         content: SizedBox(
           width: 450,
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -893,7 +895,7 @@ class _ReturnManagementWidgetState extends State<ReturnManagementWidget> with Si
         title: Text(l10n.refundDetails(refund.refundNumber)),
         content: SizedBox(
           width: 450,
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,

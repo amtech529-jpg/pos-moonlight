@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../src/providers/report_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ReportsAnalyticsScreen extends StatefulWidget {
   const ReportsAnalyticsScreen({super.key});
@@ -43,7 +45,7 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           padding: const EdgeInsets.all(24.0),
           child: Column(

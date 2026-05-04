@@ -9,6 +9,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
 import '../../../src/providers/vendor_provider.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DeletePurchaseDialog extends StatelessWidget {
   final PurchaseModel purchase;
@@ -65,7 +67,7 @@ class DeletePurchaseDialog extends StatelessWidget {
             
             // Scrollable Content Body
             Flexible(
-              child: SingleChildScrollView(
+              child: KeyboardScrollable(
                 physics: const BouncingScrollPhysics(),
                 padding: EdgeInsets.all(context.mainPadding),
                 child: Column(

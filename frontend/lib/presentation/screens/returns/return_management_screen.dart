@@ -10,6 +10,8 @@ import '../../../src/utils/responsive_breakpoints.dart';
 import '../../widgets/returns/add_return_dialog.dart';
 import '../../widgets/returns/tally_return_dialog.dart';
 import '../../widgets/returns/recovery_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ReturnManagementScreen extends StatefulWidget {
   const ReturnManagementScreen({super.key});
@@ -93,7 +95,7 @@ class _ReturnManagementScreenState extends State<ReturnManagementScreen> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
           child: Column(

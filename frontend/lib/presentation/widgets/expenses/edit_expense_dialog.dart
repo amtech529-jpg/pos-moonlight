@@ -15,6 +15,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 
 class EditExpenseDialog extends StatefulWidget {
@@ -249,7 +251,7 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> with SingleTicker
                     BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: context.shadowBlur('heavy'), offset: Offset(0, context.cardPadding)),
                   ],
                 ),
-                child: SingleChildScrollView(
+                child: KeyboardScrollable(
                   child: Column(
                     mainAxisSize: MainAxisSize.min, 
                     children: [

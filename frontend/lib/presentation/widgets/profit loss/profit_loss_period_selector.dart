@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../../src/providers/profit_loss/profit_loss_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ProfitLossPeriodSelector extends StatelessWidget {
   const ProfitLossPeriodSelector({super.key});
@@ -67,7 +69,7 @@ class ProfitLossPeriodSelector extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: provider.availablePeriodTypes.map((period) {
@@ -181,7 +183,7 @@ class ProfitLossPeriodSelector extends StatelessWidget {
 
     return Column(
       children: [
-        SingleChildScrollView(
+        KeyboardScrollable(
           scrollDirection: Axis.horizontal,
           child: Row(
             children: provider.availablePeriodTypes.map((period) {

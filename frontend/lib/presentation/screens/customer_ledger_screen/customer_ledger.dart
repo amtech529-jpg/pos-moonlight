@@ -10,6 +10,8 @@ import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import '../../../src/models/customer_ledger/customer_ledger_model.dart';
 import '../../../src/services/ledger_pdf_service.dart';
 import '../../../src/services/ledger_export_service.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class CustomerLedgerScreen extends StatefulWidget {
   final String customerId;
@@ -73,7 +75,7 @@ class _CustomerLedgerScreenState extends State<CustomerLedgerScreen> {
             controller: _scrollController,
             thumbVisibility: true,
             trackVisibility: true,
-            child: SingleChildScrollView(
+            child: KeyboardScrollable(
               controller: _scrollController,
               child: Column(
                 children: [

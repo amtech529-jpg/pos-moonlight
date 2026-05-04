@@ -5,6 +5,8 @@ import '../../../src/providers/auth_provider.dart';
 import '../../../src/core/app_colors.dart';
 import '../../../src/core/app_images.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -75,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Center(
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
           child: Container(
             width: screenWidth > 500 ? formWidth : screenWidth,
@@ -128,24 +130,46 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: AppColors.textGray.withOpacity(0.8),
                       ),
                     ),
-                    const SizedBox(height: 40),
-                    _buildTextField(
-                      controller: _emailController,
-                      hint: l10n.enterEmail,
-                      keyboardType: TextInputType.emailAddress,
-                      prefixIcon: Icons.email_outlined,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _passwordController,
-                      hint: l10n.password,
-                      obscureText: _obscurePassword,
-                      prefixIcon: Icons.lock_outline,
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, 
-                          color: AppColors.textGray, size: 20),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                      ),
+                    Consumer<AuthProvider>(
+                      builder: (context, auth, _) {
+                        String? emailError;
+                        String? passwordError;
+                        
+                        if (auth.fieldErrors != null) {
+                          if (auth.fieldErrors!['email'] != null && auth.fieldErrors!['email'].isNotEmpty) {
+                            emailError = auth.fieldErrors!['email'][0].toString();
+                          }
+                          if (auth.fieldErrors!['password'] != null && auth.fieldErrors!['password'].isNotEmpty) {
+                            passwordError = auth.fieldErrors!['password'][0].toString();
+                          }
+                        }
+                        
+                        return Column(
+                          children: [
+                            const SizedBox(height: 40),
+                            _buildTextField(
+                              controller: _emailController,
+                              hint: l10n.enterEmail,
+                              keyboardType: TextInputType.emailAddress,
+                              prefixIcon: Icons.email_outlined,
+                              errorText: emailError,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _passwordController,
+                              hint: l10n.password,
+                              obscureText: _obscurePassword,
+                              prefixIcon: Icons.lock_outline,
+                              errorText: passwordError,
+                              suffixIcon: IconButton(
+                                icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, 
+                                  color: AppColors.textGray, size: 20),
+                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     /* Align(
@@ -167,7 +191,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     
                     Consumer<AuthProvider>(
                       builder: (context, auth, _) {
-                        if (auth.errorMessage != null) {
+                        bool hasFieldErrors = auth.fieldErrors != null && 
+                            (auth.fieldErrors!.containsKey('email') || auth.fieldErrors!.containsKey('password'));
+                            
+                        if (auth.errorMessage != null && !hasFieldErrors) {
                           return Container(
                             margin: const EdgeInsets.only(top: 20),
                             padding: const EdgeInsets.all(12),
@@ -231,6 +258,7 @@ class _LoginScreenState extends State<LoginScreen> {
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
     Widget? suffixIcon,
+    String? errorText,
   }) {
     return TextFormField(
       controller: controller,
@@ -239,6 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
       style: const TextStyle(fontSize: 15, color: AppColors.textBlack, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         hintText: hint,
+        errorText: errorText,
         hintStyle: TextStyle(color: AppColors.textGray.withOpacity(0.5), fontSize: 15),
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         prefixIcon: Icon(prefixIcon, color: AppColors.textGray.withOpacity(0.7), size: 22),

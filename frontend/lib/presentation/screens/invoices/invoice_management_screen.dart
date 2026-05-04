@@ -12,6 +12,8 @@ import '../../widgets/sales/view_invoice_dialog.dart';
 import '../../widgets/sales/edit_invoice_dialog.dart';
 import '../../widgets/sales/create_invoice_dialog.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class InvoiceManagementScreen extends StatefulWidget {
   const InvoiceManagementScreen({super.key});
@@ -77,7 +79,7 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
           child: Column(
@@ -330,7 +332,7 @@ class _InvoiceManagementScreenState extends State<InvoiceManagementScreen> {
         return LayoutBuilder(
           builder: (context, constraints) {
             final double tableWidth = constraints.maxWidth > 1000 ? constraints.maxWidth : 1000;
-            return SingleChildScrollView(
+            return KeyboardScrollable(
               scrollDirection: Axis.horizontal,
               child: SizedBox(
                 width: tableWidth,

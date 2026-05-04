@@ -411,6 +411,7 @@ class OrderListParams {
   final double? maxValue;
   final String? sortBy;
   final String? sortOrder;
+  final bool excludeDispatched;
 
   const OrderListParams({
     this.page = 1,
@@ -427,10 +428,15 @@ class OrderListParams {
     this.maxValue,
     this.sortBy = 'date_ordered',
     this.sortOrder = 'desc',
+    this.excludeDispatched = false,
   });
 
   Map<String, dynamic> toQueryParameters() {
-    final params = <String, dynamic>{'page': page.toString(), 'page_size': pageSize.toString(), 'show_inactive': showInactive.toString()};
+    final params = <String, dynamic>{
+      'page': page.toString(),
+      'page_size': pageSize.toString(),
+      'show_inactive': showInactive.toString(),
+    };
 
     if (search != null && search!.isNotEmpty) {
       params['search'] = search;
@@ -464,6 +470,9 @@ class OrderListParams {
     }
     if (sortOrder != null) {
       params['sort_order'] = sortOrder;
+    }
+    if (excludeDispatched) {
+      params['exclude_dispatched'] = 'true';
     }
 
     return params;

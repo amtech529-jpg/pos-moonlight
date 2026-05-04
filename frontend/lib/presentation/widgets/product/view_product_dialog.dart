@@ -6,6 +6,8 @@ import '../../../src/models/product/product_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewProductDetailsDialog extends StatefulWidget {
   final ProductModel product;
@@ -90,7 +92,7 @@ class _ViewProductDetailsDialogState extends State<ViewProductDetailsDialog> wit
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: true))),
       ],
     );
   }
@@ -100,7 +102,7 @@ class _ViewProductDetailsDialogState extends State<ViewProductDetailsDialog> wit
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: true))),
       ],
     );
   }
@@ -110,7 +112,7 @@ class _ViewProductDetailsDialogState extends State<ViewProductDetailsDialog> wit
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: false))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: false))),
       ],
     );
   }

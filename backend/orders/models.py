@@ -807,3 +807,28 @@ class OrderQuerySet(models.QuerySet):
 
 # Add the custom manager to the Order model
 Order.add_to_class('objects', models.Manager.from_queryset(OrderQuerySet)())
+
+class DispatchForm(models.Model):
+    """Model to store dispatch/gate pass information for an order"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='dispatch_forms')
+    driver_name = models.CharField(max_length=255)
+    vehicle_number = models.CharField(max_length=100)
+    staff_name = models.CharField(max_length=255, help_text="Person accompanying (Bnda)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_dispatch_forms'
+    )
+
+    class Meta:
+        db_table = 'dispatch_form'
+        verbose_name = 'Dispatch Form'
+        verbose_name_plural = 'Dispatch Forms'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Dispatch for Order #{self.order.id} - {self.driver_name}"

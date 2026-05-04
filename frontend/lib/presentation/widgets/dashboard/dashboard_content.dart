@@ -30,6 +30,8 @@ import '../../screens/users/user_management_screen.dart';
 import '../../screens/backup/backup_security_screen.dart';
 import 'recent_orders_card.dart';
 import 'dashboard_alerts_card.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DashboardContent extends StatelessWidget {
   final int selectedIndex;
@@ -90,7 +92,7 @@ class DashboardContent extends StatelessWidget {
 
         return Container(
           color: Colors.transparent, // Inherit Screen's #CFBEBE
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

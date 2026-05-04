@@ -6,6 +6,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
 import 'order_item_table_helpers.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedOrderItemTable extends StatefulWidget {
   final List<OrderItemModel> orderItems;
@@ -83,7 +85,7 @@ class _EnhancedOrderItemTableState extends State<EnhancedOrderItemTable> {
                       topRight: Radius.circular(context.borderRadius('large')),
                     ),
                   ),
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     controller: _headerHorizontalController,
                     scrollDirection: Axis.horizontal,
                     physics: const ClampingScrollPhysics(),
@@ -100,7 +102,7 @@ class _EnhancedOrderItemTableState extends State<EnhancedOrderItemTable> {
                   child: Scrollbar(
                     controller: _contentHorizontalController,
                     thumbVisibility: true,
-                    child: SingleChildScrollView(
+                    child: KeyboardScrollable(
                       controller: _contentHorizontalController,
                       scrollDirection: Axis.horizontal,
                       physics: const ClampingScrollPhysics(),

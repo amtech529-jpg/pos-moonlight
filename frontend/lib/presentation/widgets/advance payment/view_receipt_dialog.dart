@@ -6,6 +6,8 @@ import '../../../src/models/advance_payment/advance_payment_model.dart';
 
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewReceiptDialog extends StatefulWidget {
   final AdvancePayment payment;
@@ -94,7 +96,7 @@ class _ViewReceiptDialogState extends State<ViewReceiptDialog> with SingleTicker
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: true))),
       ],
     );
   }
@@ -104,7 +106,7 @@ class _ViewReceiptDialogState extends State<ViewReceiptDialog> with SingleTicker
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: true))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: true))),
       ],
     );
   }
@@ -114,7 +116,7 @@ class _ViewReceiptDialogState extends State<ViewReceiptDialog> with SingleTicker
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        Flexible(child: SingleChildScrollView(child: _buildContent(isCompact: false))),
+        Flexible(child: KeyboardScrollable(child: _buildContent(isCompact: false))),
       ],
     );
   }

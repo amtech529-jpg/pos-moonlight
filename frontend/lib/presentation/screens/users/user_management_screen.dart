@@ -7,6 +7,8 @@ import '../../../src/providers/user_provider.dart';
 import '../../../src/models/user_model.dart';
 import '../../../src/models/role_model.dart';
 import '../../widgets/globals/drop_down.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -66,7 +68,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               controller: _scrollController,
               thumbVisibility: true,
               trackVisibility: true,
-              child: SingleChildScrollView(
+              child: KeyboardScrollable(
                 controller: _scrollController,
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
@@ -724,10 +726,29 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final submitButtonFocusNode = FocusNode();
     bool isPassVisible = false;
     int? selectedRoleId;
-    
+
+    // Field-level error messages
+    String? nameError;
+    String? emailError;
+    String? passwordError;
+    String? roleError;
+
     // Auto-fetch roles if empty
     if (provider.roles.isEmpty && !provider.isLoading) {
       provider.fetchRoles();
+    }
+
+    bool _isValidEmail(String email) {
+      return RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$').hasMatch(email);
+    }
+
+    String? _validatePassword(String password) {
+      if (password.isEmpty) return 'Password is required';
+      if (password.length < 8) return 'Password must be at least 8 characters';
+      if (!RegExp(r'[A-Z]').hasMatch(password)) return 'Must contain at least one uppercase letter (A-Z)';
+      if (!RegExp(r'[a-z]').hasMatch(password)) return 'Must contain at least one lowercase letter (a-z)';
+      if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(password)) return 'Must contain at least one special character (!@#\$%...)';
+      return null;
     }
 
     showDialog(
@@ -736,6 +757,36 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            Widget _fieldError(String? error) {
+              if (error == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 4, left: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 13),
+                    const SizedBox(width: 4),
+                    Text(error, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                  ],
+                ),
+              );
+            }
+
+            Widget _reqRow(String label, bool met) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Icon(met ? Icons.check_circle : Icons.radio_button_unchecked,
+                      size: 13,
+                      color: met ? Colors.green : Colors.grey[400],
+                    ),
+                    const SizedBox(width: 6),
+                    Text(label, style: TextStyle(fontSize: 11, color: met ? Colors.green[700] : Colors.grey[500])),
+                  ],
+                ),
+              );
+            }
+
             return AlertDialog(
               backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -745,7 +796,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ),
               content: SizedBox(
                 width: 400,
-                child: SingleChildScrollView(
+                child: KeyboardScrollable(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -757,6 +808,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         focusNode: nameFocusNode,
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => emailFocusNode.requestFocus(),
+                        onChanged: (_) => setDialogState(() => nameError = null),
                         style: const TextStyle(color: Colors.black, fontSize: 15),
                         decoration: InputDecoration(
                           hintText: "Enter full name (e.g. Ali Ahmed)",
@@ -765,15 +817,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           fillColor: Colors.grey[50],
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
+                            borderSide: BorderSide(color: nameError != null ? Colors.red : Colors.grey[300]!),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFF7B61FF), width: 1.5),
+                            borderSide: BorderSide(color: nameError != null ? Colors.red : const Color(0xFF7B61FF), width: 1.5),
                           ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
                       ),
+                      _fieldError(nameError),
                       const SizedBox(height: 16),
                       const Text("Email Address", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 13)),
                       const SizedBox(height: 6),
@@ -782,6 +835,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         focusNode: emailFocusNode,
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => passwordFocusNode.requestFocus(),
+                        onChanged: (_) => setDialogState(() => emailError = null),
                         style: const TextStyle(color: Colors.black, fontSize: 15),
                         decoration: InputDecoration(
                           hintText: "Enter email (e.g. user@example.com)",
@@ -790,15 +844,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           fillColor: Colors.grey[50],
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
+                            borderSide: BorderSide(color: emailError != null ? Colors.red : Colors.grey[300]!),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFF7B61FF), width: 1.5),
+                            borderSide: BorderSide(color: emailError != null ? Colors.red : const Color(0xFF7B61FF), width: 1.5),
                           ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
                       ),
+                      _fieldError(emailError),
                       const SizedBox(height: 16),
                       const Text("Password", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 13)),
                       const SizedBox(height: 6),
@@ -808,6 +863,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         obscureText: !isPassVisible,
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => dropdownFocusNode.requestFocus(),
+                        onChanged: (_) => setDialogState(() => passwordError = null),
                         style: const TextStyle(color: Colors.black, fontSize: 15),
                         decoration: InputDecoration(
                           hintText: "Enter secure password",
@@ -816,11 +872,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           fillColor: Colors.grey[50],
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
+                            borderSide: BorderSide(color: passwordError != null ? Colors.red : Colors.grey[300]!),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFF7B61FF), width: 1.5),
+                            borderSide: BorderSide(color: passwordError != null ? Colors.red : const Color(0xFF7B61FF), width: 1.5),
                           ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           suffixIcon: IconButton(
@@ -829,11 +885,31 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           ),
                         ),
                       ),
+                      _fieldError(passwordError),
+                      // Live password requirements hint
+                      if (passwordController.text.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[200]!),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _reqRow('At least 8 characters', passwordController.text.length >= 8),
+                              _reqRow('Uppercase letter (A-Z)', RegExp(r'[A-Z]').hasMatch(passwordController.text)),
+                              _reqRow('Lowercase letter (a-z)', RegExp(r'[a-z]').hasMatch(passwordController.text)),
+                              _reqRow('Special character (!@#\$...)', RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(passwordController.text)),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       const Text("Select User Role", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 13)),
                       const SizedBox(height: 6),
-                      // Use provider.roles directly, but need a way to rebuild when provider changes
-                      // Since this is inside a StatefulBuilder, we should wrap the dropdown in a Consumer
                       Consumer<UserProvider>(
                         builder: (context, userProvider, _) {
                           if (userProvider.isLoading && userProvider.roles.isEmpty) {
@@ -855,11 +931,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             );
                           }
 
-                          // Set initial value if not set
-                          selectedRoleId ??= userProvider.roles.first.id;
-
                           return PremiumDropdownField<int>(
-                            hint: 'User Role',
+                            hint: 'Select a role...',
                             value: selectedRoleId,
                             focusNode: dropdownFocusNode,
                             items: userProvider.roles.map((role) {
@@ -871,6 +944,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             onChanged: (val) {
                               setDialogState(() {
                                 selectedRoleId = val;
+                                roleError = null;
                               });
                               submitButtonFocusNode.requestFocus();
                             },
@@ -879,6 +953,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           );
                         },
                       ),
+                      _fieldError(roleError),
                     ],
                   ),
                 ),
@@ -918,10 +993,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         elevation: submitButtonFocusNode.hasFocus ? 12 : 2,
                       ),
                       onPressed: () async {
-                        if (nameController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty || selectedRoleId == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("All fields are required!")));
-                          return;
-                        }
+                        // Validate all fields
+                        bool hasError = false;
+                        setDialogState(() {
+                          nameError = nameController.text.trim().isEmpty ? 'Full name is required' : null;
+                          emailError = emailController.text.trim().isEmpty
+                              ? 'Email is required'
+                              : !_isValidEmail(emailController.text.trim())
+                                  ? 'Enter a valid email address'
+                                  : null;
+                          passwordError = _validatePassword(passwordController.text);
+                          roleError = selectedRoleId == null ? 'Please select a user role' : null;
+                          hasError = nameError != null || emailError != null || passwordError != null || roleError != null;
+                        });
+
+                        if (hasError) return;
                         
                         final payload = {
                           'full_name': nameController.text.trim(),
@@ -936,9 +1022,28 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         if (success) {
                           Navigator.pop(context);
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(provider.errorMessage ?? "Failed to create user"))
-                          );
+                          // Show field-level errors below fields if API returned them
+                          final fieldErrs = provider.fieldErrors;
+                          setDialogState(() {
+                            if (fieldErrs.containsKey('email')) {
+                              emailError = fieldErrs['email'];
+                            }
+                            if (fieldErrs.containsKey('full_name')) {
+                              nameError = fieldErrs['full_name'];
+                            }
+                            if (fieldErrs.containsKey('password') || fieldErrs.containsKey('password_confirm')) {
+                              passwordError = fieldErrs['password'] ?? fieldErrs['password_confirm'];
+                            }
+                            if (fieldErrs.containsKey('non_field_errors')) {
+                              nameError = fieldErrs['non_field_errors'];
+                            }
+                            // If no field-specific error, show generic snackbar
+                            if (fieldErrs.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(provider.errorMessage ?? "Failed to create user"), backgroundColor: Colors.red)
+                              );
+                            }
+                          });
                         }
                       },
                       child: const Text("ADD USER", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
@@ -952,6 +1057,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       },
     );
   }
+
 
   void _showEditUserDialog(BuildContext context, AppLocalizations l10n, UserProvider provider, UserModel user) {
     final nameController = TextEditingController(text: user.fullName);
@@ -976,7 +1082,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ),
               content: SizedBox(
                 width: 400,
-                child: SingleChildScrollView(
+                child: KeyboardScrollable(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,

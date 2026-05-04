@@ -6,6 +6,8 @@ import '../../../src/providers/receivables_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DeleteReceivableDialog extends StatefulWidget {
   final Receivable receivable;
@@ -165,7 +167,7 @@ class _DeleteReceivableDialogState extends State<DeleteReceivableDialog> with Si
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildContent(isCompact: true),
           ),
         ),
@@ -179,7 +181,7 @@ class _DeleteReceivableDialogState extends State<DeleteReceivableDialog> with Si
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildContent(isCompact: true),
           ),
         ),
@@ -193,7 +195,7 @@ class _DeleteReceivableDialogState extends State<DeleteReceivableDialog> with Si
       children: [
         _buildHeader(),
         Flexible(
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: _buildContent(isCompact: false),
           ),
         ),

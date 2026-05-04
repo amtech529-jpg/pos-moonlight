@@ -10,6 +10,8 @@ import '../globals/text_button.dart';
 import '../globals/custom_date_picker.dart';
 import '../globals/drop_down.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class PayableFilterDialog extends StatefulWidget {
   const PayableFilterDialog({super.key});
@@ -275,7 +277,7 @@ class _PayableFilterDialogState extends State<PayableFilterDialog> with SingleTi
 
   Widget _buildFilterContent() {
     return Scrollbar(
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -10,6 +10,8 @@ import '../../widgets/globals/drop_down.dart';
 import '../../widgets/globals/text_button.dart';
 import '../../widgets/globals/custom_date_picker.dart';
 import '../../../src/theme/app_theme.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EditInvoiceDialog extends StatefulWidget {
   final InvoiceModel invoice;
@@ -92,7 +94,7 @@ class _EditInvoiceDialogState extends State<EditInvoiceDialog> {
           maxWidth: context.dialogWidth,
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,

@@ -7,6 +7,8 @@ import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewCustomerDetailsDialog extends StatefulWidget {
   final Customer customer;
@@ -422,7 +424,7 @@ class _ViewCustomerDetailsDialogState extends State<ViewCustomerDetailsDialog>
       trackVisibility: true,
       thickness: 8,
       radius: const Radius.circular(8),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),

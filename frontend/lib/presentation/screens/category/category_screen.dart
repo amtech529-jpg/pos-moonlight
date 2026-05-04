@@ -12,6 +12,8 @@ import '../../widgets/category/delete_category_dialog.dart';
 import '../../widgets/category/edit_category_dialog.dart';
 import '../../widgets/category/view_category_details_dialog.dart';
 import '../../widgets/category/category_filter_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class CategoryPage extends StatefulWidget {
   const CategoryPage({super.key});
@@ -106,7 +108,7 @@ class _CategoryPageState extends State<CategoryPage> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           padding: EdgeInsets.all(context.mainPadding / 2),
           child: Column(

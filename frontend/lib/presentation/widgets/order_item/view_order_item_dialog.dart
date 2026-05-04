@@ -5,6 +5,8 @@ import 'package:sizer/sizer.dart';
 import '../../../src/models/order/order_item_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewOrderItemDialog extends StatefulWidget {
   final OrderItemModel orderItem;
@@ -189,7 +191,7 @@ class _ViewOrderItemDialogState extends State<ViewOrderItemDialog> with SingleTi
   }
 
   Widget _buildLeftPanel(AppLocalizations l10n) {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(
@@ -207,7 +209,7 @@ class _ViewOrderItemDialogState extends State<ViewOrderItemDialog> with SingleTi
   }
 
   Widget _buildRightPanel(AppLocalizations l10n) {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(
@@ -229,7 +231,7 @@ class _ViewOrderItemDialogState extends State<ViewOrderItemDialog> with SingleTi
   }
 
   Widget _buildTabletContent(AppLocalizations l10n) {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(
@@ -256,7 +258,7 @@ class _ViewOrderItemDialogState extends State<ViewOrderItemDialog> with SingleTi
   }
 
   Widget _buildMobileContent(AppLocalizations l10n) {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(

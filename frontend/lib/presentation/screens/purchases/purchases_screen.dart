@@ -11,6 +11,8 @@ import '../../widgets/globals/text_button.dart'; // PremiumButton
 import '../../widgets/purchases/purchase_table.dart';
 import '../../widgets/purchases/add_purchase_dialog.dart';
 import '../../widgets/purchases/purchase_filter_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class PurchasesScreen extends StatefulWidget {
   const PurchasesScreen({super.key});
@@ -97,7 +99,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
           controller: _scrollController,
           thumbVisibility: true,
           trackVisibility: true,
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             controller: _scrollController,
             padding: const EdgeInsets.all(24), // Using standard padding
             physics: const AlwaysScrollableScrollPhysics(),

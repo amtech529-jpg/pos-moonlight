@@ -16,6 +16,8 @@ import '../globals/custom_date_picker.dart';
 import '../globals/text_button.dart';
 import '../../../src/models/vendor/vendor_model.dart';
 import '../../../src/models/product/product_model.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 
 class EditPurchaseDialog extends StatefulWidget {
@@ -210,7 +212,7 @@ class _EditPurchaseDialogState extends State<EditPurchaseDialog> {
                   thumbVisibility: true,
                   child: ScrollConfiguration(
                     behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
-                    child: SingleChildScrollView(
+                    child: KeyboardScrollable(
                       padding: EdgeInsets.only(top: 12, bottom: 12, left: context.mainPadding, right: context.mainPadding),
                       child: Column(
                         children: [

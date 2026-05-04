@@ -10,6 +10,8 @@ import '../../src/theme/app_theme.dart';
 import '../../l10n/app_localizations.dart';
 import '../widgets/sales/tax_configuration_widget.dart';
 import '../../src/services/tax_rates_service.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class TaxManagementScreen extends StatefulWidget {
   const TaxManagementScreen({super.key});
@@ -51,7 +53,7 @@ class _TaxManagementScreenState extends State<TaxManagementScreen> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           child: Column(
             children: [
@@ -684,7 +686,7 @@ class _TaxRateDialogState extends State<_TaxRateDialog> {
       ),
       content: Form(
         key: _formKey,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

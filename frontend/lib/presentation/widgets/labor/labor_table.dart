@@ -7,6 +7,8 @@ import '../../../src/providers/labor_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import 'labor_table_helpers.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedLaborTable extends StatefulWidget {
   final Function(LaborModel) onEdit;
@@ -108,7 +110,7 @@ class _EnhancedLaborTableState extends State<EnhancedLaborTable> {
                     topRight: Radius.circular(context.borderRadius('large')),
                   ),
                 ),
-                child: SingleChildScrollView(
+                child: KeyboardScrollable(
                   controller: _headerHorizontalController,
                   scrollDirection: Axis.horizontal,
                   physics: const ClampingScrollPhysics(),
@@ -128,14 +130,14 @@ class _EnhancedLaborTableState extends State<EnhancedLaborTable> {
                   controller: _verticalController,
                   thumbVisibility: true,
                   trackVisibility: true,
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     controller: _verticalController,
                     scrollDirection: Axis.vertical,
                     child: Scrollbar(
                       controller: _contentHorizontalController,
                       thumbVisibility: true,
                       notificationPredicate: (notification) => notification.depth == 1,
-                      child: SingleChildScrollView(
+                      child: KeyboardScrollable(
                         controller: _contentHorizontalController,
                         scrollDirection: Axis.horizontal,
                         physics: const ClampingScrollPhysics(),

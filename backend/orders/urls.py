@@ -44,4 +44,11 @@ urlpatterns = [
     path('<uuid:order_id>/customer-info/', views.update_customer_info, name='update_customer_info'),
     path('<uuid:order_id>/duplicate/', views.duplicate_order, name='duplicate_order'),
     path('<uuid:order_id>/invoice/', views.generate_invoice, name='generate_invoice'),
+    
+    # Dispatch forms (Gate Pass)
+    path('dispatches/', views.list_dispatch_forms, name='list_dispatch_forms'),
+    path('dispatches/create/', views.create_dispatch_form, name='create_dispatch_form'),
+    path('dispatches/<uuid:dispatch_id>/', views.get_dispatch_form, name='get_dispatch_form'),
+    path('dispatches/<uuid:dispatch_id>/update/', views.update_dispatch_form, name='update_dispatch_form'),
+    path('dispatches/<uuid:dispatch_id>/delete/', views.delete_dispatch_form, name='delete_dispatch_form'),
 ]

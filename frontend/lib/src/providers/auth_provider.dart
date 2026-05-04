@@ -11,6 +11,7 @@ enum AuthState { initial, loading, authenticated, unauthenticated, error }
 class AuthProvider extends ChangeNotifier {
   AuthState _state = AuthState.initial;
   String? _errorMessage;
+  Map<String, dynamic>? _fieldErrors;
   bool _isLoading = false;
   UserModel? _currentUser;
 
@@ -20,6 +21,7 @@ class AuthProvider extends ChangeNotifier {
   // Getters
   AuthState get state => _state;
   String? get errorMessage => _errorMessage;
+  Map<String, dynamic>? get fieldErrors => _fieldErrors;
   bool get isLoading => _isLoading;
   UserModel? get currentUser => _currentUser;
   bool get isAuthenticated => _state == AuthState.authenticated;
@@ -56,8 +58,9 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _setError(String? error) {
+  void _setError(String? error, [Map<String, dynamic>? fieldErrors]) {
     _errorMessage = error;
+    _fieldErrors = fieldErrors;
     notifyListeners();
   }
 
@@ -85,7 +88,7 @@ class AuthProvider extends ChangeNotifier {
         _setState(AuthState.authenticated);
         debugPrint('✅ Login successful for: $email');
       } else {
-        _setError(response.message);
+        _setError(response.message, response.errors);
         _setState(AuthState.error);
         debugPrint('❌ Login failed: ${response.message}');
       }
@@ -309,7 +312,7 @@ class AuthProvider extends ChangeNotifier {
 
   /// Clear error message
   void clearError() {
-    _setError(null);
+    _setError(null, null);
   }
 
   /// Refresh authentication state

@@ -9,6 +9,8 @@ import '../globals/text_button.dart';
 import '../globals/custom_date_picker.dart';
 import '../globals/drop_down.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class AdvancePaymentFilterDialog extends StatefulWidget {
   const AdvancePaymentFilterDialog({super.key});
@@ -247,7 +249,7 @@ class _AdvancePaymentFilterDialogState extends State<AdvancePaymentFilterDialog>
 
   Widget _buildFilterContent() {
     return Scrollbar(
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

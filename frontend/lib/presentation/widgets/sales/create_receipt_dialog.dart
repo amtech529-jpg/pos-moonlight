@@ -5,6 +5,8 @@ import '../../../src/providers/sales_provider.dart';
 import '../../../src/providers/payment_provider.dart';
 import '../../../src/models/sales/sale_model.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 import '../../widgets/globals/text_field.dart'; // ✅ PremiumTextField
 
 class CreateReceiptDialog extends StatefulWidget {
@@ -38,7 +40,7 @@ class _CreateReceiptDialogState extends State<CreateReceiptDialog> {
       child: Container(
         width: 500, // Fixed width helps dialog layout
         padding: const EdgeInsets.all(24),
-        child: SingleChildScrollView( // ✅ Fix 1: Prevent Overflow
+        child: KeyboardScrollable( // ✅ Fix 1: Prevent Overflow
           child: Form(
             key: _formKey,
             child: Column(

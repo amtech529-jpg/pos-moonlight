@@ -7,6 +7,8 @@ import '../../../src/providers/expenses_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DeleteExpenseDialog extends StatefulWidget {
   final Expense expense;
@@ -145,7 +147,7 @@ class _DeleteExpenseDialogState extends State<DeleteExpenseDialog> with SingleTi
                       ),
                     ],
                   ),
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

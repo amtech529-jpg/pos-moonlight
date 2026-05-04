@@ -9,6 +9,8 @@ import '../../../src/models/zakat/zakat_model.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EditZakatDialog extends StatefulWidget {
   final Zakat zakat;
@@ -193,7 +195,7 @@ class _EditZakatDialogState extends State<EditZakatDialog> with SingleTickerProv
                     BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: context.shadowBlur('heavy'), offset: Offset(0, context.cardPadding)),
                   ],
                 ),
-                child: SingleChildScrollView(
+                child: KeyboardScrollable(
                   child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildFormContent()]),
                 ),
               ),

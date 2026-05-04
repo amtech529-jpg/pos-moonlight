@@ -1,10 +1,11 @@
 from rest_framework import serializers
 from django.db.models import Q
-from .models import Order
+from .models import Order, DispatchForm
 from customers.models import Customer
 from order_items.models import OrderItem
 from decimal import Decimal, InvalidOperation
 from django.db import transaction
+from order_items.serializers import OrderItemListSerializer
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -25,6 +26,9 @@ class OrderSerializer(serializers.ModelSerializer):
     
     # Status display
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    # Nested items
+    items = OrderItemListSerializer(many=True, read_only=True)
     
     class Meta:
         model = Order
@@ -58,7 +62,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'created_by',
-            'created_by_id'
+            'created_by_id',
+            'items'
         )
         read_only_fields = (
             'id', 'customer_id', 'customer_name', 'customer_phone', 'customer_email',
@@ -368,6 +373,7 @@ class OrderListSerializer(serializers.ModelSerializer):
     related_sales = serializers.SerializerMethodField()
     return_status = serializers.SerializerMethodField()
     created_by = serializers.StringRelatedField(read_only=True)
+    items = serializers.SerializerMethodField()
     
     def get_return_status(self, obj):
         """Get return status of the order"""
@@ -421,6 +427,10 @@ class OrderListSerializer(serializers.ModelSerializer):
             for item in items
         ]
     
+    def get_items(self, obj):
+        """Alias for get_order_items for frontend consistency"""
+        return self.get_order_items(obj)
+    
     class Meta:
         model = Order
         fields = (
@@ -451,6 +461,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'order_summary',
             'delivery_status',
             'order_items',
+            'items',
             'is_active',
             'created_at',
             'updated_at',
@@ -458,6 +469,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'conversion_status', 'converted_sales_amount', 'conversion_date', 'can_convert_to_sale', 'has_sales', 'related_sales',
             'return_status'
         )
+
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):
@@ -729,4 +741,30 @@ class OrderCustomerUpdateSerializer(serializers.Serializer):
         if value:
             return value.strip().lower()
         return value
+
+
+class DispatchFormSerializer(serializers.ModelSerializer):
+    """Serializer for DispatchForm model"""
+    order_details = OrderListSerializer(source='order', read_only=True)
+    created_by_name = serializers.StringRelatedField(source='created_by', read_only=True)
+
+    class Meta:
+        model = DispatchForm
+        fields = (
+            'id',
+            'order',
+            'order_details',
+            'driver_name',
+            'vehicle_number',
+            'staff_name',
+            'created_at',
+            'created_by',
+            'created_by_name'
+        )
+        read_only_fields = ('id', 'created_at', 'created_by')
+
+    def create(self, validated_data):
+        validated_data['created_by'] = self.context['request'].user
+        return super().create(validated_data)
+
     

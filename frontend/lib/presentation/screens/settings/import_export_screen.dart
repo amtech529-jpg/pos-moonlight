@@ -4,6 +4,8 @@ import 'package:frontend/src/providers/customer_provider.dart';
 import 'package:frontend/src/providers/import_export_provider.dart';
 import 'package:frontend/src/providers/product_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ImportExportScreen extends StatefulWidget {
   const ImportExportScreen({super.key});
@@ -78,7 +80,7 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
           controller: _scrollController,
           thumbVisibility: true,
           trackVisibility: true,
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             controller: _scrollController,
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
             child: Column(

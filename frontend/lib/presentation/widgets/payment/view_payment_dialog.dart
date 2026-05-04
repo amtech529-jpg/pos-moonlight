@@ -8,6 +8,8 @@ import '../../../src/theme/app_theme.dart';
 import '../globals/image_upload.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewPaymentDialog extends StatefulWidget {
   final PaymentModel payment;
@@ -92,7 +94,7 @@ class _ViewPaymentDialogState extends State<ViewPaymentDialog> {
           children: [
             _buildHeader(),
             Flexible(
-              child: SingleChildScrollView(
+              child: KeyboardScrollable(
                 child: Padding(padding: EdgeInsets.all(context.cardPadding), child: _isEditing ? _buildEditForm() : _buildViewContent()),
               ),
             ),

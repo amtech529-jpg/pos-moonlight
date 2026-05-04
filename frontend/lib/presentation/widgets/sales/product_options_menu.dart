@@ -6,6 +6,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../../src/models/product/product_model.dart';
 import '../../../src/providers/sales_provider.dart';
 import '../../../src/theme/app_theme.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ProductOptionsMenu extends StatelessWidget {
   final ProductModel product;
@@ -33,7 +35,7 @@ class ProductOptionsMenu extends StatelessWidget {
           topRight: Radius.circular(context.borderRadius('large')),
         ),
       ),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

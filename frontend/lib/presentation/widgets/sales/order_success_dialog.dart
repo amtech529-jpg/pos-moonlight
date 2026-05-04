@@ -9,6 +9,9 @@ import '../../../src/providers/sales_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../src/models/sales/sale_model.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+import '../../../src/providers/auth_provider.dart';
+
 
 class OrderSuccessDialog extends StatefulWidget {
   final SaleModel sale;
@@ -23,6 +26,7 @@ class OrderSuccessDialog extends StatefulWidget {
 }
 
 class _OrderSuccessDialogState extends State<OrderSuccessDialog> with SingleTickerProviderStateMixin {
+  bool get canSeeFinancials => context.watch<AuthProvider>().currentUser?.canSeeFinancials ?? false;
   bool _isPrinting = false;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -122,6 +126,9 @@ class _OrderSuccessDialogState extends State<OrderSuccessDialog> with SingleTick
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = context.watch<AuthProvider>().currentUser;
+    final canSeeFinancials = currentUser?.canSeeFinancials ?? false;
+
     final bool isUpdate = widget.sale.updatedAt.difference(widget.sale.createdAt).inSeconds > 5;
 
     return Dialog(
@@ -161,16 +168,18 @@ class _OrderSuccessDialogState extends State<OrderSuccessDialog> with SingleTick
                 children: [
                   _buildSuccessHeader(context, isUpdate),
                   Flexible(
-                    child: SingleChildScrollView(
+                    child: KeyboardScrollable(
                       padding: EdgeInsets.all(context.cardPadding),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildOrderSummaryCard(context),
                           SizedBox(height: context.cardPadding),
-                          _buildItemsList(context),
-                          SizedBox(height: context.cardPadding),
-                          _buildPaymentInfo(context),
+                          _buildItemsList(context, canSeeFinancials),
+                          if (canSeeFinancials) ...[
+                            SizedBox(height: context.cardPadding),
+                            _buildPaymentInfo(context),
+                          ],
                         ],
                       ),
                     ),
@@ -293,7 +302,7 @@ class _OrderSuccessDialogState extends State<OrderSuccessDialog> with SingleTick
     );
   }
 
-  Widget _buildItemsList(BuildContext context) {
+  Widget _buildItemsList(BuildContext context, bool canSeeFinancials) {
     final sale = widget.sale;
 
     return Column(
@@ -365,14 +374,15 @@ class _OrderSuccessDialogState extends State<OrderSuccessDialog> with SingleTick
                         style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
                     ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        "PKR ${item.lineTotal.toStringAsFixed(0)}",
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                    if (canSeeFinancials)
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          "PKR ${item.lineTotal.toStringAsFixed(0)}",
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               );

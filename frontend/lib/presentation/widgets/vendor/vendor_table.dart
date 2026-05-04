@@ -8,6 +8,8 @@ import '../../../../../src/theme/app_theme.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../screens/vendor_ledger_screen/vendor_ledger.dart';
 import 'vendor_table_helpers.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedVendorTable extends StatefulWidget {
   final Function(VendorModel) onEdit;
@@ -85,7 +87,7 @@ class _EnhancedVendorTableState extends State<EnhancedVendorTable> {
             trackVisibility: true,
             thickness: 8,
             radius: const Radius.circular(8),
-            child: SingleChildScrollView(
+            child: KeyboardScrollable(
               controller: _horizontalController,
               scrollDirection: Axis.horizontal,
               physics: const ClampingScrollPhysics(),

@@ -10,6 +10,8 @@ import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import '../globals/drop_down.dart';
 import '../globals/custom_date_picker.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class AddLaborDialog extends StatefulWidget {
   const AddLaborDialog({super.key});
@@ -646,7 +648,7 @@ class _AddLaborDialogState extends State<AddLaborDialog> with SingleTickerProvid
   }
 
   Widget _buildFormContent() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       controller: _scrollController,
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),

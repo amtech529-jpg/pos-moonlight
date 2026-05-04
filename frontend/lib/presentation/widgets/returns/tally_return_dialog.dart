@@ -8,6 +8,8 @@ import '../../../src/theme/app_theme.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
 import '../globals/text_field.dart';
 import '../globals/drop_down.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class TallyReturnDialog extends StatefulWidget {
   final RentalReturnModel rentalReturn;
@@ -177,7 +179,7 @@ class _TallyReturnDialogState extends State<TallyReturnDialog> with SingleTicker
                     Flexible(
                       child: ScrollConfiguration(
                         behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                        child: SingleChildScrollView(
+                        child: KeyboardScrollable(
                           controller: _scrollController,
                         child: Padding(
                           padding: EdgeInsets.all(context.cardPadding),

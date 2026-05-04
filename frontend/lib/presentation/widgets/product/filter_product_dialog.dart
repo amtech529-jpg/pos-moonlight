@@ -9,6 +9,8 @@ import '../../../src/providers/product_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class FilterProductsDialog extends StatefulWidget {
   const FilterProductsDialog({super.key});
@@ -359,7 +361,7 @@ class _FilterProductsDialogState extends State<FilterProductsDialog>
   Widget _buildContent() {
     final l10n = AppLocalizations.of(context)!;
 
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(

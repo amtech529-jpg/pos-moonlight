@@ -14,6 +14,8 @@ import '../../widgets/product/edit_product_dialog.dart';
 import '../../widgets/product/filter_product_dialog.dart';
 import '../../widgets/product/product_table.dart';
 import '../../widgets/product/view_product_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ProductPage extends StatefulWidget {
   const ProductPage({super.key});
@@ -114,7 +116,7 @@ class _ProductPageState extends State<ProductPage> {
           controller: _scrollController,
           thumbVisibility: true,
           trackVisibility: true,
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             controller: _scrollController,
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
             physics: const AlwaysScrollableScrollPhysics(),

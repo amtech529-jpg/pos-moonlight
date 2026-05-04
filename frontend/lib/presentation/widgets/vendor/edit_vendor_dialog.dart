@@ -9,6 +9,8 @@ import '../../../src/models/vendor/vendor_model.dart';
 import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EnhancedEditVendorDialog extends StatefulWidget {
   final VendorModel vendor;
@@ -546,7 +548,7 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
       trackVisibility: true,
       thickness: 8,
       radius: const Radius.circular(4),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),

@@ -13,6 +13,8 @@ import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import '../globals/custom_date_picker.dart';
 import '../globals/drop_down.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class PremiumDatePicker extends StatefulWidget {
   final String label;
@@ -437,7 +439,7 @@ class _OrderItemFilterDialogState extends State<OrderItemFilterDialog> with Sing
   Widget _buildFilterContent() {
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),
           child: Column(

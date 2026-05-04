@@ -7,6 +7,8 @@ import '../../../l10n/app_localizations.dart';
 import '../globals/text_button.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:provider/provider.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ViewLaborDetailsDialog extends StatefulWidget {
   final LaborModel labor;
@@ -251,7 +253,7 @@ class _ViewLaborDetailsDialogState extends State<ViewLaborDetailsDialog> with Si
   }
 
   Widget _buildContent() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(

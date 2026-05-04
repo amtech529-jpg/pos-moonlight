@@ -6,6 +6,8 @@ import 'package:sizer/sizer.dart';
 import '../../../src/providers/profit_loss/profit_loss_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ProfitLossProductAnalysis extends StatefulWidget {
   const ProfitLossProductAnalysis({super.key});
@@ -540,7 +542,7 @@ class _ProfitLossProductAnalysisState extends State<ProfitLossProductAnalysis> {
   Widget _buildDesktopProductTable(BuildContext context, List<dynamic> products) {
     final l10n = AppLocalizations.of(context)!;
 
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       scrollDirection: Axis.horizontal,
       child: DataTable(
         columnSpacing: context.cardPadding,

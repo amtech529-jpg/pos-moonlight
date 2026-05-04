@@ -5,6 +5,8 @@ import 'package:sizer/sizer.dart';
 import '../../../src/providers/customer_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class CustomerFilterDialog extends StatefulWidget {
   const CustomerFilterDialog({super.key});
@@ -249,7 +251,7 @@ class _CustomerFilterDialogState extends State<CustomerFilterDialog>
   }
 
   Widget _buildContent() {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Padding(
         padding: EdgeInsets.all(context.cardPadding),
         child: Column(

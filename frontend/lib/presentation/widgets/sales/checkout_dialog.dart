@@ -8,6 +8,8 @@ import '../../../src/providers/sales_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../globals/text_field.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 import 'order_success_dialog.dart'; // ✅ Import Success Dialog
 
 class CheckoutDialog extends StatefulWidget {
@@ -408,7 +410,7 @@ class _CheckoutDialogState extends State<CheckoutDialog>
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         padding: EdgeInsets.all(context.cardPadding),
         child: Form(
@@ -436,7 +438,7 @@ class _CheckoutDialogState extends State<CheckoutDialog>
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         controller: _scrollController,
         padding: EdgeInsets.all(context.cardPadding),
         child: Form(

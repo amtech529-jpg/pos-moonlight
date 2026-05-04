@@ -8,6 +8,8 @@ import '../../../src/services/receipt_service.dart';
 import 'create_simple_receipt_dialog.dart';
 import 'view_receipt_dialog.dart';
 import 'edit_receipt_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ReceiptManagementWidget extends StatefulWidget {
   const ReceiptManagementWidget({super.key});
@@ -541,7 +543,7 @@ class _ReceiptManagementWidgetState extends State<ReceiptManagementWidget> {
         title: Text(l10n.receiptDetails(receipt.receiptNumber)),
         content: SizedBox(
           width: 450,
-          child: SingleChildScrollView(
+          child: KeyboardScrollable(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,

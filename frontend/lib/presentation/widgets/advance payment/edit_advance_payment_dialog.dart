@@ -8,6 +8,8 @@ import '../globals/text_button.dart';
 import '../globals/text_field.dart';
 import '../globals/custom_date_picker.dart';
 import '../globals/image_upload_widget.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class EditAdvancePaymentDialog extends StatefulWidget {
   final AdvancePayment payment;
@@ -200,7 +202,7 @@ class _EditAdvancePaymentDialogState extends State<EditAdvancePaymentDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildHeader(),
-            Flexible(child: SingleChildScrollView(child: _buildFormContent())),
+            Flexible(child: KeyboardScrollable(child: _buildFormContent())),
           ],
         ),
       ),

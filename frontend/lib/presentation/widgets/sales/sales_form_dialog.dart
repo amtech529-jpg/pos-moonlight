@@ -9,6 +9,8 @@ import '../../../src/models/sales/request_models.dart';
 import '../../../src/providers/sales_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import 'tax_configuration_widget.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class SalesFormDialog extends StatefulWidget {
   final SaleModel? sale;
@@ -134,7 +136,7 @@ class _SalesFormDialogState extends State<SalesFormDialog> {
       padding: context.pagePadding,
       child: Form(
         key: _formKey,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

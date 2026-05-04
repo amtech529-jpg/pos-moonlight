@@ -5,6 +5,8 @@ import '../../../src/providers/auth_provider.dart';
 import '../../../src/core/app_colors.dart';
 import '../../../src/core/app_images.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -76,7 +78,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Center(
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
           child: Container(
             width: screenWidth > 600 ? formWidth : screenWidth,

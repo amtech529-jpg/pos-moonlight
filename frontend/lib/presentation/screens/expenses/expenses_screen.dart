@@ -12,6 +12,8 @@ import '../../widgets/expenses/add_expense_dialog.dart';
 import '../../widgets/expenses/edit_expense_dialog.dart';
 import '../../widgets/expenses/delete_expense_dialog.dart';
 import '../../widgets/expenses/view_expense_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 
 class ExpensesPage extends StatefulWidget {
@@ -61,7 +63,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
           child: Column(

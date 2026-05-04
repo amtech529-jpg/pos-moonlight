@@ -6,6 +6,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import '../../../src/config/api_config.dart';
 import 'dart:io';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class BackupSecurityScreen extends StatefulWidget {
   const BackupSecurityScreen({super.key});
@@ -88,7 +90,7 @@ class _BackupSecurityScreenState extends State<BackupSecurityScreen> {
               ),
               content: SizedBox(
                 width: 450, // Force a bit more width
-                child: SingleChildScrollView(
+                child: KeyboardScrollable(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -323,7 +325,7 @@ class _BackupSecurityScreenState extends State<BackupSecurityScreen> {
                   ],
                 ),
               ),
-              content: SingleChildScrollView(
+              content: KeyboardScrollable(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -638,7 +640,7 @@ class _BackupSecurityScreenState extends State<BackupSecurityScreen> {
         controller: _scrollController,
         thumbVisibility: true,
         trackVisibility: true,
-        child: SingleChildScrollView(
+        child: KeyboardScrollable(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
           child: Column(

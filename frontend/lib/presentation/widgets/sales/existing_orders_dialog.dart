@@ -5,6 +5,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../../src/models/product/product_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ExistingOrdersDialog extends StatefulWidget {
   final ProductModel product;
@@ -120,7 +122,7 @@ class _ExistingOrdersDialogState extends State<ExistingOrdersDialog> {
             ),
 
             Flexible(
-              child: SingleChildScrollView(
+              child: KeyboardScrollable(
                 padding: EdgeInsets.all(context.cardPadding),
                 child: Column(children: existingOrders.map((order) => _buildOrderCard(order)).toList()),
               ),

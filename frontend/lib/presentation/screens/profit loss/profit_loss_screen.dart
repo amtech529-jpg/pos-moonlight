@@ -11,6 +11,8 @@ import '../../widgets/profit loss/profit_loss_dashboard_section.dart';
 import '../../widgets/profit loss/profit_loss_product_analysis.dart';
 import '../../widgets/profit loss/profit_loss_calculation_details.dart';
 import '../../widgets/profit loss/profit_loss_export_dialog.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class ProfitLossPage extends StatefulWidget {
   const ProfitLossPage({super.key});
@@ -489,7 +491,7 @@ class _ProfitLossPageState extends State<ProfitLossPage> with SingleTickerProvid
   }
 
   Widget _buildOverviewTab(ProfitLossProvider provider) {
-    return SingleChildScrollView(
+    return KeyboardScrollable(
       child: Column(
         children: [
           ProfitLossMetricsSection(),
@@ -501,15 +503,15 @@ class _ProfitLossPageState extends State<ProfitLossPage> with SingleTickerProvid
   }
 
   Widget _buildDashboardTab(ProfitLossProvider provider) {
-    return SingleChildScrollView(child: Column(children: [ProfitLossDashboardSection()]));
+    return KeyboardScrollable(child: Column(children: [ProfitLossDashboardSection()]));
   }
 
   Widget _buildProductsTab(ProfitLossProvider provider) {
-    return SingleChildScrollView(child: Column(children: [ProfitLossProductAnalysis()]));
+    return KeyboardScrollable(child: Column(children: [ProfitLossProductAnalysis()]));
   }
 
   Widget _buildDetailsTab(ProfitLossProvider provider) {
-    return SingleChildScrollView(child: Column(children: [ProfitLossCalculationDetails()]));
+    return KeyboardScrollable(child: Column(children: [ProfitLossCalculationDetails()]));
   }
 
   Widget _buildExpenseAnalysis(ProfitLossProvider provider) {

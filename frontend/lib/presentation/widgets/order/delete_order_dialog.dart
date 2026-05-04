@@ -7,6 +7,8 @@ import '../../../src/models/order/order_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../globals/text_button.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class DeleteOrderDialog extends StatefulWidget {
   final OrderModel order;
@@ -235,7 +237,7 @@ class _DeleteOrderDialogState extends State<DeleteOrderDialog> with SingleTicker
   Widget _buildContent() {
     return ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(scrollbars: true),
-      child: SingleChildScrollView(
+      child: KeyboardScrollable(
         child: Padding(
           padding: EdgeInsets.all(context.cardPadding),
           child: Column(

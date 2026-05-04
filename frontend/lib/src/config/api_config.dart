@@ -359,6 +359,13 @@ class ApiConfig {
   static String updateOrderCustomerInfo(String id) =>
       '/orders/$id/customer-info/';
   static String duplicateOrder(String id) => '/orders/$id/duplicate/';
+  static String generateInvoice(String id) => '/orders/$id/invoice/';
+  static const String ordersBase = '/orders/';
+
+  // Dispatch forms (Gate Pass)
+
+  static const String listDispatchForms = '/orders/dispatches/';
+  static const String createDispatchForm = '/orders/dispatches/create/';
 
   static const String orderItems = '/order-items/';
   static const String createOrderItem = '/order-items/create/';

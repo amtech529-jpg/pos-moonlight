@@ -6,6 +6,8 @@ import '../../../src/models/payable/payable_model.dart';
 import '../../../src/providers/payables_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
+import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+
 
 class PayablesTable extends StatefulWidget {
   final Function(Payable) onEdit;
@@ -97,7 +99,7 @@ class _PayablesTableState extends State<PayablesTable> {
                     topRight: Radius.circular(context.borderRadius('large')),
                   ),
                 ),
-                child: SingleChildScrollView(
+                child: KeyboardScrollable(
                   controller: _headerHorizontalController,
                   scrollDirection: Axis.horizontal,
                   physics: const ClampingScrollPhysics(),
@@ -115,14 +117,14 @@ class _PayablesTableState extends State<PayablesTable> {
                   controller: _verticalController,
                   thumbVisibility: true,
                   trackVisibility: true,
-                  child: SingleChildScrollView(
+                  child: KeyboardScrollable(
                     controller: _verticalController,
                     scrollDirection: Axis.vertical,
                     child: Scrollbar(
                       controller: _contentHorizontalController,
                       thumbVisibility: true,
                       // Removed specific notification predicate to ensure default behavior works
-                      child: SingleChildScrollView(
+                      child: KeyboardScrollable(
                         controller: _contentHorizontalController,
                         scrollDirection: Axis.horizontal,
                         physics: const ClampingScrollPhysics(),

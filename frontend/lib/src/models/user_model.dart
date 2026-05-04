@@ -108,6 +108,13 @@ class UserModel {
     }
   }
 
+  /// Only Admin and Accountant can see financial data (amounts, payments etc.)
+  bool get canSeeFinancials {
+    if (isSuperuser) return true;
+    final role = roleName?.toLowerCase() ?? '';
+    return role == 'admin' || role == 'accountant';
+  }
+
   @override
   String toString() {
     return 'UserModel(id: $id, fullName: $fullName, email: $email, roleName: $roleName, isActive: $isActive)';
