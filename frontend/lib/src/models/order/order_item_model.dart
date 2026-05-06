@@ -62,7 +62,7 @@ class OrderItemModel {
     return OrderItemModel(
       id: json['id']?.toString() ?? '',
       orderId: (json['order_id'] ?? json['orderId'])?.toString() ?? '',
-      productId: (json['product_id'] ?? json['productId'])?.toString() ?? '',
+      productId: _resolveProductId(json),
       productName: (json['product_name'] ?? json['productName'])?.toString() ?? '',
       quantity: json['quantity'] as int? ?? 0,
       rate: _parseDouble(json['rate'] ?? json['unit_price']),
@@ -125,6 +125,20 @@ class OrderItemModel {
       'partner_rate': partnerRate,
       'partner_quantity': partnerQuantity,
     };
+  }
+
+  static String _resolveProductId(Map<String, dynamic> json) {
+    // Try common keys
+    final id = json['product_id'] ?? json['productId'] ?? json['product'];
+    
+    if (id == null) return '';
+    
+    // If it's a map (nested product), get the id
+    if (id is Map) {
+      return id['id']?.toString() ?? '';
+    }
+    
+    return id.toString();
   }
 
   // Helper method to parse double from string or number

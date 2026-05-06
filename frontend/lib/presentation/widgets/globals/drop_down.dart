@@ -7,8 +7,9 @@ import '../../../src/utils/responsive_breakpoints.dart';
 class DropdownItem<T> {
   final T value;
   final String label;
+  final String? subtitle;
 
-  DropdownItem({required this.value, required this.label});
+  DropdownItem({required this.value, required this.label, this.subtitle});
 }
 
 class PremiumDropdownField<T> extends StatefulWidget {
@@ -157,13 +158,31 @@ class _PremiumDropdownFieldState<T> extends State<PremiumDropdownField<T>>
         items: widget.items.map((item) {
           return PopupMenuItem<T>(
             value: item.value,
-            child: Text(
-              item.label,
-              style: TextStyle(
-                fontSize: widget.fontSize ?? 14,
-                fontWeight: FontWeight.w400,
-                color: Colors.black87,
-              ),
+            height: item.subtitle != null ? 56 : 48,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  item.label,
+                  style: TextStyle(
+                    fontSize: widget.fontSize ?? 14,
+                    fontWeight: item.subtitle != null ? FontWeight.w600 : FontWeight.w400,
+                    color: Colors.black87,
+                  ),
+                ),
+                if (item.subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    item.subtitle!,
+                    style: TextStyle(
+                      fontSize: (widget.fontSize ?? 14) - 2,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ],
             ),
           );
         }).toList(),

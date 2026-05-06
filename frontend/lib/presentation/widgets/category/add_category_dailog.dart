@@ -72,14 +72,16 @@ class _AddCategoryDialogState extends State<AddCategoryDialog>
     if (_formKey.currentState?.validate() ?? false) {
       final provider = Provider.of<CategoryProvider>(context, listen: false);
 
-      await provider.addCategory(
+      final Category? result = await provider.addCategory(
         _nameController.text.trim(),
         _descriptionController.text.trim(),
       );
 
       if (mounted) {
-        _showSuccessSnackbar();
-        Navigator.of(context).pop();
+        if (result != null) {
+          _showSuccessSnackbar();
+          Navigator.of(context).pop(result);
+        }
       }
     }
   }

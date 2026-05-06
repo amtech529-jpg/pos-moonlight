@@ -200,7 +200,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get category => 'Category';
 
   @override
-  String get vendor => 'Company Name';
+  String get vendor => 'Vendor';
+
+  @override
+  String get companyName => 'Company Name';
 
   @override
   String get zakat => 'Zakat';
@@ -362,7 +365,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resetAll => 'Reset All';
 
   @override
-  String get unknownVendor => 'Unknown Company';
+  String get unknownVendor => 'Unknown Vendor';
 
   @override
   String get deletePurchaseConfirm => 'Are you sure you want to delete this purchase?';

@@ -14,6 +14,8 @@ import '../../../src/services/category_service.dart';
 import '../../../src/models/category/category_model.dart';
 import '../../../src/models/product/product_model.dart';
 import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
+import '../category/add_category_dailog.dart';
+import '../../../src/providers/category_provider.dart';
 
 
 class AddProductDialog extends StatefulWidget {
@@ -45,24 +47,29 @@ class _AddProductDialogState extends State<AddProductDialog>
   final _categoryService = CategoryService();
   String? _selectedCategoryId;
   String _categorySearchText = '';
+  List<CategoryModel> _categorySearchResults = [];
   final _categoryController = TextEditingController();
   // Extra optional fields
   final _serialNumberController = TextEditingController();
   final _warehouseLocationController = TextEditingController();
   
   // Focus Nodes
-  late FocusNode _nameFocusNode;
-  late FocusNode _detailFocusNode;
-  late FocusNode _priceFocusNode;
-  late FocusNode _quantityFocusNode;
-  late FocusNode _minStockFocusNode;
-  late FocusNode _categoryFocusNode;
-  late FocusNode _serialFocusNode;
-  late FocusNode _locationFocusNode;
-  late FocusNode _saveFocusNode;
-  late FocusNode _rentalFocusNode;
-  late FocusNode _consumableFocusNode;
-  late FocusNode _pricingFocusNode;
+  final FocusNode _nameFocusNode = FocusNode();
+  final FocusNode _detailFocusNode = FocusNode();
+  final FocusNode _priceFocusNode = FocusNode();
+  final FocusNode _quantityFocusNode = FocusNode();
+  final FocusNode _minStockFocusNode = FocusNode();
+  final FocusNode _categoryFocusNode = FocusNode();
+  final FocusNode _serialFocusNode = FocusNode();
+  final FocusNode _locationFocusNode = FocusNode();
+  final FocusNode _saveFocusNode = FocusNode();
+  final FocusNode _rentalFocusNode = FocusNode();
+  final FocusNode _consumableFocusNode = FocusNode();
+  final FocusNode _pricingFocusNode = FocusNode();
+  final FocusNode _addCategoryButtonFocusNode = FocusNode();
+  final FocusNode _optionsFocusNode = FocusNode();
+  final List<FocusNode> _categoryResultFocusNodes = [];
+  final ScrollController _categoryResultScrollController = ScrollController();
 
   List<String> _selectedPieces = [];
   late bool _isRental;
@@ -109,37 +116,6 @@ class _AddProductDialogState extends State<AddProductDialog>
     );
 
     _animationController.forward();
-
-    _nameFocusNode = FocusNode();
-    _detailFocusNode = FocusNode();
-    _priceFocusNode = FocusNode();
-    _quantityFocusNode = FocusNode();
-    _minStockFocusNode = FocusNode();
-    _categoryFocusNode = FocusNode();
-    _serialFocusNode = FocusNode();
-    _locationFocusNode = FocusNode();
-    _saveFocusNode = FocusNode();
-    _rentalFocusNode = FocusNode();
-    _consumableFocusNode = FocusNode();
-    _pricingFocusNode = FocusNode();
-
-    // Add listeners to ensure UI updates when focus changes (fixes "border remains" issue)
-    void focusListener() {
-      if (mounted) setState(() {});
-    }
-
-    _nameFocusNode.addListener(focusListener);
-    _detailFocusNode.addListener(focusListener);
-    _priceFocusNode.addListener(focusListener);
-    _quantityFocusNode.addListener(focusListener);
-    _minStockFocusNode.addListener(focusListener);
-    _categoryFocusNode.addListener(focusListener);
-    _serialFocusNode.addListener(focusListener);
-    _locationFocusNode.addListener(focusListener);
-    _saveFocusNode.addListener(focusListener);
-    _rentalFocusNode.addListener(focusListener);
-    _consumableFocusNode.addListener(focusListener);
-    _pricingFocusNode.addListener(focusListener);
     
     // Load categories to ensure they are available in the dropdown
     Future.microtask(() {
@@ -147,29 +123,17 @@ class _AddProductDialogState extends State<AddProductDialog>
         context.read<ProductProvider>().loadCategories();
       }
     });
-
-    _setupKeyboardNavigation();
   }
 
-  void _setupKeyboardNavigation() {
-    // Backspace navigation helper
-    KeyEventResult handleBack(TextEditingController controller, FocusNode previous, KeyEvent event) {
-      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.backspace) {
-        if (controller.text.isEmpty || (controller.text == '0' || controller.text == '5')) {
-          previous.requestFocus();
-          return KeyEventResult.handled;
-        }
+  // Helper for backspace navigation
+  KeyEventResult _handleBack(TextEditingController controller, FocusNode previous, KeyEvent event) {
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.backspace) {
+      if (controller.text.isEmpty || (controller.text == '0' || controller.text == '5')) {
+        previous.requestFocus();
+        return KeyEventResult.handled;
       }
-      return KeyEventResult.ignored;
     }
-
-    _detailFocusNode.onKeyEvent = (node, event) => handleBack(_detailController, _nameFocusNode, event);
-    _priceFocusNode.onKeyEvent = (node, event) => handleBack(_priceController, _detailFocusNode, event);
-    _quantityFocusNode.onKeyEvent = (node, event) => handleBack(_quantityController, _priceFocusNode, event);
-    _minStockFocusNode.onKeyEvent = (node, event) => handleBack(_minStockController, _quantityFocusNode, event);
-    _categoryFocusNode.onKeyEvent = (node, event) => handleBack(_categoryController, _minStockFocusNode, event);
-    _serialFocusNode.onKeyEvent = (node, event) => handleBack(_serialNumberController, _categoryFocusNode, event);
-    _locationFocusNode.onKeyEvent = (node, event) => handleBack(_warehouseLocationController, _serialFocusNode, event);
+    return KeyEventResult.ignored;
   }
 
   @override
@@ -195,8 +159,40 @@ class _AddProductDialogState extends State<AddProductDialog>
     _rentalFocusNode.dispose();
     _consumableFocusNode.dispose();
     _pricingFocusNode.dispose();
+    _addCategoryButtonFocusNode.dispose();
+    _optionsFocusNode.dispose();
+    _categoryController.dispose();
+    for (var node in _categoryResultFocusNodes) {
+      node.dispose();
+    }
+    _categoryResultScrollController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _searchCategories(String query) {
+    final provider = context.read<ProductProvider>();
+    final categories = provider.categories;
+    
+    setState(() {
+      _categorySearchText = query;
+      if (query.isEmpty) {
+        _categorySearchResults = categories;
+      } else {
+        _categorySearchResults = categories.where((c) => 
+          c.name.toLowerCase().contains(query.toLowerCase())).toList();
+      }
+    });
+  }
+
+  void _selectCategory(CategoryModel category) {
+    setState(() {
+      _selectedCategoryId = category.id;
+      _categorySearchText = category.name;
+      _categoryController.text = category.name;
+      _categorySearchResults = [];
+    });
+    _saveFocusNode.requestFocus();
   }
 
   void _handleSubmit() async {
@@ -268,6 +264,26 @@ class _AddProductDialogState extends State<AddProductDialog>
           );
         }
       }
+    }
+  }
+
+  Future<void> _showAddCategoryDialog() async {
+    final Category? newCat = await showDialog<Category?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AddCategoryDialog(),
+    );
+
+    if (newCat != null && mounted) {
+      // Refresh categories in product provider (which uses CategoryModel list)
+      await context.read<ProductProvider>().loadCategories();
+      setState(() {
+        _selectedCategoryId = newCat.id;
+        _categoryController.text = newCat.name;
+        _categorySearchText = newCat.name;
+      });
+      // Move focus to save button after adding
+      _saveFocusNode.requestFocus();
     }
   }
 
@@ -527,7 +543,7 @@ class _AddProductDialogState extends State<AddProductDialog>
           children: [
             Consumer<ProductProvider>(
               builder: (context, provider, child) {
-                return Autocomplete<ProductModel>(
+                return RawAutocomplete<ProductModel>(
                   focusNode: _nameFocusNode,
                   textEditingController: _nameController,
                   optionsBuilder: (TextEditingValue textEditingValue) {
@@ -554,7 +570,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                       label: l10n.productName,
                       hint: l10n.enterProductName,
                       controller: controller,
-                      focusNode: focusNode,
+                      focusNode: _nameFocusNode,
                       prefixIcon: Icons.label_outlined,
                       onSubmitted: (_) {
                         onFieldSubmitted();
@@ -604,6 +620,7 @@ class _AddProductDialogState extends State<AddProductDialog>
               prefixIcon: Icons.description_outlined,
               maxLines: 3,
               onSubmitted: (_) => _priceFocusNode.requestFocus(),
+              onKeyEvent: (node, event) => _handleBack(_detailController, _nameFocusNode, event),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return '${l10n.pleaseEnter} ${l10n.product} ${l10n.details}';
@@ -622,6 +639,7 @@ class _AddProductDialogState extends State<AddProductDialog>
               keyboardType: TextInputType.number,
               selectAllOnFocus: true,
               onSubmitted: (_) => _quantityFocusNode.requestFocus(),
+              onKeyEvent: (node, event) => _handleBack(_priceController, _detailFocusNode, event),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
                   return '${l10n.pleaseEnter} ${l10n.price}';
@@ -647,6 +665,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                     prefixIcon: Icons.inventory_2_outlined,
                     keyboardType: TextInputType.number,
                     onSubmitted: (_) => _pricingFocusNode.requestFocus(),
+                    onKeyEvent: (node, event) => _handleBack(_quantityController, _priceFocusNode, event),
                     validator: (value) {
                       if (value?.isEmpty ?? true) {
                         return '${l10n.pleaseEnter} ${l10n.quantity}';
@@ -886,6 +905,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                     focusNode: _serialFocusNode,
                     prefixIcon: Icons.qr_code_scanner_rounded,
                     onSubmitted: (_) => _locationFocusNode.requestFocus(),
+                    onKeyEvent: (node, event) => _handleBack(_serialNumberController, _categoryFocusNode, event),
                   ),
                 ),
                 SizedBox(width: context.cardPadding),
@@ -897,6 +917,7 @@ class _AddProductDialogState extends State<AddProductDialog>
                     focusNode: _locationFocusNode,
                     prefixIcon: Icons.location_on_outlined,
                     onSubmitted: (_) => _minStockFocusNode.requestFocus(),
+                    onKeyEvent: (node, event) => _handleBack(_warehouseLocationController, _serialFocusNode, event),
                   ),
                 ),
               ],
@@ -912,141 +933,76 @@ class _AddProductDialogState extends State<AddProductDialog>
               selectAllOnFocus: true,
               prefixIcon: Icons.warning_amber_rounded,
               keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.next,
               onSubmitted: (_) => _categoryFocusNode.requestFocus(),
+              onKeyEvent: (node, event) => _handleBack(_minStockController, _quantityFocusNode, event),
             ),
-            SizedBox(height: context.cardPadding),
-
-            // Category Selection
-            // Category Selection (Autocomplete)
             Consumer<ProductProvider>(
               builder: (context, provider, child) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Autocomplete<CategoryModel>(
-                      focusNode: _categoryFocusNode,
-                      textEditingController: _categoryController,
-                      optionsBuilder: (TextEditingValue textEditingValue) {
-                        _categorySearchText = textEditingValue.text;
-                        if (textEditingValue.text.isEmpty) {
-                          return provider.categories;
-                        }
-                        return provider.categories.where((CategoryModel option) {
-                          return option.name.toLowerCase().contains(textEditingValue.text.toLowerCase());
-                        });
-                      },
-                      displayStringForOption: (CategoryModel option) => option.name,
-                      onSelected: (CategoryModel selection) {
-                        setState(() {
-                          _selectedCategoryId = selection.id;
-                          _categorySearchText = selection.name;
-                          _categoryController.text = selection.name;
-                        });
-                        _saveFocusNode.requestFocus();
-                      },
-                      fieldViewBuilder: (BuildContext context, TextEditingController controller, FocusNode focusNode, VoidCallback onFieldSubmitted) {
-                         return PremiumTextField(
-                          controller: controller,
-                          focusNode: focusNode,
-                          label: 'Category',
-                          hint: 'Search or select category',
-                          prefixIcon: Icons.category_outlined,
-                          onTap: () {
-                            // Force suggestions to appear by triggering a change if empty
-                            if (controller.text.isEmpty) {
-                              controller.text = ' ';
-                              controller.text = '';
-                            }
-                          },
-                          onSubmitted: (_) {
-                            onFieldSubmitted();
-                            // FIX: From category move to the SAVE button focus node
-                            _saveFocusNode.requestFocus();
-                          },
-                          containerDecoration: focusNode.hasFocus ? BoxDecoration(
-                            borderRadius: BorderRadius.circular(context.borderRadius()),
-                            border: Border.all(color: AppTheme.accentGold, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.accentGold.withOpacity(0.3),
-                                blurRadius: 8,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ) : null,
-                        );
-                      },
-                      optionsViewBuilder: (context, onSelected, options) {
-                        return Align(
-                          alignment: Alignment.topLeft,
-                          child: Theme(
-                            data: ThemeData(
-                              brightness: Brightness.light,
-                              textTheme: const TextTheme(
-                                bodyLarge: TextStyle(color: Colors.black87),
-                                bodyMedium: TextStyle(color: Colors.black87),
-                                titleMedium: TextStyle(color: Colors.black87),
-                              ),
-                            ),
-                            child: Material(
-                              elevation: 8.0,
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxWidth: MediaQuery.of(context).size.width * 0.4,
-                                  maxHeight: 250,
-                                ),
-                                child: ListView.builder(
-                                  padding: EdgeInsets.zero,
-                                  shrinkWrap: true,
-                                  itemCount: options.length,
-                                  itemBuilder: (context, index) {
-                                    final option = options.elementAt(index);
-                                    return InkWell(
-                                      onTap: () => onSelected(option),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                        decoration: BoxDecoration(
-                                          border: index != options.length - 1
-                                              ? Border(bottom: BorderSide(color: Colors.grey.shade100))
-                                              : null,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Icon(Icons.category_outlined, size: 16, color: Colors.grey),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                option.name,
-                                                style: const TextStyle(
-                                                  color: Colors.black87,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: PremiumTextField(
+                            controller: _categoryController,
+                            focusNode: _categoryFocusNode,
+                            label: 'Category',
+                            hint: 'Search or select category',
+                            prefixIcon: Icons.category_outlined,
+                            textInputAction: TextInputAction.next,
+                            onChanged: _searchCategories,
+                            onTap: () {
+                              if (_categoryController.text.isEmpty) {
+                                _searchCategories('');
+                              }
+                            },
+                            onKeyEvent: (node, event) {
+                              if (event is KeyDownEvent) {
+                                if (event.logicalKey == LogicalKeyboardKey.arrowDown || 
+                                    (event.logicalKey == LogicalKeyboardKey.tab && !HardwareKeyboard.instance.isShiftPressed)) {
+                                  if (_categoryResultFocusNodes.isNotEmpty) {
+                                    _categoryResultFocusNodes[0].requestFocus();
+                                    return KeyEventResult.handled;
+                                  }
+                                }
+                              }
+                              return KeyEventResult.ignored;
+                            },
+                            onSubmitted: (_) {
+                              if (_categorySearchResults.isNotEmpty) {
+                                _selectCategory(_categorySearchResults[0]);
+                              } else {
+                                _saveFocusNode.requestFocus();
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Tooltip(
+                            message: 'Add New Category',
+                            child: IconButton.filled(
+                              focusNode: _addCategoryButtonFocusNode,
+                              onPressed: _showAddCategoryDialog,
+                              icon: const Icon(Icons.add_rounded),
+                              style: IconButton.styleFrom(
+                                backgroundColor: AppTheme.primaryMaroon,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                             ),
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    // Removed auto-creation text as strict dropdown selection is now enforced.
+                    if (_categorySearchResults.isNotEmpty) _buildCategoryResults(),
                   ],
                 );
               },
             ),
-            SizedBox(height: context.cardPadding),
-            SizedBox(height: context.cardPadding),
-
             SizedBox(height: context.cardPadding),
 
             ResponsiveBreakpoints.responsive(
@@ -1126,6 +1082,114 @@ class _AddProductDialogState extends State<AddProductDialog>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCategoryResults() {
+    // Ensure focus nodes match options length
+    if (_categoryResultFocusNodes.length != _categorySearchResults.length) {
+      for (var node in _categoryResultFocusNodes) node.dispose();
+      _categoryResultFocusNodes.clear();
+      _categoryResultFocusNodes.addAll(List.generate(_categorySearchResults.length, (index) => FocusNode()));
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black26),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+      ),
+      constraints: const BoxConstraints(maxHeight: 200),
+      child: SingleChildScrollView(
+        controller: _categoryResultScrollController,
+        child: Column(
+          children: _categorySearchResults.asMap().entries.map((entry) {
+            final index = entry.key;
+            final category = entry.value;
+            final focusNode = _categoryResultFocusNodes[index];
+
+            return Focus(
+              focusNode: focusNode,
+              onFocusChange: (focused) {
+                if (focused) {
+                  Scrollable.ensureVisible(context, 
+                    alignment: 0.5, 
+                    duration: const Duration(milliseconds: 200),
+                  );
+                }
+                setState(() {});
+              },
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent) {
+                  if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                    if (index < _categoryResultFocusNodes.length - 1) {
+                      _categoryResultFocusNodes[index + 1].requestFocus();
+                      return KeyEventResult.handled;
+                    }
+                  } else if (event.logicalKey == LogicalKeyboardKey.tab) {
+                    if (!HardwareKeyboard.instance.isShiftPressed) {
+                      if (index < _categoryResultFocusNodes.length - 1) {
+                        _categoryResultFocusNodes[index + 1].requestFocus();
+                        return KeyEventResult.handled;
+                      } else {
+                        // Move to next field outside list
+                        _addCategoryButtonFocusNode.requestFocus();
+                        return KeyEventResult.handled;
+                      }
+                    } else {
+                      if (index > 0) {
+                        _categoryResultFocusNodes[index - 1].requestFocus();
+                        return KeyEventResult.handled;
+                      } else {
+                        _categoryFocusNode.requestFocus();
+                        return KeyEventResult.handled;
+                      }
+                    }
+                  } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+                    _selectCategory(category);
+                    return KeyEventResult.handled;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
+              child: InkWell(
+                onTap: () => _selectCategory(category),
+                canRequestFocus: false,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: focusNode.hasFocus ? AppTheme.primaryMaroon.withOpacity(0.1) : null,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.category_outlined,
+                        size: 16,
+                        color: focusNode.hasFocus ? AppTheme.primaryMaroon : Colors.grey,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          category.name,
+                          style: TextStyle(
+                            color: focusNode.hasFocus ? AppTheme.primaryMaroon : Colors.black87,
+                            fontSize: 14,
+                            fontWeight: focusNode.hasFocus ? FontWeight.w600 : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 }

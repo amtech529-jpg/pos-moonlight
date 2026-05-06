@@ -291,7 +291,7 @@ class CategoryProvider extends ChangeNotifier {
   }
 
   /// Add new category
-  Future<bool> addCategory(String name, String description) async {
+  Future<Category?> addCategory(String name, String description) async {
     _isLoading = true;
     notifyListeners();
 
@@ -312,20 +312,20 @@ class CategoryProvider extends ChangeNotifier {
 
         _isLoading = false;
         notifyListeners();
-        return true;
+        return newCategory;
       } else {
         _hasError = true;
         _errorMessage = response.message;
         _isLoading = false;
         notifyListeners();
-        return false;
+        return null;
       }
     } catch (e) {
       _hasError = true;
       _errorMessage = 'Failed to create category: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
-      return false;
+      return null;
     }
   }
 
@@ -629,9 +629,9 @@ class CategoryProvider extends ChangeNotifier {
   }
 
   /// Duplicate category
-  Future<bool> duplicateCategory(String id) async {
+  Future<Category?> duplicateCategory(String id) async {
     final originalCategory = getCategoryById(id);
-    if (originalCategory == null) return false;
+    if (originalCategory == null) return null;
 
     return await addCategory(
       '${originalCategory.name} (Copy)',

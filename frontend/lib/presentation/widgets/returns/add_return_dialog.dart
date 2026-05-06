@@ -9,7 +9,9 @@ import '../../../src/models/order/order_model.dart';
 import '../../../src/models/order/order_item_model.dart';
 import '../../../src/services/order_service.dart';
 import '../../../src/services/order_item_service.dart';
+import '../../../src/services/dispatch_service.dart';
 import '../../../src/models/order/order_api_responses.dart';
+import '../../../src/models/dispatch/dispatch_form_model.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
 import '../globals/text_field.dart';
@@ -51,6 +53,7 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
   final _scrollController = ScrollController();
   final OrderService _orderService = OrderService();
   final OrderItemService _orderItemService = OrderItemService();
+  final DispatchService _dispatchService = DispatchService();
 
   // Controllers
   final _notesController = TextEditingController();
@@ -58,8 +61,10 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
   // Form state
   Customer? _selectedCustomer;
   OrderModel? _selectedOrder;
+  DispatchFormModel? _selectedStandaloneDispatch;
   String _responsibility = 'NONE';
   List<OrderModel> _customerOrders = [];
+  List<DispatchFormModel> _standaloneDispatches = [];
   List<ReturnItemInput> _returnItems = [];
   bool _isLoadingOrders = false;
   bool _isLoadingItems = false;
@@ -108,8 +113,10 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
     setState(() {
       _selectedCustomer = customer;
       _selectedOrder = null;
+      _selectedStandaloneDispatch = null;
       _returnItems = [];
       _customerOrders = [];
+      _standaloneDispatches = [];
       _itemLoadError = null;
     });
 
@@ -139,16 +146,26 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
 
       if (response.success && response.data != null) {
         setState(() {
-          // Only allow orders that have been DELIVERED to be processed for return.
-          // Confirmed/Ready orders must be delivered first, or Cancelled if not going out.
           _customerOrders = response.data!.orders.where((o) => 
             o.status == OrderStatus.DELIVERED && 
             o.returnStatus != 'COMPLETE'
           ).toList();
         });
       }
+
+      // Also load standalone dispatches for this customer
+      final dispatchResponse = await _dispatchService.getDispatchFormsForCustomer(
+        customerId: customerId,
+        standaloneOnly: true,
+      );
+
+      if (dispatchResponse.success && dispatchResponse.data != null) {
+        setState(() {
+          _standaloneDispatches = dispatchResponse.data!;
+        });
+      }
     } catch (e) {
-      debugPrint('Error loading orders: $e');
+      debugPrint('Error loading customer data: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -161,12 +178,77 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
   void _handleOrderChange(OrderModel? order) {
     setState(() {
       _selectedOrder = order;
+      _selectedStandaloneDispatch = null; // Clear standalone if order picked
       _returnItems = [];
       _itemLoadError = null;
     });
 
     if (order != null) {
       _loadOrderItems(order.id);
+    }
+  }
+
+  void _handleStandaloneDispatchChange(DispatchFormModel? dispatch) {
+    setState(() {
+      _selectedStandaloneDispatch = dispatch;
+      _selectedOrder = null; // Clear order if standalone picked
+      _returnItems = [];
+      _itemLoadError = null;
+    });
+
+    if (dispatch != null) {
+      _loadStandaloneDispatchItems(dispatch);
+    }
+  }
+
+  Future<void> _loadStandaloneDispatchItems(DispatchFormModel dispatch) async {
+    setState(() {
+      _isLoadingItems = true;
+      _itemLoadError = null;
+    });
+
+    try {
+      final List<ReturnItemInput> finalItems = [];
+      for (final item in dispatch.items) {
+        if (item.productId.isEmpty) continue;
+        
+        final syntheticItem = OrderItemModel(
+          id: 'dispatch_${item.id}',
+          orderId: dispatch.orderId ?? 'STANDALONE',
+          productId: item.productId,
+          productName: item.productName,
+          quantity: item.quantity,
+          rate: 0.0,
+          days: 1,
+          lineTotal: 0.0,
+          totalValue: 0.0,
+          isActive: true,
+          rentedFromPartner: false,
+          customizationNotes: '',
+          createdAt: DateTime.now(),
+          productDisplayInfo: const {},
+        );
+        finalItems.add(ReturnItemInput(
+          originalItem: syntheticItem,
+          returned: 0,
+          damaged: 0,
+          missing: 0,
+        ));
+      }
+
+      setState(() {
+        _returnItems = finalItems;
+      });
+    } catch (e) {
+      setState(() {
+        _itemLoadError = e.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingItems = false;
+        });
+      }
     }
   }
 
@@ -183,16 +265,95 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
       );
 
       if (response.success && response.data != null) {
-        setState(() {
-          _returnItems = response.data!.orderItems.map((item) {
-            return ReturnItemInput(
-              originalItem: item,
-              returned: 0, // Default to 0 instead of item.quantity to prevent accidental double-returns
+        final orderItems = response.data!.orderItems.map((item) {
+          return ReturnItemInput(
+            originalItem: item,
+            returned: 0,
+            damaged: 0,
+            missing: 0,
+          );
+        }).toList();
+
+        // Also load dispatch EXTRA items for this order
+        final dispatchResponse = await _dispatchService.getDispatchFormsForOrder(orderId);
+
+        if (dispatchResponse.success && dispatchResponse.data != null) {
+          final List<DispatchFormModel> dispatches = dispatchResponse.data!;
+          
+          // Map to track total dispatched quantity per product
+          // Key: productId, Value: {name: String, totalQty: int, isExtra: bool}
+          final Map<String, _DispatchSummary> dispatchMap = {};
+
+          for (final form in dispatches) {
+            for (final item in form.items) {
+              if (item.productId.isEmpty) continue;
+              
+              if (!dispatchMap.containsKey(item.productId)) {
+                dispatchMap[item.productId] = _DispatchSummary(
+                  name: item.productName,
+                  totalQty: 0,
+                );
+              }
+              dispatchMap[item.productId]!.totalQty += item.quantity.toInt();
+            }
+          }
+
+          // Now merge with order items
+          final List<ReturnItemInput> finalItems = [];
+          final Set<String> processedProductIds = {};
+
+          for (final oItem in orderItems) {
+            final pId = oItem.originalItem.productId;
+            processedProductIds.add(pId);
+
+            // Use dispatched quantity if available, otherwise 0 (if never dispatched)
+            final dispatchedQty = dispatchMap[pId]?.totalQty ?? 0;
+            
+            finalItems.add(ReturnItemInput(
+              originalItem: oItem.originalItem.copyWith(quantity: dispatchedQty),
+              returned: 0,
               damaged: 0,
               missing: 0,
-            );
-          }).toList();
-        });
+            ));
+          }
+
+          // Add items that were in dispatches but NOT in the order (Extras)
+          dispatchMap.forEach((pId, summary) {
+            if (!processedProductIds.contains(pId)) {
+              final syntheticItem = OrderItemModel(
+                id: 'extra_$pId',
+                orderId: orderId,
+                productId: pId,
+                productName: '${summary.name} \u2605 Extra',
+                quantity: summary.totalQty,
+                rate: 0.0,
+                days: 1,
+                lineTotal: 0.0,
+                totalValue: 0.0,
+                isActive: true,
+                rentedFromPartner: false,
+                customizationNotes: '',
+                createdAt: DateTime.now(),
+                productDisplayInfo: const {},
+              );
+              finalItems.add(ReturnItemInput(
+                originalItem: syntheticItem,
+                returned: 0,
+                damaged: 0,
+                missing: 0,
+              ));
+            }
+          });
+
+          setState(() {
+            _returnItems = finalItems;
+          });
+        } else {
+          // If no dispatches found, fallback to order items (legacy behavior)
+          setState(() {
+            _returnItems = orderItems;
+          });
+        }
       } else {
         setState(() {
           _itemLoadError = response.message ?? 'Failed to load items';
@@ -210,15 +371,17 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
       }
     }
   }
-
+ 
   void _handleSubmit() async {
     if (_formKey.currentState?.validate() ?? false) {
-      if (_selectedOrder == null) return;
+      if (_selectedOrder == null && _selectedStandaloneDispatch == null) {
+        _showErrorSnackbar('Please select an Order or a Standalone Gate Pass.');
+        return;
+      }
       if (_returnItems.isEmpty) return;
 
       final provider = Provider.of<RentalReturnProvider>(context, listen: false);
-      final l10n = AppLocalizations.of(context)!;
-
+      
       // Validate items total accounted
       for (final item in _returnItems) {
         if (item.totalAccounted > item.originalItem.quantity) {
@@ -230,9 +393,10 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
       // Prepare items data
       final itemsData = _returnItems.map((input) {
         return {
-          'product': input.originalItem.productId,       // May be empty if API didn't return it
-          'order_item_id': input.originalItem.id,         // Fallback 1: backend resolves product from this
-          'product_name': input.originalItem.productName, // Fallback 2: backend looks up by name
+          'product': input.originalItem.productId,
+          'order_item_id': (input.originalItem.id.contains('dispatch_') || input.originalItem.id.contains('extra_')) 
+              ? null : input.originalItem.id,
+          'product_name': input.originalItem.productName,
           'qty_sent': input.originalItem.quantity,
           'qty_returned': input.returned,
           'qty_damaged': input.damaged,
@@ -247,7 +411,8 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
       final totalDamageCharges = _returnItems.fold(0.0, (sum, item) => sum + item.damageCharge);
 
       final success = await provider.createReturn(
-        orderId: _selectedOrder!.id,
+        orderId: _selectedOrder?.id,
+        dispatchFormId: _selectedStandaloneDispatch?.id,
         responsibility: _returnItems.any((item) => item.damaged > 0 || item.missing > 0) ? _responsibility : 'NONE',
         damageCharges: totalDamageCharges,
         notes: _notesController.text.trim(),
@@ -359,7 +524,7 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildSelectionSection(l10n),
-                              if (_selectedOrder != null) ...[
+                              if (_selectedOrder != null || _selectedStandaloneDispatch != null) ...[
                                 SizedBox(height: context.cardPadding),
                                 _buildItemsSection(l10n),
                                 SizedBox(height: context.cardPadding),
@@ -429,31 +594,66 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
               label: 'Customer',
               hint: 'Select Customer',
               value: _selectedCustomer,
-              items: provider.customers.map((c) => DropdownItem(
-                value: c,
-                label: c.name,
-              )).toList(),
+              items: provider.customers.map((c) {
+                final bName = c.businessName ?? '';
+                final isBusiness = c.customerType == 'BUSINESS' && bName.isNotEmpty;
+                return DropdownItem(
+                  value: c,
+                  label: isBusiness ? bName : c.name,
+                  subtitle: isBusiness ? c.name : null,
+                );
+              }).toList(),
               onChanged: _handleCustomerChange,
               prefixIcon: Icons.person_outline,
             );
           },
         ),
-        SizedBox(height: context.cardPadding),
+        const SizedBox(height: 16),
         if (_isLoadingOrders)
-          const Center(child: CircularProgressIndicator())
-        else
-          PremiumDropdownField<OrderModel>(
-            label: 'Order',
-            hint: _selectedCustomer == null ? 'Select Customer First' : 'Select Order',
-            value: _selectedOrder,
-            items: _customerOrders.map((o) => DropdownItem(
-              value: o,
-              label: '${o.orderNumber} - ${o.formattedDateOrdered} (Items: ${o.orderSummary['total_items'] ?? 'N/A'})',
-            )).toList(),
-            onChanged: _selectedCustomer == null ? null : _handleOrderChange,
-            prefixIcon: Icons.shopping_bag_outlined,
-            enabled: _selectedCustomer != null,
-          ),
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_selectedCustomer != null) ...[
+          if (_customerOrders.isNotEmpty) ...[
+            PremiumDropdownField<OrderModel>(
+              label: 'Select Order',
+              hint: 'Select Order',
+              value: _selectedOrder,
+              items: _customerOrders.map((o) => DropdownItem(
+                value: o,
+                label: '${o.orderNumber} - ${o.formattedDateOrdered} (Items: ${o.orderSummary['total_items'] ?? 'N/A'})',
+              )).toList(),
+              onChanged: _handleOrderChange,
+              prefixIcon: Icons.shopping_bag_outlined,
+            ),
+            const SizedBox(height: 16),
+            const Center(child: Text("--- OR ---", style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold))),
+            const SizedBox(height: 16),
+          ],
+          
+          if (_standaloneDispatches.isNotEmpty)
+            PremiumDropdownField<DispatchFormModel>(
+              label: 'Select Standalone Gate Pass',
+              hint: 'Select Gate Pass',
+              value: _selectedStandaloneDispatch,
+              items: _standaloneDispatches.map((d) {
+                final date = d.dispatchDate ?? d.createdAt;
+                return DropdownItem(
+                  value: d,
+                  label: 'Gate Pass #${d.id.substring(0, 8)} - ${date.day}/${date.month}/${date.year}',
+                );
+              }).toList(),
+              onChanged: _handleStandaloneDispatchChange,
+              prefixIcon: Icons.local_shipping_outlined,
+            ),
+          
+          if (_customerOrders.isEmpty && _standaloneDispatches.isEmpty)
+            const Center(child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text("No active orders or standalone gate passes found for this customer.", style: TextStyle(color: Colors.grey)),
+            )),
+        ],
       ],
     );
   }
@@ -777,4 +977,10 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
       ),
     );
   }
+}
+
+class _DispatchSummary {
+  final String name;
+  int totalQty;
+  _DispatchSummary({required this.name, required this.totalQty});
 }

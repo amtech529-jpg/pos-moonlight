@@ -28,8 +28,27 @@ class DamageRecoverySerializer(serializers.ModelSerializer):
 class RentalReturnSerializer(serializers.ModelSerializer):
     items = RentalReturnItemSerializer(many=True, read_only=True)
     recoveries = DamageRecoverySerializer(many=True, read_only=True)
-    order_number = serializers.CharField(source='order.id', read_only=True)
-    customer_name = serializers.CharField(source='order.customer_name', read_only=True)
+    order_number = serializers.CharField(source='order.id', read_only=True, allow_null=True)
+    dispatch_number = serializers.CharField(source='dispatch_form.id', read_only=True, allow_null=True)
+    customer_name = serializers.SerializerMethodField()
+
+    def get_customer_name(self, obj):
+        customer = None
+        if obj.order and obj.order.customer:
+            customer = obj.order.customer
+        elif obj.dispatch_form and obj.dispatch_form.customer:
+            customer = obj.dispatch_form.customer
+            
+        if customer:
+            if customer.customer_type == 'BUSINESS' and customer.business_name:
+                return customer.business_name
+            return customer.name
+        
+        if obj.order:
+            return obj.order.customer_name
+        if obj.dispatch_form:
+            return obj.dispatch_form.customer_name
+        return "N/A"
     damage_balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     is_fully_recovered = serializers.BooleanField(read_only=True)
     
@@ -137,7 +156,8 @@ class CreateRentalReturnItemSerializer(serializers.Serializer):
 
 
 class CreateRentalReturnSerializer(serializers.Serializer):
-    order = serializers.UUIDField()
+    order = serializers.UUIDField(required=False, allow_null=True)
+    dispatch_form = serializers.UUIDField(required=False, allow_null=True)
     responsibility = serializers.ChoiceField(
         choices=RentalReturn.RESPONSIBILITY_CHOICES, default='NONE'
     )
@@ -146,22 +166,35 @@ class CreateRentalReturnSerializer(serializers.Serializer):
     restore_stock = serializers.BooleanField(default=False,
         help_text="Whether to immediately restore stock for owned items")
     
-    def validate_order(self, value):
-        from orders.models import Order
-        try:
-            order = Order.objects.get(id=value, is_active=True)
-        except Order.DoesNotExist:
-            raise serializers.ValidationError("Order not found")
+    def validate(self, data):
+        order_id = data.get('order')
+        dispatch_id = data.get('dispatch_form')
         
-        if order.status != 'DELIVERED':
-            raise serializers.ValidationError("Only orders with 'DELIVERED' status can be processed for return.")
+        if not order_id and not dispatch_id:
+            raise serializers.ValidationError("Either 'order' or 'dispatch_form' must be provided.")
+        if order_id and dispatch_id:
+            raise serializers.ValidationError("Cannot provide both 'order' and 'dispatch_form'.")
+            
+        from orders.models import Order, DispatchForm
+        if order_id:
+            try:
+                order = Order.objects.get(id=order_id, is_active=True)
+                if order.status != 'DELIVERED':
+                    raise serializers.ValidationError("Only orders with 'DELIVERED' status can be processed for return.")
+                if RentalReturn.objects.filter(order=order).exists():
+                    raise serializers.ValidationError("A return already exists for this order")
+            except Order.DoesNotExist:
+                raise serializers.ValidationError("Order not found")
+        else:
+            try:
+                df = DispatchForm.objects.get(id=dispatch_id, is_active=True)
+                if RentalReturn.objects.filter(dispatch_form=df).exists():
+                    raise serializers.ValidationError("A return already exists for this Gate Pass")
+            except DispatchForm.DoesNotExist:
+                raise serializers.ValidationError("Gate Pass not found")
+                
+        return data
 
-        # Check if return already exists
-        if RentalReturn.objects.filter(order=order).exists():
-            raise serializers.ValidationError("A return already exists for this order")
-        
-        return value
-    
     def validate_items(self, value):
         if not value:
             raise serializers.ValidationError("At least one item is required")
@@ -174,8 +207,12 @@ class CreateRentalReturnSerializer(serializers.Serializer):
         
         items_data = validated_data.pop('items')
         do_restore_stock = validated_data.pop('restore_stock', False)
-        order_id = validated_data.pop('order')
-        order = Order.objects.get(id=order_id)
+        order_id = validated_data.pop('order', None)
+        dispatch_id = validated_data.pop('dispatch_form', None)
+        
+        from orders.models import Order, DispatchForm
+        order = Order.objects.get(id=order_id) if order_id else None
+        dispatch_form = DispatchForm.objects.get(id=dispatch_id) if dispatch_id else None
         
         user = self.context.get('request', {})
         if hasattr(user, 'user'):
@@ -185,6 +222,7 @@ class CreateRentalReturnSerializer(serializers.Serializer):
         
         rental_return = RentalReturn.objects.create(
             order=order,
+            dispatch_form=dispatch_form,
             responsibility=validated_data.get('responsibility', 'NONE'),
             notes=validated_data.get('notes', ''),
             processed_by=user,
@@ -193,16 +231,24 @@ class CreateRentalReturnSerializer(serializers.Serializer):
         for item_data in items_data:
             product = Product.objects.get(id=item_data['product'])
             
-            # Auto-detect partner status from order item if not provided
+            # Auto-detect partner status from order/dispatch item if not provided
             is_partner = item_data.get('is_partner_item', False)
             if not is_partner:
                 from order_items.models import OrderItem
-                # Try to find corresponding order item to check partner status
-                order_item = OrderItem.objects.filter(
-                    order=order, product=product, is_active=True
-                ).first()
-                if order_item:
-                    is_partner = order_item.rented_from_partner
+                from orders.models import DispatchItem
+                # Try to find corresponding order item or dispatch item to check partner status
+                if order:
+                    order_item = OrderItem.objects.filter(
+                        order=order, product=product, is_active=True
+                    ).first()
+                    if order_item:
+                        is_partner = order_item.rented_from_partner
+                elif dispatch_form:
+                    dispatch_item = DispatchItem.objects.filter(
+                        dispatch_form=dispatch_form, product=product
+                    ).first()
+                    # Note: DispatchItem might not have rented_from_partner field yet, 
+                    # check if we need to handle that.
 
             RentalReturnItem.objects.create(
                 rental_return=rental_return,
@@ -221,9 +267,13 @@ class CreateRentalReturnSerializer(serializers.Serializer):
         rental_return.update_status()
         rental_return.save()
         
-        # Update order status to RETURNED
-        order.status = 'RETURNED'
-        order.save(update_fields=['status', 'updated_at'])
+        # Update order/dispatch status to RETURNED
+        if order:
+            order.status = 'RETURNED'
+            order.save(update_fields=['status', 'updated_at'])
+        elif dispatch_form:
+            dispatch_form.status = 'RETURNED'
+            dispatch_form.save(update_fields=['status', 'updated_at'])
         
         # Optionally restore stock immediately
         if do_restore_stock:

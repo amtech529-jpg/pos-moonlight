@@ -71,7 +71,8 @@ class RentalReturnService {
   }
 
   Future<ApiResponse<RentalReturnModel>> createReturn({
-    required String orderId,
+    String? orderId,
+    String? dispatchFormId,
     required String responsibility,
     required double damageCharges,
     String? notes,
@@ -85,7 +86,8 @@ class RentalReturnService {
         url,
         options: await _getAuthOptions(),
         data: {
-          'order': orderId,
+          if (orderId != null) 'order': orderId,
+          if (dispatchFormId != null) 'dispatch_form': dispatchFormId,
           'responsibility': responsibility,
           'damage_charges': damageCharges,
           'notes': notes,

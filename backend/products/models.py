@@ -281,9 +281,8 @@ class Product(models.Model):
             if not self.is_rental:
                 return self.quantity - self.quantity_damaged
 
-            # Find overlapping orders
-            # Overlap filter: (event_date <= end_date) AND (return_date >= start_date)
-            overlapping_items = OrderItem.objects.filter(
+            # 1. Count items BOOKED via Orders (reserved/booked but not yet dispatched)
+            overlapping_order_items = OrderItem.objects.filter(
                 product=self,
                 is_active=True,
                 order__is_active=True,
@@ -294,15 +293,12 @@ class Product(models.Model):
             )
 
             if exclude_order_id:
-                overlapping_items = overlapping_items.exclude(order_id=exclude_order_id)
+                overlapping_order_items = overlapping_order_items.exclude(order_id=exclude_order_id)
 
-            from django.db.models import Sum, F, Case, When, IntegerField
-            
-            # The quantity booked from our own inventory is calculated as:
-            # - If rented_from_partner=True and partner_quantity>0: quantity - partner_quantity
-            # - If rented_from_partner=True and partner_quantity=0 (legacy data): 0
-            # - Else (not rented from partner): quantity
-            total_booked = overlapping_items.annotate(
+            from django.db.models import Sum, F, Case, When, IntegerField, Q
+            from orders.models import DispatchItem
+
+            total_booked_orders = overlapping_order_items.annotate(
                 own_qty=Case(
                     When(rented_from_partner=True, partner_quantity__gt=0, then=F('quantity') - F('partner_quantity')),
                     When(rented_from_partner=True, partner_quantity=0, then=0),
@@ -310,9 +306,22 @@ class Product(models.Model):
                     output_field=IntegerField(),
                 )
             ).aggregate(total=Sum('own_qty'))['total'] or 0
-            
-            # Available = Total Stock - Damaged - Booked from our stock (dates)
-            available = self.quantity - self.quantity_damaged - total_booked
+
+            # 2. Count EXTRA dispatch items (not in original order) + ALL standalone dispatch items
+            # This avoids double-counting regular order items that also appear in dispatch
+            overlapping_dispatch = DispatchItem.objects.filter(
+                product=self,
+                dispatch_form__event_date__lte=end_date,
+                dispatch_form__return_date__gte=start_date
+            ).filter(
+                Q(is_extra=True) |                          # Extra items added at gate pass time
+                Q(dispatch_form__order__isnull=True)        # Standalone gate passes (no order linked)
+            )
+
+            total_booked_dispatches = overlapping_dispatch.aggregate(total=Sum('quantity'))['total'] or 0
+
+            # Available = Total − Damaged − Booked (Orders) − Extras/Standalone (Dispatches)
+            available = self.quantity - self.quantity_damaged - total_booked_orders - total_booked_dispatches
             return max(0, available)
         except Exception as e:
             logger.error(f"Error calculating available stock for product {self.id}: {str(e)}")

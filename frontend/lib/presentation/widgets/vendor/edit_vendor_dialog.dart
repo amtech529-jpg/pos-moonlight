@@ -575,8 +575,27 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
         FocusTraversalOrder(
           order: const NumericFocusOrder(1),
           child: PremiumTextField(
+            key: const ValueKey('edit_vendor_business_field'),
+            label: l10n.businessName,
+            labelFontSize: 12.sp,
+            hint: 'Enter Business/Company Name',
+            controller: _businessNameController,
+            prefixIcon: Icons.business_outlined,
+            focusNode: _businessNameFocusNode,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+              _businessNameFocusNode.unfocus();
+              FocusScope.of(context).requestFocus(_nameFocusNode);
+            },
+            validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
+          ),
+        ),
+        const SizedBox(height: 12),
+        FocusTraversalOrder(
+          order: const NumericFocusOrder(2),
+          child: PremiumTextField(
             key: const ValueKey('edit_vendor_name_field'),
-            label: '${l10n.vendor} ${l10n.name} *',
+            label: 'Vendor Name',
             labelFontSize: 12.sp,
             hint: l10n.enterVendorName,
             controller: _nameController,
@@ -592,10 +611,10 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
         ),
         const SizedBox(height: 12),
         FocusTraversalOrder(
-          order: const NumericFocusOrder(2),
+          order: const NumericFocusOrder(3),
           child: PremiumTextField(
             key: const ValueKey('edit_vendor_phone_field'),
-            label: '${l10n.phone} *',
+            label: l10n.phone,
             labelFontSize: 12.sp,
             hint: 'Enter Phone Number',
             controller: _phoneController,
@@ -605,25 +624,6 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
             textInputAction: TextInputAction.next,
             onSubmitted: (_) {
               _phoneFocusNode.unfocus();
-              FocusScope.of(context).requestFocus(_businessNameFocusNode);
-            },
-            validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
-          ),
-        ),
-        const SizedBox(height: 12),
-        FocusTraversalOrder(
-          order: const NumericFocusOrder(3),
-          child: PremiumTextField(
-            key: const ValueKey('edit_vendor_business_field'),
-            label: '${l10n.businessName} *',
-            labelFontSize: 12.sp,
-            hint: 'Enter Business/Company Name',
-            controller: _businessNameController,
-            prefixIcon: Icons.business_outlined,
-            focusNode: _businessNameFocusNode,
-            textInputAction: TextInputAction.next,
-            onSubmitted: (_) {
-              _businessNameFocusNode.unfocus();
               FocusScope.of(context).requestFocus(_addressFocusNode);
             },
             validator: (value) => (value?.isEmpty ?? true) ? 'Required' : null,
@@ -634,7 +634,7 @@ class _EnhancedEditVendorDialogState extends State<EnhancedEditVendorDialog>
           order: const NumericFocusOrder(4),
           child: PremiumTextField(
             key: const ValueKey('edit_vendor_address_field'),
-            label: 'Address *',
+            label: 'Address',
             labelFontSize: 12.sp,
             hint: 'Enter Full Address',
             controller: _addressController,

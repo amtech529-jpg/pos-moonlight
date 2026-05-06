@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'dart:math';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -68,7 +69,9 @@ class PdfGatePassService {
                             ),
                           ),
                           pw.SizedBox(height: 10),
-                          pw.Text("Order #: ${order?.id.substring(0, 8).toUpperCase() ?? 'N/A'}", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                          pw.Text("Gate Pass #: ${form.id.length > 8 ? form.id.substring(0, 8).toUpperCase() : 'NEW'}", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                          if (order != null)
+                            pw.Text("Order #: ${order.orderNumber}", style: pw.TextStyle(fontSize: 10)),
                         ],
                       ),
                     ],
@@ -83,22 +86,28 @@ class PdfGatePassService {
                     children: [
                       pw.Row(
                         children: [
-                          pw.Expanded(child: _buildInfoRow("Customer:", order?.customerName ?? 'N/A')),
+                          pw.Expanded(child: _buildInfoRow("Customer:", order?.businessName != null ? "${order!.businessName} (${order.clientName ?? order.customerName})" : (order?.customerName ?? form.customerDetails?['name'] ?? 'N/A'))),
                           pw.Expanded(child: _buildInfoRow("Date:", DateFormat('dd-MM-yyyy').format(form.createdAt))),
                         ],
                       ),
                       pw.SizedBox(height: 8),
                       pw.Row(
                         children: [
-                          pw.Expanded(child: _buildInfoRow("Event Name:", order?.eventName ?? 'N/A')),
-                          pw.Expanded(child: _buildInfoRow("Location:", order?.eventLocation ?? 'N/A')),
+                          pw.Expanded(child: _buildInfoRow("Event Name:", form.eventName ?? order?.eventName ?? 'N/A')),
+                          pw.Expanded(child: _buildInfoRow("Event Date:", form.eventDate != null ? DateFormat('dd-MM-yyyy').format(form.eventDate!) : (order?.eventDate != null ? DateFormat('dd-MM-yyyy').format(order!.eventDate!) : 'N/A'))),
                         ],
                       ),
                       pw.SizedBox(height: 8),
                       pw.Row(
                         children: [
-                          pw.Expanded(child: _buildInfoRow("Dispatch Date:", order?.dispatchDate != null ? DateFormat('dd-MM-yyyy').format(order!.dispatchDate!) : 'N/A')),
-                          pw.Expanded(child: _buildInfoRow("Return Date:", order?.returnDate != null ? DateFormat('dd-MM-yyyy').format(order!.returnDate!) : 'N/A')),
+                          pw.Expanded(child: _buildInfoRow("Dispatch Date:", form.dispatchDate != null ? DateFormat('dd-MM-yyyy').format(form.dispatchDate!) : (order?.dispatchDate != null ? DateFormat('dd-MM-yyyy').format(order!.dispatchDate!) : 'N/A'))),
+                          pw.Expanded(child: _buildInfoRow("Return Date:", form.returnDate != null ? DateFormat('dd-MM-yyyy').format(form.returnDate!) : (order?.returnDate != null ? DateFormat('dd-MM-yyyy').format(order!.returnDate!) : 'N/A'))),
+                        ],
+                      ),
+                      pw.SizedBox(height: 8),
+                      pw.Row(
+                        children: [
+                          pw.Expanded(child: _buildInfoRow("Location:", form.eventLocation ?? order?.eventLocation ?? 'N/A')),
                         ],
                       ),
                     ],
@@ -110,11 +119,21 @@ class PdfGatePassService {
                 pw.Container(
                   color: PdfColors.grey100,
                   padding: const pw.EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                  child: pw.Row(
+                  child: pw.Column(
                     children: [
-                      pw.Expanded(child: _buildInfoRow("Driver Name:", form.driverName)),
-                      pw.Expanded(child: _buildInfoRow("Vehicle #:", form.vehicleNumber)),
-                      pw.Expanded(child: _buildInfoRow("Person Accompanying:", form.staffName)),
+                      pw.Row(
+                        children: [
+                          pw.Expanded(child: _buildInfoRow("Driver:", form.driverName)),
+                          pw.Expanded(child: _buildInfoRow("Vehicle #:", form.vehicleNumber)),
+                          pw.Expanded(child: _buildInfoRow("Vehicle Type:", form.vehicleType ?? 'N/A')),
+                        ],
+                      ),
+                      pw.SizedBox(height: 5),
+                      pw.Row(
+                        children: [
+                          pw.Expanded(child: _buildInfoRow("Staff Accompanying:", form.staffName)),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -138,23 +157,22 @@ class PdfGatePassService {
                         ),
                       ),
                       // Table Rows
-                      if (order != null)
-                        ...order.items.asMap().entries.map((entry) {
-                          final i = entry.key;
-                          final item = entry.value;
-                          return pw.Container(
-                            decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5))),
-                            padding: const pw.EdgeInsets.symmetric(vertical: 8),
-                            child: pw.Row(
-                              children: [
-                                pw.SizedBox(width: 40, child: pw.Text("${i + 1}", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10))),
-                                pw.Expanded(child: pw.Padding(padding: const pw.EdgeInsets.only(left: 10), child: pw.Text(item.productName, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)))),
-                                pw.SizedBox(width: 80, child: pw.Text("${item.quantity}", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10))),
-                                pw.SizedBox(width: 100, child: pw.Text("__________", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10))),
-                              ],
-                            ),
-                          );
-                        }).toList(),
+                      ...form.items.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final item = entry.value;
+                        return pw.Container(
+                          decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5))),
+                          padding: const pw.EdgeInsets.symmetric(vertical: 8),
+                          child: pw.Row(
+                            children: [
+                              pw.SizedBox(width: 40, child: pw.Text("${i + 1}", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10))),
+                              pw.Expanded(child: pw.Padding(padding: const pw.EdgeInsets.only(left: 10), child: pw.Text(item.productName + (item.isExtra ? " (Extra)" : ""), style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)))),
+                              pw.SizedBox(width: 80, child: pw.Text("${item.quantity}", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10))),
+                              pw.SizedBox(width: 100, child: pw.Text(item.isExtra ? "EXTRA" : "OK", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10))),
+                            ],
+                          ),
+                        );
+                      }).toList(),
                     ],
                   ),
                 ),
@@ -223,7 +241,7 @@ class PdfGatePassService {
       final Uint8List pdfBytes = await generatePdfBytes(form);
       await Printing.layoutPdf(
         onLayout: (PdfPageFormat format) async => pdfBytes,
-        name: 'GatePass_${form.orderId.substring(0, 8).toUpperCase()}.pdf',
+        name: 'GatePass_${form.id.substring(0, min(8, form.id.length)).toUpperCase()}.pdf',
       );
     } catch (e) {
       debugPrint('Error printing Gate Pass: $e');

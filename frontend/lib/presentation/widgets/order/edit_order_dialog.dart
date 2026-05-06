@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
 import '../../widgets/globals/confirmation_dialog.dart';
@@ -220,11 +221,80 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
           rate: product.price,
           quantity: 1,
           isNew: true,
+          currentStock: product.quantity, // Capture current stock level
         ));
       }
       _searchController.clear();
       _searchResults = [];
+      
+      // If we have dates, try to fetch real availability for this product
+      if (_dispatchDate != null || _eventDate != null) {
+        _fetchDateAwareStock(product.id);
+      }
     });
+  }
+
+  Future<void> _fetchDateAwareStock(String productId) async {
+    final start = _dispatchDate ?? _eventDate;
+    final end = _returnDate ?? _eventDate;
+    if (start == null || end == null) return;
+
+    try {
+      final res = await ProductService().checkDateAvailability(
+        productIds: [productId],
+        startDate: start.toIso8601String().split('T')[0],
+        endDate: end.toIso8601String().split('T')[0],
+        excludeOrderId: widget.order.id,
+      );
+      if (res.success && res.data != null && mounted) {
+        final availability = res.data!['availability'] as List?;
+        if (availability != null && availability.isNotEmpty) {
+          final stock = availability[0]['available_quantity'] as int?;
+          setState(() {
+            final idx = _localItems.indexWhere((i) => i.productId == productId && !i.isDeleted);
+            if (idx != -1) {
+              _localItems[idx].currentStock = stock;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching date-aware stock: $e');
+    }
+  }
+
+  Future<void> _refreshAllItemsStock() async {
+    final start = _dispatchDate ?? _eventDate;
+    final end = _returnDate ?? _eventDate;
+    if (start == null || end == null || _localItems.isEmpty) return;
+
+    try {
+      final activePids = _localItems.where((i) => !i.isDeleted).map((i) => i.productId).toList();
+      if (activePids.isEmpty) return;
+
+      final res = await ProductService().checkDateAvailability(
+        productIds: activePids,
+        startDate: start.toIso8601String().split('T')[0],
+        endDate: end.toIso8601String().split('T')[0],
+        excludeOrderId: widget.order.id,
+      );
+
+      if (res.success && res.data != null && mounted) {
+        final availability = res.data!['availability'] as List;
+        setState(() {
+          for (var itemAvail in availability) {
+            final pid = itemAvail['product_id'];
+            final available = itemAvail['available_quantity'] as int;
+            final idx = _localItems.indexWhere((i) => i.productId == pid && !i.isDeleted);
+            if (idx != -1) {
+              _localItems[idx].currentStock = available;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error refreshing all items stock: $e');
+    }
   }
 
   /// Check stock for each item. If quantity exceeds stock, ask user whether
@@ -494,7 +564,11 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
 
   void _handleUpdate() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // Stock check first — show warning dialog if needed
+      // 0. DATE-AWARE STOCK CHECK FIRST
+      final inventoryOk = await _checkInventoryBeforeSave();
+      if (!inventoryOk) return;
+
+      // 1. Then existing stock/partner workflow
       final canProceed = await _checkStockAndConfirm();
       if (!canProceed) return;
 
@@ -563,19 +637,24 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
           );
           Navigator.of(context).pop(true); // Return true to trigger refresh
         } else if (mounted) {
-          // Some items failed or metadata failed
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(failCount > 0 
-                ? 'Item Sync Issues: $errorMessage ($failCount failed)' 
-                : 'Metadata Update Failed'), 
-              backgroundColor: Colors.orange,
-              behavior: SnackBarBehavior.floating,
-            )
-          );
+          // Check if it's a stock error to show a better dialog
+          if (errorMessage.contains('Not enough stock') || errorMessage.contains('quantity')) {
+            _showStockErrorDialog(errorMessage);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(failCount > 0 
+                  ? 'Update Issues: $errorMessage ($failCount failed)' 
+                  : 'Metadata Update Failed'), 
+                backgroundColor: Colors.orange,
+                behavior: SnackBarBehavior.floating,
+              )
+            );
+          }
+          
           // Still might want to refresh if some things succeeded
           if (successCount > 0) {
-             provider.refreshOrders(); // Correct method name
+             provider.refreshOrders();
           }
         }
       } catch (e) {
@@ -584,6 +663,56 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
         if (mounted) setState(() => _isSaving = false);
       }
     }
+  }
+
+  void _showStockErrorDialog(String rawError) {
+    String displayMessage = rawError;
+    
+    // Try to parse JSON error if it looks like one
+    try {
+      if (rawError.startsWith('{')) {
+        final decoded = json.decode(rawError);
+        if (decoded is Map && decoded.containsKey('quantity')) {
+          final qtyErrors = decoded['quantity'];
+          if (qtyErrors is List) {
+            displayMessage = qtyErrors.join('\n');
+          } else {
+            displayMessage = qtyErrors.toString();
+          }
+        }
+      }
+    } catch (_) {}
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+            const SizedBox(width: 10),
+            const Text('Stock Alert'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Some items could not be updated due to stock issues:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Text(displayMessage, style: const TextStyle(color: Colors.redAccent)),
+            const SizedBox(height: 16),
+            const Text('Please adjust the quantities or use a partner for these items.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      ),
+    );
   }
 
   @override
@@ -827,9 +956,23 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                 if (item.isOutOfStock)
                   Container(
                     margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.red.shade200)),
-                    child: const Text('LOW STOCK - USE PARTNER?', style: TextStyle(fontSize: 9, color: Colors.red, fontWeight: FontWeight.bold)),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100, 
+                      borderRadius: BorderRadius.circular(6), 
+                      border: Border.all(color: Colors.red.shade400, width: 1.5)
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: Colors.red, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          'INSUFFICIENT STOCK (${item.currentStock ?? 0} left)', 
+                          style: const TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.w900)
+                        ),
+                      ],
+                    ),
                   ),
                 if (item.rentedFromPartner && item.partnerQuantity > 0)
                   Container(
@@ -1023,6 +1166,7 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                     title: 'Select Dispatch Date',
                     onDateTimeSelected: (date, time) {
                       setState(() => _dispatchDate = date);
+                      _refreshAllItemsStock();
                     },
                   );
                 },
@@ -1052,6 +1196,7 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                     title: 'Select Event Date',
                     onDateTimeSelected: (date, time) {
                       setState(() => _eventDate = date);
+                      _refreshAllItemsStock();
                     },
                   );
                 },
@@ -1081,6 +1226,7 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
                     title: 'Select Return Date',
                     onDateTimeSelected: (date, time) {
                       setState(() => _returnDate = date);
+                      _refreshAllItemsStock();
                     },
                   );
                 },
@@ -1179,11 +1325,11 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
       case OrderStatus.READY:
         return [OrderStatus.READY, OrderStatus.DELIVERED, OrderStatus.CANCELLED];
       case OrderStatus.DELIVERED:
-        return [OrderStatus.DELIVERED]; // final state
+        return [OrderStatus.DELIVERED, OrderStatus.READY, OrderStatus.CANCELLED, OrderStatus.RETURNED]; 
       case OrderStatus.CANCELLED:
-        return [OrderStatus.CANCELLED]; // final state
+        return [OrderStatus.CANCELLED, OrderStatus.PENDING, OrderStatus.CONFIRMED]; 
       case OrderStatus.RETURNED:
-        return [OrderStatus.RETURNED]; // legacy, just show it, do not allow changing
+        return [OrderStatus.RETURNED, OrderStatus.READY, OrderStatus.DELIVERED]; 
     }
   }
 
@@ -1333,5 +1479,52 @@ class _EditOrderDialogState extends State<EditOrderDialog> with SingleTickerProv
         ],
       ),
     );
+  }
+  Future<bool> _checkInventoryBeforeSave() async {
+    final start = _dispatchDate ?? _eventDate;
+    final end = _returnDate ?? _eventDate;
+    if (start == null || end == null) return true;
+
+    final activeItems = _localItems.where((i) => !i.isDeleted && !i.rentedFromPartner).toList();
+    if (activeItems.isEmpty) return true;
+
+    try {
+      final res = await ProductService().checkDateAvailability(
+        productIds: activeItems.map((i) => i.productId).toList(),
+        startDate: start.toIso8601String().split('T')[0],
+        endDate: end.toIso8601String().split('T')[0],
+        excludeOrderId: widget.order.id,
+      );
+
+      if (res.success && res.data != null) {
+        final availability = res.data!['availability'] as List;
+        List<String> errors = [];
+        
+        for (var itemAvail in availability) {
+          final pid = itemAvail['product_id'];
+          final available = itemAvail['available_quantity'] as int;
+          final name = itemAvail['product_name'];
+          
+          final localItem = activeItems.firstWhere((i) => i.productId == pid);
+          if (localItem.quantity > available) {
+            errors.add('$name: Requested ${localItem.quantity}, Available for these dates: $available');
+          }
+          
+          // Update currentStock for UI visibility
+          setState(() {
+            final idx = _localItems.indexWhere((i) => i.productId == pid && !i.isDeleted);
+            if (idx != -1) _localItems[idx].currentStock = available;
+          });
+        }
+
+        if (errors.isNotEmpty) {
+          _showStockErrorDialog(errors.join('\n'));
+          return false;
+        }
+      }
+    } catch (e) {
+      debugPrint('Inventory check error: $e');
+    }
+    return true;
   }
 }

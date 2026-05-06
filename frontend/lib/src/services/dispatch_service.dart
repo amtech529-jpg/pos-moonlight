@@ -50,6 +50,61 @@ class DispatchService {
     );
   }
 
+  /// Fetch dispatch forms linked to a specific order (used for return tally)
+  Future<ApiResponse<List<DispatchFormModel>>> getDispatchFormsForOrder(String orderId) async {
+    final response = await _apiClient.get(
+      ApiConfig.listDispatchForms,
+      queryParameters: {'order_id': orderId, 'page_size': '50'},
+    );
+
+    if (response.statusCode == 200 && response.data != null) {
+      try {
+        final data = response.data['data'];
+        final List<dynamic> formsJson = data is Map ? (data['forms'] ?? []) : [];
+        final forms = formsJson
+            .where((json) => json != null && json is Map)
+            .map((json) => DispatchFormModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+        return ApiResponse<List<DispatchFormModel>>(success: true, data: forms, message: '');
+      } catch (e) {
+        return ApiResponse<List<DispatchFormModel>>(success: false, message: 'Parse error: $e');
+      }
+    }
+    return ApiResponse<List<DispatchFormModel>>(success: false, message: 'Failed to load dispatch forms for order');
+  }
+
+  /// Fetch dispatch forms for a specific customer
+  Future<ApiResponse<List<DispatchFormModel>>> getDispatchFormsForCustomer({
+    required String customerId,
+    bool? standaloneOnly,
+  }) async {
+    final queryParams = {
+      'customer_id': customerId,
+      'page_size': '50',
+      if (standaloneOnly == true) 'standalone': 'true',
+    };
+    
+    final response = await _apiClient.get(
+      ApiConfig.listDispatchForms,
+      queryParameters: queryParams,
+    );
+
+    if (response.statusCode == 200 && response.data != null) {
+      try {
+        final data = response.data['data'];
+        final List<dynamic> formsJson = data is Map ? (data['forms'] ?? []) : [];
+        final forms = formsJson
+            .where((json) => json != null && json is Map)
+            .map((json) => DispatchFormModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+        return ApiResponse<List<DispatchFormModel>>(success: true, data: forms, message: '');
+      } catch (e) {
+        return ApiResponse<List<DispatchFormModel>>(success: false, message: 'Parse error: $e');
+      }
+    }
+    return ApiResponse<List<DispatchFormModel>>(success: false, message: 'Failed to load dispatch forms for customer');
+  }
+
   Future<ApiResponse<DispatchFormModel>> createDispatchForm(DispatchFormModel form) async {
     final response = await _apiClient.post(
       ApiConfig.createDispatchForm,

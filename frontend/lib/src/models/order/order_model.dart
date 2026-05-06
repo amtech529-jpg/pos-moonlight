@@ -22,6 +22,8 @@ class OrderModel {
   final DateTime updatedAt;
   final String? createdBy;
   final int? createdById;
+  final String? businessName;
+  final String? clientName;
   
   // Event Details for Rental Business
   final String? eventName;
@@ -79,6 +81,8 @@ class OrderModel {
     this.eventDate,
     this.dispatchDate,
     this.returnDate,
+    this.businessName,
+    this.clientName,
     this.items = const [],
   });
 
@@ -128,7 +132,23 @@ class OrderModel {
           .where((i) => i != null)
           .map((i) => OrderItemModel.fromJson(i as Map<String, dynamic>))
           .toList(),
+      businessName: _resolveBusinessName(json),
+      clientName: _resolveClientName(json),
     );
+  }
+
+  static String? _resolveBusinessName(Map<String, dynamic> json) {
+    if (json['customer'] != null && json['customer'] is Map) {
+      return (json['customer'] as Map)['business_name']?.toString();
+    }
+    return null;
+  }
+
+  static String? _resolveClientName(Map<String, dynamic> json) {
+    if (json['customer'] != null && json['customer'] is Map) {
+      return (json['customer'] as Map)['name']?.toString();
+    }
+    return json['customer_name']?.toString();
   }
 
   Map<String, dynamic> toJson() {
@@ -286,6 +306,8 @@ class OrderModel {
       dispatchDate: dispatchDate ?? this.dispatchDate,
       returnDate: returnDate ?? this.returnDate,
       items: items ?? this.items,
+      businessName: businessName ?? this.businessName,
+      clientName: clientName ?? this.clientName,
     );
   }
 

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/src/models/dispatch/dispatch_form_model.dart';
 import 'package:frontend/src/providers/dispatch_provider.dart';
+import 'package:frontend/src/providers/product_provider.dart';
+import 'package:frontend/src/providers/order_provider.dart';
 import 'package:frontend/src/services/pdf_gate_pass_service.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'add_dispatch_form_dialog.dart';
 
 class DispatchHistoryDialog extends StatefulWidget {
   const DispatchHistoryDialog({super.key});
@@ -111,9 +114,9 @@ class _DispatchHistoryDialogState extends State<DispatchHistoryDialog> {
                     separatorBuilder: (context, index) => const Divider(),
                     itemBuilder: (context, index) {
                       final form = provider.forms[index];
-                      final displayId = form.orderId.length >= 8 
-                          ? form.orderId.substring(0, 8).toUpperCase() 
-                          : form.orderId.toUpperCase();
+                      final displayId = form.orderId != null 
+                          ? (form.orderId!.length >= 8 ? form.orderId!.substring(0, 8).toUpperCase() : form.orderId!.toUpperCase())
+                          : "STANDALONE";
                       return ListTile(
                         hoverColor: Colors.grey.shade50,
                         leading: CircleAvatar(
@@ -121,7 +124,7 @@ class _DispatchHistoryDialogState extends State<DispatchHistoryDialog> {
                           child: const Icon(Icons.local_shipping, color: Color(0xFFBD0D1D), size: 20),
                         ),
                         title: Text(
-                          'Order #$displayId - ${form.driverName}',
+                          form.orderId != null ? 'Order #$displayId - ${form.driverName}' : 'Standalone - ${form.driverName}',
                           style: const TextStyle(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
@@ -131,7 +134,7 @@ class _DispatchHistoryDialogState extends State<DispatchHistoryDialog> {
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 4.0),
                           child: Text(
-                            'Vehicle: ${form.vehicleNumber} | Staff: ${form.staffName}\n${DateFormat('dd MMM yyyy, hh:mm a').format(form.createdAt)}',
+                            'Vehicle: ${form.vehicleNumber} (${form.vehicleType ?? 'N/A'}) | Staff: ${form.staffName}\n${DateFormat('dd MMM yyyy, hh:mm a').format(form.createdAt)}',
                             style: TextStyle(
                               color: Colors.grey.shade800, 
                               height: 1.4,
@@ -199,7 +202,7 @@ class _DispatchHistoryDialogState extends State<DispatchHistoryDialog> {
           backgroundColor: Colors.white,
           title: const Text('Delete Gate Pass?', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           content: Text(
-            'Are you sure you want to delete the gate pass for Order #${form.orderId.substring(0, 8)}?\n\nThis will make the order searchable again.',
+            'Are you sure you want to delete this gate pass?\n\nThis will revert the stock deduction and make any associated orders searchable again.',
             style: const TextStyle(color: Colors.black87),
           ),
           actions: [
@@ -212,6 +215,10 @@ class _DispatchHistoryDialogState extends State<DispatchHistoryDialog> {
                 Navigator.pop(ctx);
                 final success = await context.read<DispatchProvider>().deleteDispatchForm(form.id);
                 if (success && context.mounted) {
+                  // Refresh other providers
+                  context.read<ProductProvider>().loadProducts();
+                  context.read<OrderProvider>().refreshOrders();
+                  
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Gate Pass deleted successfully')),
                   );
@@ -227,81 +234,10 @@ class _DispatchHistoryDialogState extends State<DispatchHistoryDialog> {
   }
 
   void _showEditDialog(BuildContext context, DispatchFormModel form) {
-    final driverController = TextEditingController(text: form.driverName);
-    final vehicleController = TextEditingController(text: form.vehicleNumber);
-    final staffController = TextEditingController(text: form.staffName);
-
     showDialog(
       context: context,
-      builder: (ctx) => Theme(
-        data: ThemeData.light().copyWith(
-          dialogBackgroundColor: Colors.white,
-          colorScheme: const ColorScheme.light(primary: const Color(0xFFBD0D1D), onSurface: Colors.black),
-        ),
-        child: AlertDialog(
-          backgroundColor: Colors.white,
-          title: const Text('Edit Gate Pass Logistics', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: driverController,
-                style: const TextStyle(color: Colors.black),
-                decoration: const InputDecoration(
-                  labelText: 'Driver Name',
-                  labelStyle: TextStyle(color: Colors.grey),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: vehicleController,
-                style: const TextStyle(color: Colors.black),
-                decoration: const InputDecoration(
-                  labelText: 'Vehicle Number',
-                  labelStyle: TextStyle(color: Colors.grey),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: staffController,
-                style: const TextStyle(color: Colors.black),
-                decoration: const InputDecoration(
-                  labelText: 'Staff Name (Bnda)',
-                  labelStyle: TextStyle(color: Colors.grey),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final data = {
-                  'driver_name': driverController.text,
-                  'vehicle_number': vehicleController.text,
-                  'staff_name': staffController.text,
-                };
-                
-                Navigator.pop(ctx);
-                final success = await context.read<DispatchProvider>().updateDispatchForm(form.id, data);
-                if (success && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Gate Pass updated successfully')),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFBD0D1D)),
-              child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      ),
+      barrierDismissible: false,
+      builder: (context) => AddDispatchFormDialog(existingForm: form),
     );
   }
 }

@@ -310,6 +310,28 @@ class OrderProvider extends ChangeNotifier {
     });
   }
 
+  /// Utility search that doesn't update global state (used by dialogs)
+  Future<List<OrderModel>> searchOrdersUtility(String query, {bool excludeDispatched = false}) async {
+    try {
+      final params = OrderListParams(
+        page: 1,
+        pageSize: 50,
+        search: query.isNotEmpty ? query : null,
+        excludeDispatched: excludeDispatched,
+      );
+
+      final response = await OrderService().getOrders(params: params);
+
+      if (response.success && response.data != null) {
+        return response.data!.orders;
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Utility search failed: $e');
+      return [];
+    }
+  }
+
   /// Helper to load orders with specific parameters
   Future<void> _loadOrdersWithParams({bool excludeDispatched = false}) async {
     _setLoading(true);
@@ -647,11 +669,11 @@ class OrderProvider extends ChangeNotifier {
       case OrderStatus.READY:
         return [OrderStatus.DELIVERED, OrderStatus.CANCELLED];
       case OrderStatus.DELIVERED:
-        return []; // OrderStatus.RETURNED removed as per user request. Use Return & Tally module.
+        return [OrderStatus.READY, OrderStatus.CANCELLED, OrderStatus.RETURNED];
       case OrderStatus.RETURNED:
-        return [];
+        return [OrderStatus.READY, OrderStatus.DELIVERED];
       case OrderStatus.CANCELLED:
-        return [];
+        return [OrderStatus.PENDING, OrderStatus.CONFIRMED];
     }
   }
 

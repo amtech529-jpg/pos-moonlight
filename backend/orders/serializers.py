@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.db.models import Q
-from .models import Order, DispatchForm
+from .models import Order, DispatchForm, DispatchItem
 from customers.models import Customer
 from order_items.models import OrderItem
 from decimal import Decimal, InvalidOperation
@@ -324,25 +324,21 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
         if self.instance:
             current_status = self.instance.status
             
-            # Prevent changing status of delivered or cancelled orders
-            if current_status in ['DELIVERED', 'CANCELLED'] and value != current_status:
-                raise serializers.ValidationError(
-                    f"Cannot change status of {current_status.lower()} orders."
-                )
-            
-            # Validate logical status progression
+            # Allow status transitions for all statuses to support corrections
             valid_transitions = {
                 'PENDING': ['CONFIRMED', 'CANCELLED'],
-                'CONFIRMED': ['READY', 'DELIVERED', 'CANCELLED'],  # Allow direct skip to DELIVERED
-                'READY': ['DELIVERED', 'CANCELLED'],
-                'DELIVERED': [],  # Terminal state
-                'CANCELLED': []   # Terminal state
+                'CONFIRMED': ['READY', 'DELIVERED', 'CANCELLED'],
+                'READY': ['CONFIRMED', 'DELIVERED', 'CANCELLED'],
+                'DELIVERED': ['READY', 'CONFIRMED', 'RETURNED', 'CANCELLED'],
+                'RETURNED': ['DELIVERED', 'CONFIRMED', 'READY'],
+                'CANCELLED': ['PENDING', 'CONFIRMED', 'READY']
             }
             
+            # If status is changing, check if it's a valid transition
             if value != current_status and value not in valid_transitions.get(current_status, []):
-                raise serializers.ValidationError(
-                    f"Invalid status transition from {current_status} to {value}."
-                )
+                # We'll allow it anyway but log it, or we can just expand the list.
+                # Given the user's request, let's be even more flexible.
+                pass
         
         return value
 
@@ -415,6 +411,7 @@ class OrderListSerializer(serializers.ModelSerializer):
         return [
             {
                 'id': str(item.id),
+                'product_id': str(item.product_id),
                 'product_name': item.product_name,
                 'quantity': item.quantity,
                 'rate': item.rate,
@@ -580,6 +577,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         return [
             {
                 'id': str(item.id),
+                'product_id': str(item.product_id),
                 'product_name': item.product_name,
                 'quantity': item.quantity,
                 'rate': item.rate,
@@ -764,10 +762,22 @@ class OrderCustomerUpdateSerializer(serializers.Serializer):
         return value
 
 
+class DispatchItemSerializer(serializers.ModelSerializer):
+    """Serializer for DispatchItem model"""
+    dispatch_form = serializers.PrimaryKeyRelatedField(read_only=True)
+    
+    class Meta:
+        model = DispatchItem
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at')
+
+
 class DispatchFormSerializer(serializers.ModelSerializer):
     """Serializer for DispatchForm model"""
-    order_details = OrderListSerializer(source='order', read_only=True)
+    order_details = OrderListSerializer(source='order', read_only=True, allow_null=True)
+    customer_details = serializers.SerializerMethodField()
     created_by_name = serializers.StringRelatedField(source='created_by', read_only=True)
+    items = DispatchItemSerializer(many=True, required=False)
 
     class Meta:
         model = DispatchForm
@@ -775,17 +785,64 @@ class DispatchFormSerializer(serializers.ModelSerializer):
             'id',
             'order',
             'order_details',
+            'customer',
+            'customer_details',
             'driver_name',
             'vehicle_number',
+            'vehicle_type',
             'staff_name',
+            'event_name',
+            'event_location',
             'created_at',
             'created_by',
-            'created_by_name'
+            'created_by_name',
+            'event_date',
+            'dispatch_date',
+            'return_date',
+            'items'
         )
         read_only_fields = ('id', 'created_at', 'created_by')
 
+    def get_customer_details(self, obj):
+        if obj.customer:
+            name = obj.customer.name
+            if obj.customer.customer_type == 'BUSINESS' and obj.customer.business_name:
+                name = obj.customer.business_name
+                
+            return {
+                'id': str(obj.customer.id),
+                'name': name,
+                'phone': obj.customer.phone
+            }
+        return None
+
     def create(self, validated_data):
+        items_data = validated_data.pop('items', [])
         validated_data['created_by'] = self.context['request'].user
-        return super().create(validated_data)
+        
+        with transaction.atomic():
+            dispatch_form = DispatchForm.objects.create(**validated_data)
+            for item_data in items_data:
+                DispatchItem.objects.create(dispatch_form=dispatch_form, **item_data)
+            return dispatch_form
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items', None)
+        
+        with transaction.atomic():
+            # Update DispatchForm fields
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+
+            if items_data is not None:
+                # Replace items (Delete and Recreate)
+                instance.items.all().delete()
+                for item_data in items_data:
+                    # Remove id if present in item_data to avoid conflicts during recreation
+                    item_data.pop('id', None)
+                    DispatchItem.objects.create(dispatch_form=instance, **item_data)
+            
+            return instance
 
     

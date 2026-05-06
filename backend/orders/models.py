@@ -290,7 +290,10 @@ class Order(models.Model):
         try:
             # Auto-populate customer information if not set
             if self.customer and not self.customer_name:
-                self.customer_name = self.customer.name
+                if self.customer.customer_type == 'BUSINESS' and self.customer.business_name:
+                    self.customer_name = self.customer.business_name
+                else:
+                    self.customer_name = self.customer.name
                 self.customer_phone = self.customer.phone
                 self.customer_email = self.customer.email or ''
             
@@ -586,7 +589,7 @@ class Order(models.Model):
 
     def can_be_modified(self):
         """Check if order can be modified"""
-        return self.status in ['PENDING', 'CONFIRMED', 'READY']
+        return self.status in ['PENDING', 'CONFIRMED', 'READY', 'DELIVERED']
 
     # Class methods
     @classmethod
@@ -811,10 +814,27 @@ Order.add_to_class('objects', models.Manager.from_queryset(OrderQuerySet)())
 class DispatchForm(models.Model):
     """Model to store dispatch/gate pass information for an order"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='dispatch_forms')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='dispatch_forms', null=True, blank=True)
+    customer = models.ForeignKey(
+        'customers.Customer',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='dispatch_forms',
+        help_text="Customer for standalone gate pass"
+    )
     driver_name = models.CharField(max_length=255)
     vehicle_number = models.CharField(max_length=100)
+    vehicle_type = models.CharField(max_length=100, blank=True, null=True, help_text="Type of vehicle (e.g. Truck, Bike)")
     staff_name = models.CharField(max_length=255, help_text="Person accompanying (Bnda)")
+    event_name = models.CharField(max_length=255, blank=True, null=True, help_text="Name of the event")
+    event_location = models.CharField(max_length=500, blank=True, null=True, help_text="Location of the event")
+    
+    # Date fields for logistics
+    event_date = models.DateField(null=True, blank=True)
+    dispatch_date = models.DateField(null=True, blank=True)
+    return_date = models.DateField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -831,4 +851,30 @@ class DispatchForm(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"Dispatch for Order #{self.order.id} - {self.driver_name}"
+        target = self.order.id if self.order else (self.customer.name if self.customer else "Manual")
+        return f"Dispatch for {target} - {self.driver_name}"
+
+
+class DispatchItem(models.Model):
+    """Model to store items within a dispatch form"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    dispatch_form = models.ForeignKey(DispatchForm, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey('products.Product', on_delete=models.CASCADE, related_name='dispatch_items')
+    product_name = models.CharField(max_length=255, help_text="Cached product name")
+    quantity = models.PositiveIntegerField(default=1)
+    is_extra = models.BooleanField(default=False, help_text="True if item was not part of the original order")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'dispatch_item'
+        verbose_name = 'Dispatch Item'
+        verbose_name_plural = 'Dispatch Items'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.product_name} x {self.quantity}"
+
+    def save(self, *args, **kwargs):
+        if not self.product_name and self.product:
+            self.product_name = self.product.name
+        super().save(*args, **kwargs)

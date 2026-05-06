@@ -1,5 +1,8 @@
 from rest_framework import status, generics, permissions
+import logging
 from rest_framework.decorators import api_view, permission_classes
+
+logger = logging.getLogger(__name__)
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
@@ -71,7 +74,9 @@ def list_orders(request):
                 Q(customer_phone__icontains=search) |
                 Q(customer_email__icontains=search) |
                 Q(description__icontains=search) |
-                Q(id__icontains=search)
+                Q(id__icontains=search) |
+                Q(customer__business_name__icontains=search) |
+                Q(customer__name__icontains=search)
             )
         
         # Apply customer filter
@@ -1370,17 +1375,35 @@ def list_dispatch_forms(request):
         page_size = min(int(request.GET.get('page_size', 20)), 100)
         page = int(request.GET.get('page', 1))
         
-        forms = DispatchForm.objects.select_related('order', 'order__customer', 'created_by').all()
-        
+        forms = DispatchForm.objects.select_related('order', 'order__customer', 'created_by', 'customer').all()
+
+        # Filter by order_id if provided (used by return dialog to get dispatch extras)
+        order_id = request.GET.get('order_id', '').strip()
+        if order_id:
+            forms = forms.filter(order_id=order_id)
+
+        # Filter by customer_id if provided
+        customer_id = request.GET.get('customer_id', '').strip()
+        if customer_id:
+            # Match either direct customer link (standalone) OR the customer linked to the order
+            forms = forms.filter(Q(customer_id=customer_id) | Q(order__customer_id=customer_id))
+
+        # Filter for standalone gate passes (those without an order)
+        standalone = request.GET.get('standalone', 'false').lower() == 'true'
+        if standalone:
+            forms = forms.filter(order__isnull=True)
+
         # Simple search
         search = request.GET.get('search', '').strip()
         if search:
             forms = forms.filter(
                 Q(driver_name__icontains=search) |
                 Q(vehicle_number__icontains=search) |
+                Q(vehicle_type__icontains=search) |
                 Q(staff_name__icontains=search) |
                 Q(order__id__icontains=search) |
-                Q(order__customer_name__icontains=search)
+                Q(order__customer_name__icontains=search) |
+                Q(customer__name__icontains=search)
             )
 
         total_count = forms.count()
@@ -1414,16 +1437,33 @@ def list_dispatch_forms(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_dispatch_form(request):
-    """Create a new dispatch form"""
+    """Create a new dispatch form. Stock is NOT permanently deducted — availability
+    is calculated dynamically from active dispatch dates."""
     serializer = DispatchFormSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
         try:
-            form = serializer.save()
-            return Response({
-                'success': True,
-                'message': 'Dispatch form created successfully.',
-                'data': DispatchFormSerializer(form).data
-            }, status=status.HTTP_201_CREATED)
+            with transaction.atomic():
+                form = serializer.save()
+
+                # Auto-fix: if dispatch qty > order qty for a product, mark as extra
+                # so the excess is tracked in availability calculations
+                if form.order:
+                    order_item_qty = {
+                        str(oi.product_id): oi.quantity
+                        for oi in form.order.order_items.filter(is_active=True)
+                    }
+                    for dispatch_item in form.items.all():
+                        pid = str(dispatch_item.product_id)
+                        ordered_qty = order_item_qty.get(pid, 0)
+                        if dispatch_item.quantity > ordered_qty and not dispatch_item.is_extra:
+                            dispatch_item.is_extra = True
+                            dispatch_item.save(update_fields=['is_extra'])
+
+                return Response({
+                    'success': True,
+                    'message': 'Dispatch form created successfully.',
+                    'data': DispatchFormSerializer(form).data
+                }, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({
                 'success': False,
@@ -1455,17 +1495,26 @@ def get_dispatch_form(request, dispatch_id):
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def update_dispatch_form(request, dispatch_id):
-    """Update an existing dispatch form"""
+    """Update an existing dispatch form. Stock totals are NOT modified — availability
+    is recalculated dynamically from active dispatch date records."""
     try:
         form = DispatchForm.objects.get(id=dispatch_id)
         serializer = DispatchFormSerializer(form, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
-            return Response({
-                'success': True,
-                'message': 'Dispatch form updated successfully.',
-                'data': serializer.data
-            }, status=status.HTTP_200_OK)
+            try:
+                with transaction.atomic():
+                    form = serializer.save()
+                    return Response({
+                        'success': True,
+                        'message': 'Dispatch form updated successfully.',
+                        'data': DispatchFormSerializer(form).data
+                    }, status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({
+                    'success': False,
+                    'message': 'Update failed.',
+                    'errors': {'detail': str(e)}
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response({
             'success': False,
             'message': 'Validation failed.',
@@ -1480,18 +1529,37 @@ def update_dispatch_form(request, dispatch_id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_dispatch_form(request, dispatch_id):
-    """Delete a dispatch form"""
+    """Delete a dispatch form. Reverts order status to READY if linked."""
     try:
         form = DispatchForm.objects.get(id=dispatch_id)
-        form.delete()
+        with transaction.atomic():
+            # If it's linked to an order, revert order status back to READY
+            if form.order:
+                form.order.status = 'READY'
+                form.order.save(update_fields=['status'])
+                
+            form.delete()
+            
         return Response({
             'success': True,
-            'message': 'Dispatch form deleted successfully.'
+            'message': 'Dispatch form deleted successfully and order status reverted to READY.'
         }, status=status.HTTP_200_OK)
     except DispatchForm.DoesNotExist:
         return Response({
             'success': False,
             'message': 'Not found.'
         }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Deletion failed for DispatchForm {dispatch_id}: {str(e)}\n{error_details}")
+        return Response({
+            'success': False,
+            'message': 'Deletion failed.',
+            'errors': {
+                'detail': str(e),
+                'traceback': error_details if settings.DEBUG else "Check server logs for details"
+            }
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     

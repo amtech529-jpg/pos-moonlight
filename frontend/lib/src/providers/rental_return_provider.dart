@@ -87,7 +87,8 @@ class RentalReturnProvider extends ChangeNotifier {
 
   /// Create a new return
   Future<bool> createReturn({
-    required String orderId,
+    String? orderId,
+    String? dispatchFormId,
     required String responsibility,
     required double damageCharges,
     String? notes,
@@ -100,6 +101,7 @@ class RentalReturnProvider extends ChangeNotifier {
 
     final response = await _service.createReturn(
       orderId: orderId,
+      dispatchFormId: dispatchFormId,
       responsibility: responsibility,
       damageCharges: damageCharges,
       notes: notes,

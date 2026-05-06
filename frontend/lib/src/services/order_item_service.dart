@@ -228,7 +228,18 @@ class OrderItemService {
         }
       } else {
         final errorData = response.data;
-        return ApiResponse<OrderItemModel>(success: false, message: errorData['message'] ?? 'Failed to create order item');
+        String errorMessage = 'Failed to create order item';
+        if (errorData is Map) {
+          if (errorData.containsKey('message')) {
+            errorMessage = errorData['message'];
+          } else if (errorData.containsKey('quantity')) {
+            final qError = errorData['quantity'];
+            errorMessage = qError is List ? qError.join(', ') : qError.toString();
+          } else if (errorData.containsKey('non_field_errors')) {
+            errorMessage = errorData['non_field_errors'].toString();
+          }
+        }
+        return ApiResponse<OrderItemModel>(success: false, message: errorMessage);
       }
     } catch (e) {
       return ApiResponse<OrderItemModel>(success: false, message: 'Error creating order item: ${e.toString()}');
@@ -283,7 +294,18 @@ class OrderItemService {
         }
       } else {
         final errorData = response.data;
-        return ApiResponse<OrderItemModel>(success: false, message: errorData['message'] ?? 'Failed to update order item');
+        String errorMessage = 'Failed to update order item';
+        if (errorData is Map) {
+          if (errorData.containsKey('message')) {
+            errorMessage = errorData['message'];
+          } else if (errorData.containsKey('quantity')) {
+            final qError = errorData['quantity'];
+            errorMessage = qError is List ? qError.join(', ') : qError.toString();
+          } else if (errorData.containsKey('non_field_errors')) {
+            errorMessage = errorData['non_field_errors'].toString();
+          }
+        }
+        return ApiResponse<OrderItemModel>(success: false, message: errorMessage);
       }
     } catch (e) {
       return ApiResponse<OrderItemModel>(success: false, message: 'Error updating order item: ${e.toString()}');

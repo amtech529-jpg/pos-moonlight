@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:frontend/src/models/dispatch/dispatch_form_model.dart';
 import 'package:frontend/src/models/order/order_model.dart';
+import 'package:frontend/src/models/product/product_model.dart';
+import 'package:frontend/src/providers/customer_provider.dart' show Customer, CustomerProvider;
 import 'package:frontend/src/providers/dispatch_provider.dart';
 import 'package:frontend/src/providers/order_provider.dart';
+import 'package:frontend/src/providers/product_provider.dart';
 import 'package:frontend/src/theme/app_theme.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:frontend/presentation/widgets/globals/text_field.dart';
@@ -10,9 +14,12 @@ import 'package:frontend/presentation/widgets/globals/keyboard_scrollable.dart';
 import 'package:frontend/src/services/pdf_gate_pass_service.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
+import 'dart:math';
 
 class AddDispatchFormDialog extends StatefulWidget {
-  const AddDispatchFormDialog({super.key});
+  final DispatchFormModel? existingForm;
+  const AddDispatchFormDialog({super.key, this.existingForm});
 
   @override
   State<AddDispatchFormDialog> createState() => _AddDispatchFormDialogState();
@@ -21,137 +28,445 @@ class AddDispatchFormDialog extends StatefulWidget {
 class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _orderSearchController = TextEditingController();
+  final _customerSearchController = TextEditingController();
+  final _productSearchController = TextEditingController();
   final _driverNameController = TextEditingController();
   final _vehicleNumberController = TextEditingController();
+  final _vehicleTypeController = TextEditingController();
   final _staffNameController = TextEditingController();
+  final _eventNameController = TextEditingController();
+  final _locationController = TextEditingController();
+  
+  final _orderSearchFocus = FocusNode();
+  final _customerSearchFocus = FocusNode();
+  final _productSearchFocus = FocusNode();
+  late List<FocusNode> _orderResultFocusNodes;
+  late List<FocusNode> _customerResultFocusNodes;
+  late List<FocusNode> _productResultFocusNodes;
+  
+  final _driverNameFocus = FocusNode();
+  final _vehicleNumberFocus = FocusNode();
+  final _vehicleTypeFocus = FocusNode();
+  final _staffNameFocus = FocusNode();
   
   OrderModel? _selectedOrder;
-  bool _isSearching = false;
-  List<OrderModel> _searchResults = [];
+  Customer? _selectedCustomer;
+  List<DispatchItemModel> _items = [];
+  
+  bool _isSearchingOrders = false;
+  List<OrderModel> _orderSearchResults = [];
+  
+  bool _isSearchingCustomers = false;
+  List<Customer> _customerSearchResults = [];
+  
+  bool _isSearchingProducts = false;
+  List<ProductModel> _productSearchResults = [];
+  Map<String, int> _availabilityMap = {};
+  final Map<String, TextEditingController> _quantityControllers = {};
 
   // Editable Dates
   DateTime? _eventDate;
   DateTime? _dispatchDate;
   DateTime? _returnDate;
 
+  final List<String> _vehicleTypes = ['Truck', 'Pickup', 'Mini Truck', 'Bike', 'Rickshaw', 'Manual', 'Other'];
+  String _selectedVehicleType = 'Truck';
+
+  @override
+  void initState() {
+    super.initState();
+    _orderResultFocusNodes = [];
+    _customerResultFocusNodes = [];
+    _productResultFocusNodes = [];
+    if (widget.existingForm != null) {
+      _selectedOrder = widget.existingForm!.orderDetails;
+      if (_selectedOrder != null) {
+        _orderSearchController.text = _selectedOrder!.orderNumber;
+      }
+      
+      if (widget.existingForm!.customerId != null) {
+        _selectedCustomer = Customer(
+          id: widget.existingForm!.customerId!,
+          name: widget.existingForm!.customerDetails?['name'] ?? '',
+          phone: widget.existingForm!.customerDetails?['phone'] ?? '',
+          email: '',
+          createdAt: DateTime.now(),
+          country: 'Pakistan',
+          customerType: 'INDIVIDUAL',
+          status: 'ACTIVE',
+          phoneVerified: false,
+          emailVerified: false,
+          isActive: true,
+          displayName: widget.existingForm!.customerDetails?['name'] ?? '',
+          initials: 'CU',
+          isNewCustomer: false,
+          isRecentCustomer: false,
+          totalSalesCount: 0,
+          totalSalesAmount: 0,
+          hasRecentSales: false,
+          customerTypeDisplay: 'Individual',
+          statusDisplay: 'Active',
+        );
+        _customerSearchController.text = _selectedCustomer!.name;
+      }
+
+      _driverNameController.text = widget.existingForm!.driverName;
+      _vehicleNumberController.text = widget.existingForm!.vehicleNumber;
+      _staffNameController.text = widget.existingForm!.staffName;
+      _vehicleTypeController.text = widget.existingForm!.vehicleType ?? '';
+      
+      _eventDate = widget.existingForm!.eventDate;
+      _dispatchDate = widget.existingForm!.dispatchDate;
+      _returnDate = widget.existingForm!.returnDate;
+
+      _items = List.from(widget.existingForm!.items);
+      for (var item in _items) {
+        _quantityControllers[item.id] = TextEditingController(text: item.quantity.toString());
+      }
+      _eventNameController.text = widget.existingForm!.eventName ?? '';
+      _locationController.text = widget.existingForm!.eventLocation ?? '';
+      
+      if (_selectedOrder != null) {
+        _eventDate = _selectedOrder!.eventDate;
+        _dispatchDate = _selectedOrder!.dispatchDate;
+        _returnDate = _selectedOrder!.returnDate;
+        if (_eventNameController.text.isEmpty) _eventNameController.text = _selectedOrder!.eventName ?? _selectedOrder!.description;
+        if (_locationController.text.isEmpty) _locationController.text = _selectedOrder!.eventLocation ?? '';
+      }
+    } else {
+      // For new forms, default to today
+      final now = DateTime.now();
+      _eventDate = now;
+      _dispatchDate = now;
+      _returnDate = now;
+    }
+  }
+
   @override
   void dispose() {
     _orderSearchController.dispose();
+    _customerSearchController.dispose();
+    _productSearchController.dispose();
     _driverNameController.dispose();
     _vehicleNumberController.dispose();
+    _vehicleTypeController.dispose();
     _staffNameController.dispose();
+    _eventNameController.dispose();
+    _locationController.dispose();
+    _orderSearchFocus.dispose();
+    _customerSearchFocus.dispose();
+    _productSearchFocus.dispose();
+    _driverNameFocus.dispose();
+    _vehicleNumberFocus.dispose();
+    _vehicleTypeFocus.dispose();
+    _staffNameFocus.dispose();
+    for (var node in _orderResultFocusNodes) {
+      node.dispose();
+    }
+    for (var node in _customerResultFocusNodes) {
+      node.dispose();
+    }
+    for (var node in _productResultFocusNodes) {
+      node.dispose();
+    }
+    for (var controller in _quantityControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _searchOrders(String query) async {
     if (query.isEmpty) {
       setState(() {
-        _searchResults = [];
-        _isSearching = false;
+        _orderSearchResults = [];
+        _isSearchingOrders = false;
       });
       return;
     }
 
-    setState(() => _isSearching = true);
-    
-    final orderProvider = context.read<OrderProvider>();
-    await orderProvider.searchOrders(query, excludeDispatched: true);
-    
+    setState(() => _isSearchingOrders = true);
+    try {
+      final results = await context.read<OrderProvider>().searchOrdersUtility(query, excludeDispatched: true);
+      setState(() {
+        _orderSearchResults = results;
+        _isSearchingOrders = false;
+        
+        // Update focus nodes if results changed
+        for (var node in _orderResultFocusNodes) {
+          node.dispose();
+        }
+        _orderResultFocusNodes = List.generate(_orderSearchResults.length, (index) => FocusNode());
+      });
+    } catch (e) {
+      setState(() => _isSearchingOrders = false);
+    }
+  }
+
+  Future<void> _searchCustomers(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _customerSearchResults = [];
+        _isSearchingCustomers = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearchingCustomers = true);
+    final customerProvider = context.read<CustomerProvider>();
+    await customerProvider.searchCustomers(query);
     setState(() {
-      _searchResults = orderProvider.orders;
-      _isSearching = false;
+      _customerSearchResults = customerProvider.customers;
+      _isSearchingCustomers = false;
+      
+      // Update focus nodes
+      for (var node in _customerResultFocusNodes) {
+        node.dispose();
+      }
+      _customerResultFocusNodes.clear();
+      _customerResultFocusNodes.addAll(List.generate(_customerSearchResults.length, (index) => FocusNode()));
     });
+  }
+
+  Future<void> _searchProducts(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _productSearchResults = [];
+        _isSearchingProducts = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearchingProducts = true);
+    final productProvider = context.read<ProductProvider>();
+    productProvider.searchProducts(query);
+    
+    // Give it a moment to update results (search is debounced in provider)
+    await Future.delayed(const Duration(milliseconds: 600));
+    
+    final results = productProvider.products;
+    setState(() {
+      _productSearchResults = results;
+      
+      // Update focus nodes
+      for (var node in _productResultFocusNodes) {
+        node.dispose();
+      }
+      _productResultFocusNodes.clear();
+      _productResultFocusNodes.addAll(List.generate(_productSearchResults.length, (index) => FocusNode()));
+    });
+
+    if (results.isNotEmpty) {
+      final ids = results.map((p) => p.id).toList();
+      final date = _dispatchDate ?? DateTime.now();
+      
+      final avail = await productProvider.checkAvailability(
+        productIds: ids, 
+        startDate: date, 
+        endDate: date.add(const Duration(days: 1))
+      );
+
+      if (avail != null) {
+        setState(() {
+          for (var id in ids) {
+            if (avail.containsKey(id)) {
+              _availabilityMap[id] = avail[id]['available_quantity'] ?? 0;
+            }
+          }
+        });
+      }
+    }
+    
+    setState(() => _isSearchingProducts = false);
   }
 
   void _selectOrder(OrderModel order) {
     setState(() {
       _selectedOrder = order;
-      _searchResults = [];
+      _selectedCustomer = null;
+      _orderSearchResults = [];
       _orderSearchController.text = order.orderNumber;
       
-      // Initialize editable dates from order
       _eventDate = order.eventDate;
       _dispatchDate = order.dispatchDate;
       _returnDate = order.returnDate;
+
+      // Auto-fill items from order
+      _items = order.items.map((item) => DispatchItemModel(
+        id: const Uuid().v4(),
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        isExtra: false,
+      )).toList();
+      
+      _eventNameController.text = order.eventName ?? order.description;
+      _locationController.text = order.eventLocation ?? '';
+    });
+    
+    // Advance focus
+    _driverNameFocus.requestFocus();
+  }
+
+  void _selectCustomer(Customer customer) {
+    setState(() {
+      _selectedCustomer = customer;
+      _selectedOrder = null;
+      _customerSearchResults = [];
+      _customerSearchController.text = customer.name;
+      _orderSearchController.clear();
+      // Keep existing items or clear if switching from order
+      if (_items.any((i) => !i.isExtra)) {
+         _items = _items.where((i) => i.isExtra).toList();
+      }
+    });
+    
+    // Advance focus
+    _driverNameFocus.requestFocus();
+  }
+
+  void _addProduct(ProductModel product) {
+    final existingIndex = _items.indexWhere((item) => item.productId == product.id);
+    
+    setState(() {
+      if (existingIndex != -1) {
+        final existingItem = _items[existingIndex];
+        final newQty = existingItem.quantity + 1;
+        _items[existingIndex] = existingItem.copyWith(quantity: newQty);
+        _quantityControllers[existingItem.id]?.text = newQty.toString();
+      } else {
+        final newItem = DispatchItemModel(
+          id: 'temp_${const Uuid().v4()}',
+          productId: product.id,
+          productName: product.name,
+          quantity: 1,
+          isExtra: _selectedOrder != null,
+        );
+        _items.add(newItem);
+        _quantityControllers[newItem.id] = TextEditingController(text: '1');
+      }
+      _productSearchResults = [];
+      _productSearchController.clear();
     });
   }
 
-  Future<void> _selectDate(BuildContext context, String type) async {
-    DateTime initialDate;
-    if (type == 'event') initialDate = _eventDate ?? DateTime.now();
-    else if (type == 'dispatch') initialDate = _dispatchDate ?? DateTime.now();
-    else initialDate = _returnDate ?? DateTime.now();
-
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFBD0D1D),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-              secondary: Color(0xFFBD0D1D),
-            ),
-            dialogBackgroundColor: Colors.white,
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFBD0D1D),
-                textStyle: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        if (type == 'event') _eventDate = picked;
-        else if (type == 'dispatch') _dispatchDate = picked;
-        else _returnDate = picked;
-      });
-    }
+  void _removeItem(int index) {
+    final item = _items[index];
+    setState(() {
+      _items.removeAt(index);
+      _quantityControllers[item.id]?.dispose();
+      _quantityControllers.remove(item.id);
+    });
   }
 
   Future<void> _saveAndPrint() async {
-    if (!_formKey.currentState!.validate() || _selectedOrder == null) {
+    if (!_formKey.currentState!.validate()) return;
+    
+    if (_selectedOrder == null && _selectedCustomer == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an order and fill all fields')),
+        const SnackBar(content: Text('Please select an Order or a Customer')),
       );
       return;
     }
 
-    // Create a temporary order object with updated dates for PDF generation
-    final updatedOrder = _selectedOrder!.copyWith(
+    if (_items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one item')),
+      );
+      return;
+    }
+
+    // --- STOCK VALIDATION ---
+    List<String> outOfStockItems = [];
+    for (var item in _items) {
+      // Get available stock from the map (or use item's own stock if map is empty)
+      // Note: In edit mode, we should ideally add back the original quantity, 
+      // but for simplicity and immediate safety, we check current availability.
+      final available = _availabilityMap[item.productId] ?? 999999; // Default large if not checked
+      
+      if (item.quantity > available) {
+        outOfStockItems.add("${item.productName} (Req: ${item.quantity}, Avail: $available)");
+      }
+    }
+
+    if (outOfStockItems.isNotEmpty) {
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              SizedBox(width: 8),
+              Text('Stock Warning', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('The following items exceed available stock:', style: TextStyle(color: Colors.black87)),
+              const SizedBox(height: 12),
+              ...outOfStockItems.map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text('• $item', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+              )).toList(),
+              const SizedBox(height: 16),
+              const Text('Please adjust quantities before proceeding.', style: TextStyle(fontStyle: FontStyle.italic, fontSize: 13)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFBD0D1D))),
+            ),
+          ],
+        ),
+      );
+      return; // Stop saving
+    }
+    // --- END STOCK VALIDATION ---
+
+    final vehicleType = _vehicleTypeController.text;
+
+    final dispatchForm = DispatchFormModel(
+      id: widget.existingForm?.id ?? '',
+      orderId: _selectedOrder?.id,
+      customerId: _selectedCustomer?.id,
+      driverName: _driverNameController.text,
+      vehicleNumber: _vehicleNumberController.text,
+      vehicleType: vehicleType,
+      staffName: _staffNameController.text,
       eventDate: _eventDate,
       dispatchDate: _dispatchDate,
       returnDate: _returnDate,
-    );
-
-    final dispatchForm = DispatchFormModel(
-      id: '', // Backend will generate
-      orderId: _selectedOrder!.id,
-      driverName: _driverNameController.text,
-      vehicleNumber: _vehicleNumberController.text,
-      staffName: _staffNameController.text,
+      eventName: _eventNameController.text,
+      eventLocation: _locationController.text,
       createdAt: DateTime.now(),
-      orderDetails: updatedOrder, // Pass updated order details
+      items: _items,
+      orderDetails: _selectedOrder,
     );
 
     final provider = context.read<DispatchProvider>();
-    final result = await provider.createDispatchForm(dispatchForm);
+    DispatchFormModel? result;
+    
+    if (widget.existingForm == null) {
+      result = await provider.createDispatchForm(dispatchForm);
+    } else {
+      final success = await provider.updateDispatchForm(widget.existingForm!.id, dispatchForm.toJson());
+      if (success) result = dispatchForm;
+    }
 
     if (result != null) {
-      // Print the gate pass (ensure it uses the updated result which contains backend data)
-      await PdfGatePassService.printGatePass(result.copyWith(orderDetails: updatedOrder));
+      // Re-fetch details to get populated order/items if needed
+      final fullResult = await provider.getDispatchFormDetails(result.id.isEmpty ? widget.existingForm!.id : result.id);
+      if (fullResult != null) {
+        await PdfGatePassService.printGatePass(fullResult);
+      }
       
       if (mounted) {
+        // Refresh providers to update inventory and order status
+        context.read<ProductProvider>().loadProducts();
+        context.read<OrderProvider>().refreshOrders();
+        
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Gate Pass saved and printed successfully')),
@@ -171,385 +486,715 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
     
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: isMobile ? double.infinity : 850,
-        height: 700,
-        child: Column(
-          children: [
-            // Header (fixed)
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Create Gate Pass (Dispatch Form)',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    return Theme(
+      data: ThemeData.light().copyWith(
+        primaryColor: const Color(0xFFBD0D1D),
+        scaffoldBackgroundColor: Colors.white,
+      ),
+      child: DefaultTextStyle(
+        style: const TextStyle(color: Colors.black),
+        child: Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            width: isMobile ? double.infinity : 950,
+            height: MediaQuery.of(context).size.height * 0.9,
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        widget.existingForm == null ? 'Create Gate Pass (Dispatch)' : 'Edit Gate Pass',
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Colors.black),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
+                ),
+                const Divider(height: 1, color: Colors.black12),
+                
+                Expanded(
+                  child: KeyboardScrollable(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSelectionSection(),
+                          const SizedBox(height: 24),
+                          _buildDateDetailsSection(),
+                          const SizedBox(height: 24),
+                          _buildItemsSection(),
+                          const SizedBox(height: 24),
+                          _buildLogisticsSection(),
+                          const SizedBox(height: 40),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                
+                const Divider(height: 1, color: Colors.black12),
+                _buildFooter(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectionSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Target Selection', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Option 1: Link to Order', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black)),
+                  const SizedBox(height: 8),
+                  PremiumTextField(
+                    controller: _orderSearchController,
+                    focusNode: _orderSearchFocus,
+                    label: 'Search Order',
+                    hint: 'Enter Order # or Customer...',
+                    prefixIcon: Icons.receipt_long,
+                    onChanged: _searchOrders,
+                    enabled: _selectedCustomer == null,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.arrowDown || 
+                            event.logicalKey == LogicalKeyboardKey.tab) {
+                          if (_orderResultFocusNodes.isNotEmpty) {
+                            _orderResultFocusNodes[0].requestFocus();
+                            return KeyEventResult.handled;
+                          }
+                        }
+                      }
+                      return KeyEventResult.ignored;
+                    },
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
-            
-            // Scrollable Content
+            const SizedBox(width: 24),
+            const Text('OR', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+            const SizedBox(width: 24),
             Expanded(
-              child: KeyboardScrollable(
-                thumbVisibility: true,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Order Search Section
-                      const Text('Search Order (ID or Customer)', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      PremiumTextField(
-                        controller: _orderSearchController,
-                        label: 'Search Order',
-                        hint: 'Enter Order Number or Customer Name...',
-                        prefixIcon: Icons.search,
-                        onChanged: _searchOrders,
-                      ),
-                      
-                      if (_searchResults.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(top: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          constraints: const BoxConstraints(maxHeight: 300),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: ListView.separated(
-                              shrinkWrap: true,
-                              padding: EdgeInsets.zero,
-                              itemCount: _searchResults.length,
-                              separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade100),
-                              itemBuilder: (context, index) {
-                                final order = _searchResults[index];
-                                return InkWell(
-                                  onTap: () {
-                                    _selectOrder(order);
-                                    FocusScope.of(context).unfocus();
-                                  },
-                                  hoverColor: Colors.grey.shade50,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    child: Row(
-                                      children: [
-                                        CircleAvatar(
-                                          backgroundColor: const Color(0xFFBD0D1D).withOpacity(0.1),
-                                          child: const Icon(Icons.receipt_long, color: Color(0xFFBD0D1D), size: 20),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                order.orderNumber,
-                                                style: const TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.black,
-                                                  height: 1.2,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                order.customerName.isEmpty ? 'Unknown Customer' : order.customerName,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  color: Color(0xFF666666),
-                                                  height: 1.2,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      
-                      if (_selectedOrder != null) ...[
-                        const SizedBox(height: 24),
-                        // Order Summary Card
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [const Color(0xFFBD0D1D).withOpacity(0.05), Colors.white],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFBD0D1D).withOpacity(0.1)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.person, color: Color(0xFFBD0D1D), size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Customer: ${_selectedOrder!.customerName}',
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  const Icon(Icons.celebration, color: Color(0xFFBD0D1D), size: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Event: ${_selectedOrder!.eventName}',
-                                      style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  const Icon(Icons.location_on, color: Color(0xFFBD0D1D), size: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Location: ${_selectedOrder!.eventLocation}',
-                                      style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-                        const Text('Schedule Dates (Click to Edit)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _buildEditableDate('Dispatch Date', _dispatchDate, () => _selectDate(context, 'dispatch')),
-                              _buildEditableDate('Event Date', _eventDate, () => _selectDate(context, 'event')),
-                              _buildEditableDate('Return Date', _returnDate, () => _selectDate(context, 'return')),
-                            ],
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 24),
-                        const Text('Items List', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: _selectedOrder!.items.map((item) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade100,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.inventory_2, size: 14, color: Colors.grey),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      item.productName.isNotEmpty ? item.productName : (item.productDisplayInfo['name'] ?? 'Unknown Item'),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFBD0D1D).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      'Qty: ${item.quantity}',
-                                      style: const TextStyle(
-                                        color: Color(0xFFBD0D1D),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )).toList(),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-                        const Text('Dispatch Logistics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: PremiumTextField(
-                                controller: _driverNameController,
-                                label: 'Driver Name',
-                                prefixIcon: Icons.person,
-                                validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: PremiumTextField(
-                                controller: _vehicleNumberController,
-                                label: 'Vehicle Number',
-                                prefixIcon: Icons.directions_car,
-                                validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        PremiumTextField(
-                          controller: _staffNameController,
-                          label: 'Staff/Person Accompanying (Bnda)',
-                          prefixIcon: Icons.group,
-                          validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
-                        ),
-                      ],
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            
-            // Footer (fixed)
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                alignment: WrapAlignment.end,
-                crossAxisAlignment: WrapCrossAlignment.center,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      side: const BorderSide(color: Colors.grey, width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(
-                        color: Colors.black, 
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: _saveAndPrint,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFBD0D1D),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 4,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.print, color: Colors.white, size: 20),
-                        SizedBox(width: 12),
-                        Text(
-                          'Save & Print Gate Pass',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
+                  const Text('Option 2: Standalone Customer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black)),
+                  const SizedBox(height: 8),
+                  PremiumTextField(
+                    controller: _customerSearchController,
+                    focusNode: _customerSearchFocus,
+                    label: 'Search Customer',
+                    hint: 'Enter Customer Name...',
+                    prefixIcon: Icons.person_search,
+                    onChanged: _searchCustomers,
+                    enabled: _selectedOrder == null,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.arrowDown || 
+                            event.logicalKey == LogicalKeyboardKey.tab) {
+                          if (_customerResultFocusNodes.isNotEmpty) {
+                            _customerResultFocusNodes[0].requestFocus();
+                            return KeyEventResult.handled;
+                          }
+                        }
+                      }
+                      return KeyEventResult.ignored;
+                    },
                   ),
                 ],
               ),
             ),
           ],
         ),
+        
+        if (_orderSearchResults.isNotEmpty) _buildOrderResults(),
+        if (_customerSearchResults.isNotEmpty) _buildCustomerResults(),
+
+        if (_selectedOrder != null) _buildOrderSummary(),
+        if (_selectedCustomer != null) _buildCustomerSummary(),
+      ],
+    );
+  }
+
+  Widget _buildOrderResults() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.black26), boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]),
+      constraints: const BoxConstraints(maxHeight: 200),
+      child: SingleChildScrollView(
+        child: Column(
+          children: _orderSearchResults.asMap().entries.map((entry) {
+            final index = entry.key;
+            final order = entry.value;
+            final focusNode = _orderResultFocusNodes[index];
+            
+            return Focus(
+              focusNode: focusNode,
+              onFocusChange: (focused) => setState(() {}),
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent) {
+                  if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                    if (index < _orderResultFocusNodes.length - 1) {
+                      _orderResultFocusNodes[index + 1].requestFocus();
+                      return KeyEventResult.handled;
+                    }
+                  } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                    if (index > 0) {
+                      _orderResultFocusNodes[index - 1].requestFocus();
+                    } else {
+                      _orderSearchFocus.requestFocus();
+                    }
+                    return KeyEventResult.handled;
+                  } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+                    _selectOrder(order);
+                    return KeyEventResult.handled;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
+              child: InkWell(
+                onTap: () => _selectOrder(order),
+                canRequestFocus: false,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: focusNode.hasFocus ? const Color(0xFFBD0D1D).withOpacity(0.1) : Colors.transparent,
+                    border: const Border(bottom: BorderSide(color: Colors.black12))
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(order.orderNumber, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 16)),
+                                const SizedBox(width: 8),
+                                if (order.businessName != null && order.businessName!.isNotEmpty)
+                                  Expanded(child: Text(order.businessName!, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFBD0D1D), fontSize: 16, overflow: TextOverflow.ellipsis))),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.person, size: 14, color: Colors.black54),
+                                const SizedBox(width: 4),
+                                Text(order.clientName ?? "No Name", style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black, fontSize: 14)),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.phone, size: 14, color: Colors.black54),
+                                const SizedBox(width: 4),
+                                Text(order.customerPhone, style: const TextStyle(color: Colors.black87, fontSize: 13)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 
-  Widget _buildEditableDate(String label, DateTime? date, VoidCallback onTap) {
-    final dateFormat = DateFormat('dd MMM, yyyy');
+  Widget _buildCustomerResults() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.black26), boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]),
+      constraints: const BoxConstraints(maxHeight: 200),
+      child: SingleChildScrollView(
+        child: Column(
+          children: _customerSearchResults.asMap().entries.map((entry) {
+            final index = entry.key;
+            final customer = entry.value;
+            final focusNode = _customerResultFocusNodes[index];
+            
+            return Focus(
+              focusNode: focusNode,
+              onFocusChange: (focused) => setState(() {}),
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent) {
+                  if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                    if (index < _customerResultFocusNodes.length - 1) {
+                      _customerResultFocusNodes[index + 1].requestFocus();
+                      return KeyEventResult.handled;
+                    }
+                  } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                    if (index > 0) {
+                      _customerResultFocusNodes[index - 1].requestFocus();
+                    } else {
+                      _customerSearchFocus.requestFocus();
+                    }
+                    return KeyEventResult.handled;
+                  } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+                    _selectCustomer(customer);
+                    return KeyEventResult.handled;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
+              child: InkWell(
+                onTap: () => _selectCustomer(customer),
+                canRequestFocus: false,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: focusNode.hasFocus ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                    border: const Border(bottom: BorderSide(color: Colors.black12))
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (customer.customerType == 'BUSINESS' && (customer.businessName ?? '').isNotEmpty) ...[
+                              Text(customer.businessName!, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 16)),
+                              const SizedBox(height: 2),
+                              Text(customer.name, style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w400)),
+                            ] else ...[
+                              Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 16)),
+                            ],
+                            const SizedBox(height: 4),
+                            Text(customer.phone, style: const TextStyle(color: Colors.black87, fontSize: 14)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderSummary() {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: const Color(0xFFBD0D1D).withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFBD0D1D).withOpacity(0.2))),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Colors.green),
+          const SizedBox(width: 12),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Linked to Order: ${_selectedOrder!.orderNumber}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+              if (_selectedOrder!.businessName != null)
+                Text('Business: ${_selectedOrder!.businessName}', style: const TextStyle(fontSize: 13, color: Color(0xFFBD0D1D), fontWeight: FontWeight.bold)),
+              Text('Client Contact: ${_selectedOrder!.clientName ?? _selectedOrder!.customerName}', style: const TextStyle(fontSize: 12, color: Colors.black, fontWeight: FontWeight.w600)),
+            ],
+          )),
+          TextButton(onPressed: () => setState(() { _selectedOrder = null; _orderSearchController.clear(); _items.clear(); }), child: const Text('Clear', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerSummary() {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withOpacity(0.2))),
+      child: Row(
+        children: [
+          const Icon(Icons.person, color: Colors.blue),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_selectedCustomer!.customerType == 'BUSINESS' && (_selectedCustomer!.businessName ?? '').isNotEmpty) ...[
+                  Text('Standalone Business: ${_selectedCustomer!.businessName}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                  Text('Contact Person: ${_selectedCustomer!.name}', style: TextStyle(color: Colors.blue.shade700, fontSize: 13, fontWeight: FontWeight.w600)),
+                ] else ...[
+                  Text('Standalone Customer: ${_selectedCustomer!.name}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                ],
+              ],
+            ),
+          ),
+          TextButton(onPressed: () => setState(() { _selectedCustomer = null; _customerSearchController.clear(); }), child: const Text('Clear', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Dispatch Items', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+            if (_items.isNotEmpty) Text('${_items.length} Items Selected', style: const TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 16),
+          PremiumTextField(
+            controller: _productSearchController,
+            focusNode: _productSearchFocus,
+            label: 'Add Product',
+            hint: 'Search by name or barcode...',
+            prefixIcon: Icons.add_shopping_cart,
+            onChanged: _searchProducts,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent) {
+                if (event.logicalKey == LogicalKeyboardKey.arrowDown || 
+                    event.logicalKey == LogicalKeyboardKey.tab) {
+                  if (_productResultFocusNodes.isNotEmpty) {
+                    _productResultFocusNodes[0].requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                }
+              }
+              return KeyEventResult.ignored;
+            },
+          ),
+        if (_productSearchResults.isNotEmpty) _buildProductResults(),
+        const SizedBox(height: 16),
+        _buildItemsTable(),
+      ],
+    );
+  }
+
+  Widget _buildProductResults() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.black26), boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]),
+      constraints: const BoxConstraints(maxHeight: 200),
+      child: SingleChildScrollView(
+        child: Column(
+          children: _productSearchResults.asMap().entries.map((entry) {
+            final index = entry.key;
+            final product = entry.value;
+            final focusNode = _productResultFocusNodes[index];
+            
+            return Focus(
+              focusNode: focusNode,
+              onFocusChange: (focused) => setState(() {}),
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent) {
+                  if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                    if (index < _productResultFocusNodes.length - 1) {
+                      _productResultFocusNodes[index + 1].requestFocus();
+                      return KeyEventResult.handled;
+                    }
+                  } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                    if (index > 0) {
+                      _productResultFocusNodes[index - 1].requestFocus();
+                    } else {
+                      _productSearchFocus.requestFocus();
+                    }
+                    return KeyEventResult.handled;
+                  } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+                    _addProduct(product);
+                    return KeyEventResult.handled;
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
+              child: InkWell(
+                onTap: () => _addProduct(product),
+                canRequestFocus: false,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: focusNode.hasFocus ? Colors.green.withOpacity(0.1) : Colors.transparent,
+                    border: const Border(bottom: BorderSide(color: Colors.black12))
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 16)),
+                      ),
+                      Text(
+                        'Available: ${_availabilityMap[product.id] ?? product.quantity}', 
+                        style: TextStyle(
+                          color: (_availabilityMap[product.id] ?? product.quantity) <= 0 ? Colors.red : Colors.green.shade700, 
+                          fontWeight: FontWeight.bold
+                        )
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemsTable() {
+    if (_items.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+        child: const Center(child: Text('No items added yet. Search products to add them.', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold))),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.black12)),
+      child: Column(
+        children: [
+          // Table Header
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: const BorderRadius.vertical(top: Radius.circular(12))),
+            child: Row(
+              children: const [
+                Expanded(flex: 4, child: Text('Product', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))),
+                Expanded(flex: 2, child: Center(child: Text('Quantity', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)))),
+                Expanded(flex: 2, child: Center(child: Text('Status', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))),),
+                SizedBox(width: 60, child: Center(child: Text('Action', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)))),
+              ],
+            ),
+          ),
+          // Table Body
+          ...List.generate(_items.length, (index) {
+            final item = _items[index];
+            return Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.black12))),
+              child: Row(
+                children: [
+                  Expanded(flex: 4, child: Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 16))),
+                  Expanded(flex: 2, child: Center(
+                    child: SizedBox(
+                      width: 90,
+                      child: TextField(
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 18),
+                        decoration: InputDecoration(
+                          isDense: true, 
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                          fillColor: Colors.white,
+                          filled: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black26)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFBD0D1D), width: 2)),
+                        ),
+                        onChanged: (val) {
+                          if (val.isEmpty) return;
+                          final newQty = int.tryParse(val) ?? item.quantity;
+                          _items[index] = _items[index].copyWith(quantity: newQty);
+                        },
+                        controller: _quantityControllers[item.id] ?? (
+                          _quantityControllers[item.id] = TextEditingController(text: item.quantity.toString())
+                        ),
+                      ),
+                    ),
+                  )),
+                  Expanded(flex: 2, child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(color: item.isExtra ? Colors.orange.withOpacity(0.15) : Colors.green.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+                      child: Text(item.isExtra ? 'Extra' : 'Order Item', textAlign: TextAlign.center, style: TextStyle(color: item.isExtra ? Colors.orange.shade900 : Colors.green.shade900, fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  )),
+                  SizedBox(width: 60, child: Center(child: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red, size: 28), onPressed: () => _removeItem(index)))),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogisticsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Logistics & Staff', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+        const SizedBox(height: 16),
+        PremiumTextField(
+          controller: _driverNameController,
+          focusNode: _driverNameFocus,
+          label: 'Driver Name',
+          prefixIcon: Icons.person_outline,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _vehicleNumberFocus.requestFocus(),
+          validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+        ),
+        const SizedBox(height: 16),
+        PremiumTextField(
+          controller: _vehicleNumberController,
+          focusNode: _vehicleNumberFocus,
+          label: 'Vehicle Number',
+          prefixIcon: Icons.directions_car_outlined,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _staffNameFocus.requestFocus(),
+          validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              flex: 1,
+              child: PremiumTextField(
+                controller: _vehicleTypeController,
+                label: 'Vehicle Type',
+                prefixIcon: Icons.local_shipping,
+                hint: 'e.g. Truck, Pickup...',
+                validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 1,
+              child: PremiumTextField(
+                controller: _staffNameController,
+                label: 'Staff Accompanying',
+                prefixIcon: Icons.badge,
+                validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFooter() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20), 
+              side: const BorderSide(color: Colors.black87),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+            ),
+            child: const Text('Cancel', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(width: 16),
+          ElevatedButton.icon(
+            onPressed: _saveAndPrint,
+            icon: const Icon(Icons.print, color: Colors.white),
+            label: Text(widget.existingForm == null ? 'Save & Print Gate Pass' : 'Update & Print', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFBD0D1D), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateDetailsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Date Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: _buildDatePickerField('Event Date', _eventDate, (d) => setState(() => _eventDate = d))),
+            const SizedBox(width: 12),
+            Expanded(child: _buildDatePickerField('Dispatch Date', _dispatchDate, (d) => setState(() => _dispatchDate = d))),
+            const SizedBox(width: 12),
+            Expanded(child: _buildDatePickerField('Return Date', _returnDate, (d) => setState(() => _returnDate = d))),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: PremiumTextField(
+                controller: _eventNameController,
+                label: 'Event Name / Description',
+                prefixIcon: Icons.event,
+                hint: 'e.g. Wedding of Ali...',
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: PremiumTextField(
+                controller: _locationController,
+                label: 'Event Location / Address',
+                prefixIcon: Icons.location_on,
+                hint: 'e.g. PC Hotel, Lahore...',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDatePickerField(String label, DateTime? value, Function(DateTime) onSelected) {
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: value ?? DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2101),
+          builder: (context, child) => Theme(
+            data: ThemeData.light().copyWith(
+              colorScheme: const ColorScheme.light(primary: Color(0xFFBD0D1D)),
+            ),
+            child: child!,
+          ),
+        );
+        if (picked != null) onSelected(picked);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade400),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
+            Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
             Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.calendar_month, size: 16, color: Color(0xFFBD0D1D)),
+                const Icon(Icons.calendar_today, size: 16, color: Color(0xFFBD0D1D)),
                 const SizedBox(width: 8),
                 Text(
-                  date != null ? dateFormat.format(date) : 'Select Date',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
+                  value == null ? 'Select' : '${value.day}/${value.month}/${value.year}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
                 ),
-                const SizedBox(width: 4),
-                const Icon(Icons.edit, size: 12, color: Colors.grey),
               ],
             ),
           ],

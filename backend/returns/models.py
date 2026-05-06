@@ -25,7 +25,8 @@ class RentalReturn(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    order = models.OneToOneField('orders.Order', on_delete=models.CASCADE, related_name='rental_return')
+    order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='rental_returns', null=True, blank=True)
+    dispatch_form = models.ForeignKey('orders.DispatchForm', on_delete=models.CASCADE, related_name='rental_returns', null=True, blank=True)
     
     return_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=TALLY_STATUS, default='PENDING')
@@ -60,11 +61,23 @@ class RentalReturn(models.Model):
         indexes = [
             models.Index(fields=['status']),
             models.Index(fields=['order']),
+            models.Index(fields=['dispatch_form']),
             models.Index(fields=['return_date']),
         ]
 
+    def clean(self):
+        if not self.order and not self.dispatch_form:
+            raise ValidationError("Return must be linked to either an Order or a Standalone Gate Pass.")
+        if self.order and self.dispatch_form:
+            raise ValidationError("Return cannot be linked to both an Order and a Standalone Gate Pass at the same time.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"Return for Order {self.order.id} ({self.get_status_display()})"
+        target = f"Order {self.order.id}" if self.order else f"Gate Pass {self.dispatch_form.id}"
+        return f"Return for {target} ({self.get_status_display()})"
 
     def update_totals(self):
         """Recalculate totals from items"""
@@ -113,6 +126,7 @@ class RentalReturn(models.Model):
         
         from products.models import Product, StockChangeLog, StockReservation
         
+        target = f"Order {self.order.id}" if self.order else f"Gate Pass {self.dispatch_form.id}"
         for item in self.items.all():
             product = item.product
             
@@ -125,9 +139,10 @@ class RentalReturn(models.Model):
                 continue
             
             if product.is_rental and not product.is_consumable:
-                # Deactivate the reservation for this order
+                # Deactivate the reservation
+                ref_id = f"ORDER_{self.order.id}" if self.order else f"DISPATCH_{self.dispatch_form.id}"
                 StockReservation.objects.filter(
-                    sale_id=f"ORDER_{self.order.id}",
+                    sale_id=ref_id,
                     product=product,
                     is_active=True
                 ).update(is_active=False, updated_at=timezone.now())
@@ -155,7 +170,7 @@ class RentalReturn(models.Model):
                     old_quantity=old_quantity,
                     new_quantity=product.quantity,
                     change_type='RETURN',
-                    reason=f'Return tally for Order {self.order.id}: '
+                    reason=f'Return tally for {target}: '
                            f'{item.qty_returned} good, {item.qty_damaged} damaged, '
                            f'{item.qty_missing} missing',
                     changed_by=user or self.processed_by
