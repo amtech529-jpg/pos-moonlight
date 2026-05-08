@@ -7,6 +7,7 @@ import 'package:frontend/src/providers/customer_provider.dart' show Customer, Cu
 import 'package:frontend/src/providers/dispatch_provider.dart';
 import 'package:frontend/src/providers/order_provider.dart';
 import 'package:frontend/src/providers/product_provider.dart';
+import 'package:frontend/src/providers/quotation_provider.dart';
 import 'package:frontend/src/theme/app_theme.dart';
 import 'package:frontend/src/utils/responsive_breakpoints.dart';
 import 'package:frontend/presentation/widgets/globals/text_field.dart';
@@ -61,15 +62,33 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
   
   bool _isSearchingProducts = false;
   List<ProductModel> _productSearchResults = [];
+  bool _isSaving = false;
   Map<String, int> _availabilityMap = {};
   final Map<String, TextEditingController> _quantityControllers = {};
+  
+  List<String> _eventNameSuggestions = [];
+  List<String> _locationSuggestions = [];
+  List<String> _filteredEventSuggestions = [];
+  List<String> _filteredLocationSuggestions = [];
 
   // Editable Dates
   DateTime? _eventDate;
   DateTime? _dispatchDate;
   DateTime? _returnDate;
+  
+  final FocusNode _eventNameFocus = FocusNode();
+  final FocusNode _eventLocationFocus = FocusNode();
+  final FocusNode _eventDateFocus = FocusNode();
+  final FocusNode _dispatchDateFocus = FocusNode();
+  final FocusNode _returnDateFocus = FocusNode();
+  
+  List<FocusNode>? _suggestionFocusNodesList;
+  List<FocusNode> get _suggestionFocusNodes {
+    _suggestionFocusNodesList ??= List.generate(20, (index) => FocusNode());
+    return _suggestionFocusNodesList!;
+  }
 
-  final List<String> _vehicleTypes = ['Truck', 'Pickup', 'Mini Truck', 'Bike', 'Rickshaw', 'Manual', 'Other'];
+  final List<String> _vehicleTypes = ['Bike', 'Auto Rickshaw', 'Loader Rickshaw', 'Car', 'Pickup', 'Truck', 'Shahzor Gari'];
   String _selectedVehicleType = 'Truck';
 
   @override
@@ -78,6 +97,13 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
     _orderResultFocusNodes = [];
     _customerResultFocusNodes = [];
     _productResultFocusNodes = [];
+    _filteredEventSuggestions = [];
+    _filteredLocationSuggestions = [];
+
+    // Add listeners to date focus nodes for visual feedback
+    _eventDateFocus.addListener(() => setState(() {}));
+    _dispatchDateFocus.addListener(() => setState(() {}));
+    _returnDateFocus.addListener(() => setState(() {}));
     if (widget.existingForm != null) {
       _selectedOrder = widget.existingForm!.orderDetails;
       if (_selectedOrder != null) {
@@ -114,6 +140,11 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
       _vehicleNumberController.text = widget.existingForm!.vehicleNumber;
       _staffNameController.text = widget.existingForm!.staffName;
       _vehicleTypeController.text = widget.existingForm!.vehicleType ?? '';
+      if (_vehicleTypes.contains(widget.existingForm!.vehicleType)) {
+        _selectedVehicleType = widget.existingForm!.vehicleType!;
+      } else if (widget.existingForm!.vehicleType != null && widget.existingForm!.vehicleType!.isNotEmpty) {
+        _selectedVehicleType = 'Other';
+      }
       
       _eventDate = widget.existingForm!.eventDate;
       _dispatchDate = widget.existingForm!.dispatchDate;
@@ -134,12 +165,38 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
         if (_locationController.text.isEmpty) _locationController.text = _selectedOrder!.eventLocation ?? '';
       }
     } else {
-      // For new forms, default to today
-      final now = DateTime.now();
-      _eventDate = now;
-      _dispatchDate = now;
-      _returnDate = now;
+      // For new standalone forms, keep dates null as requested
+      _eventDate = null;
+      _dispatchDate = null;
+      _returnDate = null;
     }
+    _loadSuggestions();
+  }
+
+  void _loadSuggestions() async {
+    final dispatchProvider = context.read<DispatchProvider>();
+    final orderProvider = context.read<OrderProvider>();
+    final quotationProvider = context.read<QuotationProvider>();
+    
+    // Collect from Dispatches
+    final dispatchForms = dispatchProvider.forms;
+    final Set<String> events = dispatchForms.map((f) => f.eventName ?? '').where((s) => s.isNotEmpty).toSet();
+    final Set<String> locations = dispatchForms.map((f) => f.eventLocation ?? '').where((s) => s.isNotEmpty).toSet();
+    
+    // Collect from Orders
+    final orders = orderProvider.allOrders;
+    events.addAll(orders.map((o) => o.eventName ?? '').where((s) => s.isNotEmpty));
+    locations.addAll(orders.map((o) => o.eventLocation ?? '').where((s) => s.isNotEmpty));
+    
+    // Collect from Quotations
+    final quotations = quotationProvider.quotations;
+    events.addAll(quotations.map((q) => q.eventName).where((s) => s.isNotEmpty));
+    locations.addAll(quotations.map((q) => q.eventLocation ?? '').where((s) => s.isNotEmpty));
+
+    setState(() {
+      _eventNameSuggestions = events.toList();
+      _locationSuggestions = locations.toList();
+    });
   }
 
   @override
@@ -150,9 +207,12 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
     _driverNameController.dispose();
     _vehicleNumberController.dispose();
     _vehicleTypeController.dispose();
-    _staffNameController.dispose();
-    _eventNameController.dispose();
     _locationController.dispose();
+    _eventNameFocus.dispose();
+    _eventLocationFocus.dispose();
+    _eventDateFocus.dispose();
+    _dispatchDateFocus.dispose();
+    _returnDateFocus.dispose();
     _orderSearchFocus.dispose();
     _customerSearchFocus.dispose();
     _productSearchFocus.dispose();
@@ -320,8 +380,68 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
       }
     });
     
-    // Advance focus
-    _driverNameFocus.requestFocus();
+    // Move focus to first date as requested
+    _eventDateFocus.requestFocus();
+  }
+
+  Future<void> _pickEventDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      helpText: 'SELECT EVENT DATE',
+      initialDate: _eventDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2101),
+      builder: (context, child) => Theme(
+        data: ThemeData.light().copyWith(
+          colorScheme: const ColorScheme.light(primary: Color(0xFFBD0D1D)),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      setState(() => _eventDate = picked);
+      _dispatchDateFocus.requestFocus();
+    }
+  }
+
+  Future<void> _pickDispatchDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      helpText: 'SELECT DISPATCH DATE',
+      initialDate: _dispatchDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2101),
+      builder: (context, child) => Theme(
+        data: ThemeData.light().copyWith(
+          colorScheme: const ColorScheme.light(primary: Color(0xFFBD0D1D)),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      setState(() => _dispatchDate = picked);
+      _returnDateFocus.requestFocus();
+    }
+  }
+
+  Future<void> _pickReturnDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      helpText: 'SELECT RETURN DATE',
+      initialDate: _returnDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2101),
+      builder: (context, child) => Theme(
+        data: ThemeData.light().copyWith(
+          colorScheme: const ColorScheme.light(primary: Color(0xFFBD0D1D)),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      setState(() => _returnDate = picked);
+      _eventNameFocus.requestFocus();
+    }
   }
 
   void _addProduct(ProductModel product) {
@@ -375,16 +495,60 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
       return;
     }
 
+    setState(() => _isSaving = true);
+    try {
+
     // --- STOCK VALIDATION ---
+    // First, ensure we have current availability for ALL items
+    final productProvider = context.read<ProductProvider>();
+    final allProductIds = _items.map((i) => i.productId).toList();
+    final date = _dispatchDate ?? DateTime.now();
+    
+    final avail = await productProvider.checkAvailability(
+      productIds: allProductIds, 
+      startDate: date, 
+      endDate: date.add(const Duration(days: 1)),
+      excludeOrderId: _selectedOrder?.id,
+    );
+
+    if (avail != null) {
+      setState(() {
+        for (var id in allProductIds) {
+          if (avail.containsKey(id)) {
+            _availabilityMap[id] = avail[id]['available_quantity'] ?? 0;
+          }
+        }
+      });
+    }
+
     List<String> outOfStockItems = [];
     for (var item in _items) {
-      // Get available stock from the map (or use item's own stock if map is empty)
-      // Note: In edit mode, we should ideally add back the original quantity, 
-      // but for simplicity and immediate safety, we check current availability.
-      final available = _availabilityMap[item.productId] ?? 999999; // Default large if not checked
+      int physicalAvailable = _availabilityMap[item.productId] ?? 0;
       
-      if (item.quantity > available) {
-        outOfStockItems.add("${item.productName} (Req: ${item.quantity}, Avail: $available)");
+      // If editing, add back the original quantity of this item 
+      if (widget.existingForm != null) {
+        final originalItem = widget.existingForm!.items.where((oi) => oi.productId == item.productId);
+        if (originalItem.isNotEmpty) {
+          physicalAvailable += originalItem.first.quantity;
+        }
+      }
+
+      // Final allowed quantity: Either what's in stock, or what was already ordered
+      // (This handles partner stock cases where the order was for more than we have)
+      int maxAllowed = physicalAvailable;
+      
+      if (_selectedOrder != null) {
+        final orderItem = _selectedOrder!.items.where((oi) => oi.productId == item.productId);
+        if (orderItem.isNotEmpty) {
+          // If the order has more than our stock, allow up to the order amount
+          if (orderItem.first.quantity > maxAllowed) {
+            maxAllowed = orderItem.first.quantity;
+          }
+        }
+      }
+
+      if (item.quantity > maxAllowed) {
+        outOfStockItems.add("${item.productName}\n(Requested: ${item.quantity}, Max Allowed: $maxAllowed)");
       }
     }
 
@@ -392,31 +556,85 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
       await showDialog(
         context: context,
         builder: (context) => AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: const [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-              SizedBox(width: 8),
-              Text('Stock Warning', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 32),
+              SizedBox(width: 12),
+              Text('Stock Warning', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20)),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('The following items exceed available stock:', style: TextStyle(color: Colors.black87)),
-              const SizedBox(height: 12),
-              ...outOfStockItems.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text('• $item', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
-              )).toList(),
-              const SizedBox(height: 16),
-              const Text('Please adjust quantities before proceeding.', style: TextStyle(fontStyle: FontStyle.italic, fontSize: 13)),
-            ],
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'The following items exceed available stock:', 
+                  style: TextStyle(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.w500)
+                ),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withOpacity(0.2)),
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: outOfStockItems.map((item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('• ', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 18)),
+                              Expanded(
+                                child: Text(
+                                  item, 
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFBD0D1D), fontSize: 14)
+                                ),
+                              ),
+                            ],
+                          ),
+                        )).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Please adjust quantities before proceeding.', 
+                  style: TextStyle(fontStyle: FontStyle.italic, fontSize: 13, color: Colors.black54)
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFBD0D1D))),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.black54,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFBD0D1D),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
           ],
         ),
@@ -426,6 +644,42 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
     // --- END STOCK VALIDATION ---
 
     final vehicleType = _vehicleTypeController.text;
+
+    // --- AUTO-SPLIT ITEMS FOR PARTNER STOCK REPORTING ---
+    List<DispatchItemModel> processedItems = [];
+    for (var item in _items) {
+      // Get physical stock (ignoring the order reservation for a moment to see true own stock)
+      int physicalStock = _availabilityMap[item.productId] ?? 0;
+      
+      // If we are editing, we need to consider the stock we ALREADY consumed as 'ours'
+      if (widget.existingForm != null) {
+        final originalItem = widget.existingForm!.items.where((oi) => oi.productId == item.productId && !oi.isExtra);
+        if (originalItem.isNotEmpty) {
+          physicalStock += originalItem.first.quantity;
+        }
+      }
+
+      if (!item.isExtra && item.quantity > physicalStock) {
+        if (physicalStock > 0) {
+          // Split into Own Stock row and Partner Stock row
+          processedItems.add(item.copyWith(
+            id: item.id, // Keep ID for first part
+            quantity: physicalStock, 
+            isExtra: false
+          ));
+          processedItems.add(item.copyWith(
+            id: "extra_${item.id}", 
+            quantity: item.quantity - physicalStock, 
+            isExtra: true
+          ));
+        } else {
+          // All is partner stock
+          processedItems.add(item.copyWith(isExtra: true));
+        }
+      } else {
+        processedItems.add(item);
+      }
+    }
 
     final dispatchForm = DispatchFormModel(
       id: widget.existingForm?.id ?? '',
@@ -441,7 +695,7 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
       eventName: _eventNameController.text,
       eventLocation: _locationController.text,
       createdAt: DateTime.now(),
-      items: _items,
+      items: processedItems,
       orderDetails: _selectedOrder,
     );
 
@@ -464,8 +718,9 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
       
       if (mounted) {
         // Refresh providers to update inventory and order status
-        context.read<ProductProvider>().loadProducts();
-        context.read<OrderProvider>().refreshOrders();
+        // Await these so the screen is ready when dialog closes
+        await context.read<ProductProvider>().initialize();
+        await context.read<OrderProvider>().refreshOrders();
         
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -474,10 +729,21 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
       }
     } else {
       if (mounted) {
+        setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(provider.error ?? 'Failed to save Gate Pass')),
         );
       }
+    }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -1023,7 +1289,7 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(color: item.isExtra ? Colors.orange.withOpacity(0.15) : Colors.green.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-                      child: Text(item.isExtra ? 'Extra' : 'Order Item', textAlign: TextAlign.center, style: TextStyle(color: item.isExtra ? Colors.orange.shade900 : Colors.green.shade900, fontSize: 12, fontWeight: FontWeight.bold)),
+                      child: Text(item.isExtra ? 'Partner' : 'Order Item', textAlign: TextAlign.center, style: TextStyle(color: item.isExtra ? Colors.orange.shade900 : Colors.green.shade900, fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   )),
                   SizedBox(width: 60, child: Center(child: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red, size: 28), onPressed: () => _removeItem(index)))),
@@ -1066,12 +1332,35 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
           children: [
             Expanded(
               flex: 1,
-              child: PremiumTextField(
-                controller: _vehicleTypeController,
-                label: 'Vehicle Type',
-                prefixIcon: Icons.local_shipping,
-                hint: 'e.g. Truck, Pickup...',
-                validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+              child: DropdownButtonFormField<String>(
+                value: _vehicleTypes.contains(_selectedVehicleType) ? _selectedVehicleType : _vehicleTypes.first,
+                decoration: InputDecoration(
+                  labelText: 'Vehicle Type',
+                  prefixIcon: const Icon(Icons.local_shipping, color: Color(0xFFBD0D1D)),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.black26)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.black26)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFBD0D1D), width: 2)),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                ),
+                dropdownColor: Colors.white,
+                style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                items: _vehicleTypes.map((String type) {
+                  return DropdownMenuItem<String>(
+                    value: type,
+                    child: Text(type, style: const TextStyle(color: Colors.black)),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedVehicleType = newValue;
+                      _vehicleTypeController.text = newValue;
+                    });
+                  }
+                },
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               ),
             ),
             const SizedBox(width: 16),
@@ -1107,10 +1396,21 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
           ),
           const SizedBox(width: 16),
           ElevatedButton.icon(
-            onPressed: _saveAndPrint,
-            icon: const Icon(Icons.print, color: Colors.white),
-            label: Text(widget.existingForm == null ? 'Save & Print Gate Pass' : 'Update & Print', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFBD0D1D), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            onPressed: _isSaving ? null : _saveAndPrint,
+            icon: _isSaving 
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(Icons.print, color: Colors.white),
+            label: Text(
+              _isSaving 
+                ? 'Saving...' 
+                : (widget.existingForm == null ? 'Save & Print Gate Pass' : 'Update & Print'), 
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFBD0D1D), 
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20), 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+            ),
           ),
         ],
       ),
@@ -1125,31 +1425,99 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildDatePickerField('Event Date', _eventDate, (d) => setState(() => _eventDate = d))),
+            Expanded(child: _buildDatePickerField('Event Date', _eventDate, (d) => setState(() => _eventDate = d), onTap: _pickEventDate, focusNode: _eventDateFocus)),
             const SizedBox(width: 12),
-            Expanded(child: _buildDatePickerField('Dispatch Date', _dispatchDate, (d) => setState(() => _dispatchDate = d))),
+            Expanded(child: _buildDatePickerField('Dispatch Date', _dispatchDate, (d) => setState(() => _dispatchDate = d), onTap: _pickDispatchDate, focusNode: _dispatchDateFocus)),
             const SizedBox(width: 12),
-            Expanded(child: _buildDatePickerField('Return Date', _returnDate, (d) => setState(() => _returnDate = d))),
+            Expanded(child: _buildDatePickerField('Return Date', _returnDate, (d) => setState(() => _returnDate = d), onTap: _pickReturnDate, focusNode: _returnDateFocus)),
           ],
         ),
         const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
-              child: PremiumTextField(
-                controller: _eventNameController,
-                label: 'Event Name / Description',
-                prefixIcon: Icons.event,
-                hint: 'e.g. Wedding of Ali...',
+              child: Column(
+                children: [
+                  PremiumTextField(
+                    controller: _eventNameController,
+                    focusNode: _eventNameFocus,
+                    label: 'Event Name / Description',
+                    prefixIcon: Icons.event,
+                    hint: 'e.g. Wedding of Ali...',
+                    onSubmitted: (_) => _eventLocationFocus.requestFocus(),
+                    onChanged: (val) {
+                      setState(() {
+                        if (val.isEmpty) {
+                          _filteredEventSuggestions = [];
+                        } else {
+                          _filteredEventSuggestions = _eventNameSuggestions
+                              .where((s) => s.toLowerCase().contains(val.toLowerCase()))
+                              .toList();
+                        }
+                      });
+                    },
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent && (event.logicalKey == LogicalKeyboardKey.arrowDown || event.logicalKey == LogicalKeyboardKey.tab)) {
+                        if (_filteredEventSuggestions.isNotEmpty) {
+                          _suggestionFocusNodes[0].requestFocus();
+                          return KeyEventResult.handled;
+                        }
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                  ),
+                  if (_filteredEventSuggestions.isNotEmpty)
+                    _buildSuggestionResults(_filteredEventSuggestions, (val) {
+                      setState(() {
+                        _eventNameController.text = val;
+                        _filteredEventSuggestions = [];
+                        _eventLocationFocus.requestFocus();
+                      });
+                    }, _eventNameFocus, _eventLocationFocus),
+                ],
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: PremiumTextField(
-                controller: _locationController,
-                label: 'Event Location / Address',
-                prefixIcon: Icons.location_on,
-                hint: 'e.g. PC Hotel, Lahore...',
+              child: Column(
+                children: [
+                  PremiumTextField(
+                    controller: _locationController,
+                    focusNode: _eventLocationFocus,
+                    label: 'Event Location / Address',
+                    prefixIcon: Icons.location_on,
+                    hint: 'e.g. PC Hotel, Lahore...',
+                    onSubmitted: (_) => _productSearchFocus.requestFocus(),
+                    onChanged: (val) {
+                      setState(() {
+                        if (val.isEmpty) {
+                          _filteredLocationSuggestions = [];
+                        } else {
+                          _filteredLocationSuggestions = _locationSuggestions
+                              .where((s) => s.toLowerCase().contains(val.toLowerCase()))
+                              .toList();
+                        }
+                      });
+                    },
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent && (event.logicalKey == LogicalKeyboardKey.arrowDown || event.logicalKey == LogicalKeyboardKey.tab)) {
+                        if (_filteredLocationSuggestions.isNotEmpty) {
+                          _suggestionFocusNodes[0].requestFocus();
+                          return KeyEventResult.handled;
+                        }
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                  ),
+                  if (_filteredLocationSuggestions.isNotEmpty)
+                    _buildSuggestionResults(_filteredLocationSuggestions, (val) {
+                      setState(() {
+                        _locationController.text = val;
+                        _filteredLocationSuggestions = [];
+                        _productSearchFocus.requestFocus();
+                      });
+                    }, _eventLocationFocus, _productSearchFocus),
+                ],
               ),
             ),
           ],
@@ -1158,47 +1526,141 @@ class _AddDispatchFormDialogState extends State<AddDispatchFormDialog> {
     );
   }
 
-  Widget _buildDatePickerField(String label, DateTime? value, Function(DateTime) onSelected) {
-    return InkWell(
-      onTap: () async {
-        final picked = await showDatePicker(
-          context: context,
-          initialDate: value ?? DateTime.now(),
-          firstDate: DateTime(2020),
-          lastDate: DateTime(2101),
-          builder: (context, child) => Theme(
-            data: ThemeData.light().copyWith(
-              colorScheme: const ColorScheme.light(primary: Color(0xFFBD0D1D)),
-            ),
-            child: child!,
-          ),
-        );
-        if (picked != null) onSelected(picked);
-      },
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade400),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 16, color: Color(0xFFBD0D1D)),
-                const SizedBox(width: 8),
-                Text(
-                  value == null ? 'Select' : '${value.day}/${value.month}/${value.year}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+  Widget _buildSuggestionResults(List<String> suggestions, Function(String) onSelected, FocusNode parentFocus, FocusNode nextFieldFocus) {
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8)],
+      ),
+      constraints: const BoxConstraints(maxHeight: 200),
+      child: ListView.builder(
+        padding: EdgeInsets.zero,
+        shrinkWrap: true,
+        itemCount: suggestions.length,
+        itemBuilder: (context, index) {
+          final suggestion = suggestions[index];
+          final fNode = _suggestionFocusNodes[index % 20];
+          return Focus(
+            focusNode: fNode,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent) {
+                if (event.logicalKey == LogicalKeyboardKey.enter) {
+                  onSelected(suggestion);
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowDown || event.logicalKey == LogicalKeyboardKey.tab) {
+                  if (index < suggestions.length - 1) {
+                    _suggestionFocusNodes[(index + 1) % 20].requestFocus();
+                  } else {
+                    nextFieldFocus.requestFocus();
+                  }
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                  if (index > 0) {
+                    _suggestionFocusNodes[(index - 1) % 20].requestFocus();
+                  } else {
+                    parentFocus.requestFocus();
+                  }
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
+            },
+            child: InkWell(
+              onTap: () => onSelected(suggestion),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                color: fNode.hasFocus ? const Color(0xFFBD0D1D).withOpacity(0.05) : Colors.transparent,
+                child: Row(
+                  children: [
+                    const Icon(Icons.history, size: 18, color: Colors.grey),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(suggestion, style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.black))),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ],
-        ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDatePickerField(String label, DateTime? value, Function(DateTime) onSelected, {VoidCallback? onTap, FocusNode? focusNode}) {
+    return Focus(
+      focusNode: focusNode,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.tab) {
+          // If the field is focused and Tab is pressed, open the calendar
+          if (onTap != null) {
+            onTap();
+            return KeyEventResult.handled; // Consume Tab so it doesn't move focus yet
+          }
+        }
+        // Handle Enter/Space as well for standard accessibility
+        if (event is KeyDownEvent && (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.space)) {
+          if (onTap != null) {
+            onTap();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Builder(
+        builder: (context) {
+          final isFocused = Focus.of(context).hasFocus;
+          return InkWell(
+            onFocusChange: (focused) {
+              setState(() {});
+            },
+            onTap: onTap ?? () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: value ?? DateTime.now(),
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2101),
+                builder: (context, child) => Theme(
+                  data: ThemeData.light().copyWith(
+                    colorScheme: const ColorScheme.light(primary: Color(0xFFBD0D1D)),
+                  ),
+                  child: child!,
+                ),
+              );
+              if (picked != null) onSelected(picked);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isFocused ? const Color(0xFFBD0D1D) : Colors.grey.shade400,
+                  width: isFocused ? 2 : 1,
+                ),
+                boxShadow: isFocused ? [BoxShadow(color: const Color(0xFFBD0D1D).withOpacity(0.1), blurRadius: 4)] : null,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(fontSize: 12, color: isFocused ? const Color(0xFFBD0D1D) : Colors.black54, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today, size: 16, color: isFocused ? const Color(0xFFBD0D1D) : const Color(0xFFBD0D1D).withOpacity(0.6)),
+                      const SizedBox(width: 8),
+                      Text(
+                        value == null ? 'Select' : '${value.day}/${value.month}/${value.year}',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: isFocused ? Colors.black : Colors.black87),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

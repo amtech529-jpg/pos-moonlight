@@ -134,7 +134,7 @@ class _DispatchHistoryDialogState extends State<DispatchHistoryDialog> {
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 4.0),
                           child: Text(
-                            'Vehicle: ${form.vehicleNumber} (${form.vehicleType ?? 'N/A'}) | Staff: ${form.staffName}\n${DateFormat('dd MMM yyyy, hh:mm a').format(form.createdAt)}',
+                            'Vehicle: ${form.vehicleNumber} (${form.vehicleType ?? 'N/A'}) | Staff: ${form.staffName}\n${DateFormat('dd MMM yyyy, hh:mm a').format(form.createdAt.toLocal())}',
                             style: TextStyle(
                               color: Colors.grey.shade800, 
                               height: 1.4,
@@ -215,13 +215,15 @@ class _DispatchHistoryDialogState extends State<DispatchHistoryDialog> {
                 Navigator.pop(ctx);
                 final success = await context.read<DispatchProvider>().deleteDispatchForm(form.id);
                 if (success && context.mounted) {
-                  // Refresh other providers
-                  context.read<ProductProvider>().loadProducts();
-                  context.read<OrderProvider>().refreshOrders();
+                  // Refresh other providers and AWAIT to ensure UI updates
+                  await context.read<ProductProvider>().initialize();
+                  await context.read<OrderProvider>().refreshOrders();
                   
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Gate Pass deleted successfully')),
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Gate Pass deleted successfully')),
+                    );
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),

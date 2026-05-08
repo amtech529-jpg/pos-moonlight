@@ -87,21 +87,14 @@ class PdfGatePassService {
                       pw.Row(
                         children: [
                           pw.Expanded(child: _buildInfoRow("Customer:", order?.businessName != null ? "${order!.businessName} (${order.clientName ?? order.customerName})" : (order?.customerName ?? form.customerDetails?['name'] ?? 'N/A'))),
-                          pw.Expanded(child: _buildInfoRow("Date:", DateFormat('dd-MM-yyyy').format(form.createdAt))),
+                          pw.Expanded(child: _buildInfoRow("Date:", DateFormat('dd-MM-yyyy   hh:mm a').format(form.createdAt.toLocal()))),
                         ],
                       ),
                       pw.SizedBox(height: 8),
                       pw.Row(
                         children: [
                           pw.Expanded(child: _buildInfoRow("Event Name:", form.eventName ?? order?.eventName ?? 'N/A')),
-                          pw.Expanded(child: _buildInfoRow("Event Date:", form.eventDate != null ? DateFormat('dd-MM-yyyy').format(form.eventDate!) : (order?.eventDate != null ? DateFormat('dd-MM-yyyy').format(order!.eventDate!) : 'N/A'))),
-                        ],
-                      ),
-                      pw.SizedBox(height: 8),
-                      pw.Row(
-                        children: [
                           pw.Expanded(child: _buildInfoRow("Dispatch Date:", form.dispatchDate != null ? DateFormat('dd-MM-yyyy').format(form.dispatchDate!) : (order?.dispatchDate != null ? DateFormat('dd-MM-yyyy').format(order!.dispatchDate!) : 'N/A'))),
-                          pw.Expanded(child: _buildInfoRow("Return Date:", form.returnDate != null ? DateFormat('dd-MM-yyyy').format(form.returnDate!) : (order?.returnDate != null ? DateFormat('dd-MM-yyyy').format(order!.returnDate!) : 'N/A'))),
                         ],
                       ),
                       pw.SizedBox(height: 8),
@@ -151,8 +144,9 @@ class PdfGatePassService {
                           children: [
                             pw.SizedBox(width: 40, child: pw.Text("Sr#", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
                             pw.Expanded(child: pw.Padding(padding: const pw.EdgeInsets.only(left: 10), child: pw.Text("Item Description", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)))),
-                            pw.SizedBox(width: 80, child: pw.Text("Quantity", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
-                            pw.SizedBox(width: 100, child: pw.Text("Status", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                            pw.SizedBox(width: 70, child: pw.Text("Quantity", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                            pw.SizedBox(width: 70, child: pw.Text("Status", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                            pw.SizedBox(width: 50, child: pw.Text("Check", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
                           ],
                         ),
                       ),
@@ -166,9 +160,10 @@ class PdfGatePassService {
                           child: pw.Row(
                             children: [
                               pw.SizedBox(width: 40, child: pw.Text("${i + 1}", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10))),
-                              pw.Expanded(child: pw.Padding(padding: const pw.EdgeInsets.only(left: 10), child: pw.Text(item.productName + (item.isExtra ? " (Extra)" : ""), style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)))),
-                              pw.SizedBox(width: 80, child: pw.Text("${item.quantity}", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10))),
-                              pw.SizedBox(width: 100, child: pw.Text(item.isExtra ? "EXTRA" : "OK", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10))),
+                              pw.Expanded(child: pw.Padding(padding: const pw.EdgeInsets.only(left: 10), child: pw.Text(item.productName + (item.isExtra ? " (Partner Stock)" : ""), style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)))),
+                              pw.SizedBox(width: 70, child: pw.Text("${item.quantity}", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10))),
+                              pw.SizedBox(width: 70, child: pw.Text(item.isExtra ? "PARTNER" : "OK", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 10))),
+                              pw.SizedBox(width: 50, child: pw.Center(child: pw.Container(width: 12, height: 12, decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.black, width: 1))))),
                             ],
                           ),
                         );

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../src/providers/product_provider.dart';
+import '../../../src/models/product/product_model.dart';
 import '../../../src/providers/auth_provider.dart';
 import '../../../src/theme/app_theme.dart';
 import '../../../src/utils/responsive_breakpoints.dart';
@@ -29,8 +30,9 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _selectedCategory = 'ALL';
-  DateTime? _startDate;
-  DateTime? _endDate;
+  // Default to today so inventory always shows current availability
+  DateTime _startDate = DateTime.now();
+  DateTime _endDate = DateTime.now();
   final ScrollController _scrollController = ScrollController();
 
   Future<void> _selectDateRange() async {
@@ -38,9 +40,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
       context: context,
       firstDate: DateTime.now().subtract(const Duration(days: 30)), // Reduced range for faster browsing
       lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-      initialDateRange: _startDate != null && _endDate != null
-          ? DateTimeRange(start: _startDate!, end: _endDate!)
-          : null,
+      initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
       initialEntryMode: DatePickerEntryMode.calendar, // Start with calendar view directly
       helpText: 'Select Reservation Dates',
       saveText: 'CHECK AVAILABILITY',
@@ -78,10 +78,20 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
     provider.applyFilters(newFilters);
   }
 
+  bool get _isTodaySelected {
+    final today = DateTime.now();
+    return _startDate.year == today.year &&
+        _startDate.month == today.month &&
+        _startDate.day == today.day &&
+        _endDate.year == today.year &&
+        _endDate.month == today.month &&
+        _endDate.day == today.day;
+  }
+
   void _clearDates() {
     setState(() {
-      _startDate = null;
-      _endDate = null;
+      _startDate = DateTime.now();
+      _endDate = DateTime.now();
     });
     _applyDates();
   }
@@ -92,11 +102,14 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
     _searchFocusNode.addListener(() {
       if (mounted) setState(() {});
     });
-    // Fetch products to show in inventory and CLEAR SEARCH
+    // Fetch products with today's date filter applied by default
     Future.microtask(() {
       final provider = context.read<ProductProvider>();
-      provider.clearFilters(); // Reset search/filters when opening inventory
-      provider.initialize();
+      // Apply today's date as default filter so availability is always current
+      provider.applyFilters(ProductFilters(
+        startDate: _startDate,
+        endDate: _endDate,
+      ));
     });
   }
 
@@ -337,7 +350,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
   }
 
   Widget _buildDateFilterSection() {
-    final bool hasDates = _startDate != null && _endDate != null;
+    final bool isToday = _isTodaySelected;
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -350,12 +363,12 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "RENTAL AVAILABILITY",
+            isToday ? "TODAY'S AVAILABILITY" : "RENTAL AVAILABILITY",
             style: TextStyle(
               fontWeight: FontWeight.w800, 
               fontSize: 12, 
               letterSpacing: 1.2,
-              color: hasDates ? const Color(0xFFBD0D1D) : const Color(0xFF666666)
+              color: isToday ? const Color(0xFF006400) : const Color(0xFFBD0D1D)
             ),
           ),
           const SizedBox(height: 12),
@@ -370,10 +383,10 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                     height: 48,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      color: hasDates ? const Color(0xFF1A1A1A) : const Color(0xFFF5F5F5),
+                      color: isToday ? const Color(0xFFE8F5E9) : const Color(0xFF1A1A1A),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: hasDates ? Colors.black : const Color(0xFFE0E0E0),
+                        color: isToday ? const Color(0xFF2E7D32) : Colors.black,
                         width: 1,
                       ),
                     ),
@@ -381,18 +394,18 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                       children: [
                         Icon(
                           Icons.calendar_today_rounded, 
-                          color: hasDates ? Colors.white : const Color(0xFF8E8E8E), 
+                          color: isToday ? const Color(0xFF2E7D32) : Colors.white, 
                           size: 18
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            hasDates 
-                              ? "${_startDate!.day}/${_startDate!.month} - ${_endDate!.day}/${_endDate!.month}"
-                              : "Select Event Dates",
+                            isToday 
+                              ? "Today (${_startDate.day}/${_startDate.month})"
+                              : "${_startDate.day}/${_startDate.month} - ${_endDate.day}/${_endDate.month}",
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: hasDates ? Colors.white : const Color(0xFF666666),
+                              color: isToday ? const Color(0xFF2E7D32) : Colors.white,
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),
@@ -403,7 +416,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                   ),
                 ),
               ),
-              if (hasDates) ...[
+              if (!isToday) ...[
                 const SizedBox(width: 8),
                 IconButton(
                   onPressed: _clearDates,
@@ -449,7 +462,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                   Expanded(flex: 2, child: Text("Category", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Color(0xFF666666)), textAlign: TextAlign.center)),
                   Expanded(flex: 2, child: Text("Serial/Tag", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Color(0xFF666666)), textAlign: TextAlign.center)),
                   Expanded(flex: 2, child: Text("Location", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Color(0xFF666666)), textAlign: TextAlign.center)),
-                  Expanded(flex: 2, child: Text(_startDate != null ? "Date Avail" : "Available", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Color(0xFF666666)), textAlign: TextAlign.center)),
+                  Expanded(flex: 2, child: Text("Date Avail", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Color(0xFF666666)), textAlign: TextAlign.center)),
                   Expanded(flex: 2, child: Text("Status", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Color(0xFF666666)), textAlign: TextAlign.center)),
                   Expanded(flex: 2, child: Text("Actions", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Color(0xFF666666)), textAlign: TextAlign.center)),
                 ],

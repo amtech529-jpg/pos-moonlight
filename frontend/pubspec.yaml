@@ -58,10 +58,10 @@ flutter:
   uses-material-design: true
   generate: true
 
-  fonts:
-   - family: Jameel Noori Nastaleeq
-     fonts:
-      - asset: assets/fonts/NotoNastaliqUrdu.ttf
+#   fonts:
+#    - family: Jameel Noori Nastaleeq
+#      fonts:
+#       - asset: assets/fonts/NotoNastaliqUrdu.ttf
   
   assets:
     
