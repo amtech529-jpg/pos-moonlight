@@ -279,7 +279,14 @@ class Product(models.Model):
 
         try:
             if not self.is_rental:
-                return self.quantity - self.quantity_damaged
+                # For consumables, subtract all dispatches and sales ever made
+                from orders.models import DispatchItem
+                from django.db.models import Sum
+                
+                total_dispatched = DispatchItem.objects.filter(product=self).aggregate(total=Sum('quantity'))['total'] or 0
+                total_sold = self.sale_items.aggregate(total=Sum('quantity'))['total'] or 0
+                
+                return max(0, self.quantity - self.quantity_damaged - total_dispatched - total_sold)
 
             # 1. Count items BOOKED via Orders (reserved/booked but not yet dispatched)
             overlapping_order_items = OrderItem.objects.filter(
