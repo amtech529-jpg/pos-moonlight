@@ -373,6 +373,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     """Minimal serializer for listing products"""
     
     category_name = serializers.CharField(source='category.name', read_only=True)
+    category_id = serializers.UUIDField(source='category.id', read_only=True)
     created_by_email = serializers.CharField(source='created_by.email', read_only=True)
     stock_status = serializers.CharField(read_only=True)
     stock_status_display = serializers.CharField(read_only=True)
@@ -403,6 +404,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             'quantity_damaged',
             'barcode',
             'sku',
+            'category_id',
             'category_name',
             'stock_status',
             'stock_status_display',
@@ -447,7 +449,8 @@ class ProductListSerializer(serializers.ModelSerializer):
 class ProductDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer for single product view"""
     
-    category = serializers.SerializerMethodField()
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_id = serializers.UUIDField(source='category.id', read_only=True)
     created_by = serializers.StringRelatedField(read_only=True)
     stock_status = serializers.CharField(read_only=True)
     stock_status_display = serializers.CharField(read_only=True)
@@ -479,6 +482,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'barcode',
             'sku',
             'min_stock_threshold',
+            'category_id',
+            'category_name',
             'category',
             'stock_status',
             'stock_status_display',

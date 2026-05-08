@@ -6,6 +6,7 @@ class DispatchItemModel {
   final String productName;
   final int quantity;
   final bool isExtra;
+  final bool productIsRental;
 
   DispatchItemModel({
     required this.id,
@@ -13,6 +14,7 @@ class DispatchItemModel {
     required this.productName,
     required this.quantity,
     this.isExtra = false,
+    this.productIsRental = true,
   });
 
   factory DispatchItemModel.fromJson(Map<String, dynamic> json) {
@@ -22,6 +24,7 @@ class DispatchItemModel {
       productName: json['product_name']?.toString() ?? '',
       quantity: json['quantity'] is int ? json['quantity'] : (int.tryParse(json['quantity']?.toString() ?? '0') ?? 0),
       isExtra: json['is_extra'] ?? false,
+      productIsRental: json['product_is_rental'] as bool? ?? true,
     );
   }
 
@@ -31,6 +34,7 @@ class DispatchItemModel {
       'product_name': productName,
       'quantity': quantity,
       'is_extra': isExtra,
+      'product_is_rental': productIsRental,
     };
     if (id.isNotEmpty && !id.startsWith('temp_')) {
       data['id'] = id;
@@ -44,6 +48,7 @@ class DispatchItemModel {
     String? productName,
     int? quantity,
     bool? isExtra,
+    bool? productIsRental,
   }) {
     return DispatchItemModel(
       id: id ?? this.id,
@@ -51,6 +56,7 @@ class DispatchItemModel {
       productName: productName ?? this.productName,
       quantity: quantity ?? this.quantity,
       isExtra: isExtra ?? this.isExtra,
+      productIsRental: productIsRental ?? this.productIsRental,
     );
   }
 }

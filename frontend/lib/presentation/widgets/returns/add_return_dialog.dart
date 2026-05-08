@@ -210,7 +210,7 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
     try {
       final List<ReturnItemInput> finalItems = [];
       for (final item in dispatch.items) {
-        if (item.productId.isEmpty) continue;
+        if (item.productId.isEmpty || !item.productIsRental) continue;
         
         final syntheticItem = OrderItemModel(
           id: 'dispatch_${item.id}',
@@ -265,7 +265,7 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
       );
 
       if (response.success && response.data != null) {
-        final orderItems = response.data!.orderItems.map((item) {
+        final orderItems = response.data!.orderItems.where((item) => item.productIsRental).map((item) {
           return ReturnItemInput(
             originalItem: item,
             returned: 0,
@@ -292,6 +292,7 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
                 dispatchMap[item.productId] = _DispatchSummary(
                   name: item.productName,
                   totalQty: 0,
+                  isRental: item.productIsRental,
                 );
               }
               dispatchMap[item.productId]!.totalQty += item.quantity.toInt();
@@ -319,7 +320,7 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
 
           // Add items that were in dispatches but NOT in the order (Extras)
           dispatchMap.forEach((pId, summary) {
-            if (!processedProductIds.contains(pId)) {
+            if (!processedProductIds.contains(pId) && summary.isRental) {
               final syntheticItem = OrderItemModel(
                 id: 'extra_$pId',
                 orderId: orderId,
@@ -982,5 +983,6 @@ class _AddReturnDialogState extends State<AddReturnDialog> with SingleTickerProv
 class _DispatchSummary {
   final String name;
   int totalQty;
-  _DispatchSummary({required this.name, required this.totalQty});
+  final bool isRental;
+  _DispatchSummary({required this.name, required this.totalQty, this.isRental = true});
 }

@@ -176,6 +176,7 @@ class _AddProductDialogState extends State<AddProductDialog>
     
     setState(() {
       _categorySearchText = query;
+      _selectedCategoryId = null; // Reset selection when user types
       if (query.isEmpty) {
         _categorySearchResults = categories;
       } else {
@@ -619,7 +620,7 @@ class _AddProductDialogState extends State<AddProductDialog>
               focusNode: _detailFocusNode,
               prefixIcon: Icons.description_outlined,
               maxLines: 3,
-              onSubmitted: (_) => _priceFocusNode.requestFocus(),
+              onSubmitted: (_) => _isConsumable ? _quantityFocusNode.requestFocus() : _priceFocusNode.requestFocus(),
               onKeyEvent: (node, event) => _handleBack(_detailController, _nameFocusNode, event),
               validator: (value) {
                 if (value?.isEmpty ?? true) {
@@ -630,75 +631,101 @@ class _AddProductDialogState extends State<AddProductDialog>
             ),
             SizedBox(height: context.cardPadding),
 
-            PremiumTextField(
-              label: 'Rent Rate (Price)',
-              hint: l10n.enterPrice,
-              controller: _priceController,
-              focusNode: _priceFocusNode,
-              prefixIcon: Icons.attach_money_rounded,
-              keyboardType: TextInputType.number,
-              selectAllOnFocus: true,
-              onSubmitted: (_) => _quantityFocusNode.requestFocus(),
-              onKeyEvent: (node, event) => _handleBack(_priceController, _detailFocusNode, event),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return '${l10n.pleaseEnter} ${l10n.price}';
-                }
-                final price = double.tryParse(value!);
-                if (price == null || price < 0) {
-                  return '${l10n.pleaseEnterValid} ${l10n.price}';
-                }
-                return null;
-              },
-            ),
-            SizedBox(height: context.cardPadding),
+            if (!_isConsumable) ...[
+              PremiumTextField(
+                label: 'Rent Rate (Price)',
+                hint: l10n.enterPrice,
+                controller: _priceController,
+                focusNode: _priceFocusNode,
+                prefixIcon: Icons.attach_money_rounded,
+                keyboardType: TextInputType.number,
+                selectAllOnFocus: true,
+                onSubmitted: (_) => _quantityFocusNode.requestFocus(),
+                onKeyEvent: (node, event) => _handleBack(_priceController, _detailFocusNode, event),
+                validator: (value) {
+                  if (value?.isEmpty ?? true) {
+                    return '${l10n.pleaseEnter} ${l10n.price}';
+                  }
+                  final price = double.tryParse(value!);
+                  if (price == null || price < 0) {
+                    return '${l10n.pleaseEnterValid} ${l10n.price}';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: context.cardPadding),
+            ],
 
-            Row(
-              children: [
-                Expanded(
-                  child: PremiumTextField(
-                    label: l10n.quantity,
-                    hint: l10n.enterQuantity,
-                    controller: _quantityController,
-                    focusNode: _quantityFocusNode,
-                    selectAllOnFocus: true,
-                    prefixIcon: Icons.inventory_2_outlined,
-                    keyboardType: TextInputType.number,
-                    onSubmitted: (_) => _pricingFocusNode.requestFocus(),
-                    onKeyEvent: (node, event) => _handleBack(_quantityController, _priceFocusNode, event),
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) {
-                        return '${l10n.pleaseEnter} ${l10n.quantity}';
-                      }
-                      final quantity = int.tryParse(value!);
-                      if (quantity == null || quantity < 0) {
-                        return '${l10n.pleaseEnterValid} ${l10n.quantity}';
-                      }
-                      return null;
-                    },
+            if (!_isConsumable) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: PremiumTextField(
+                      label: l10n.quantity,
+                      hint: l10n.enterQuantity,
+                      controller: _quantityController,
+                      focusNode: _quantityFocusNode,
+                      selectAllOnFocus: true,
+                      prefixIcon: Icons.inventory_2_outlined,
+                      keyboardType: TextInputType.number,
+                      onSubmitted: (_) => _pricingFocusNode.requestFocus(),
+                      onKeyEvent: (node, event) => _handleBack(_quantityController, _priceFocusNode, event),
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) {
+                          return '${l10n.pleaseEnter} ${l10n.quantity}';
+                        }
+                        final quantity = int.tryParse(value!);
+                        if (quantity == null || quantity < 0) {
+                          return '${l10n.pleaseEnterValid} ${l10n.quantity}';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
-                ),
-                SizedBox(width: context.cardPadding),
-                Expanded(
-                  child: PremiumDropdownField<String>(
-                    focusNode: _pricingFocusNode,
-                    label: 'Pricing Type',
-                    hint: 'Select pricing model',
-                    prefixIcon: Icons.payments_outlined,
-                    items: [
-                      DropdownItem(value: 'PER_DAY', label: 'Per Day'),
-                      DropdownItem(value: 'PER_EVENT', label: 'Per Event'),
-                    ],
-                    value: _pricingType,
-                    onChanged: (value) {
-                      if (value != null) setState(() => _pricingType = value);
-                      // Auto trigger next focus after selection
-                      _rentalFocusNode.requestFocus();
-                    },
+                  SizedBox(width: context.cardPadding),
+                  Expanded(
+                    child: PremiumDropdownField<String>(
+                      focusNode: _pricingFocusNode,
+                      label: 'Pricing Type',
+                      hint: 'Select pricing model',
+                      prefixIcon: Icons.payments_outlined,
+                      items: [
+                        DropdownItem(value: 'PER_DAY', label: 'Per Day'),
+                        DropdownItem(value: 'PER_EVENT', label: 'Per Event'),
+                      ],
+                      value: _pricingType,
+                      onChanged: (value) {
+                        if (value != null) setState(() => _pricingType = value);
+                        // Auto trigger next focus after selection
+                        _rentalFocusNode.requestFocus();
+                      },
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ] else ...[
+              PremiumTextField(
+                label: l10n.quantity,
+                hint: l10n.enterQuantity,
+                controller: _quantityController,
+                focusNode: _quantityFocusNode,
+                selectAllOnFocus: true,
+                prefixIcon: Icons.inventory_2_outlined,
+                keyboardType: TextInputType.number,
+                onSubmitted: (_) => _rentalFocusNode.requestFocus(),
+                onKeyEvent: (node, event) => _handleBack(_quantityController, _priceFocusNode, event),
+                validator: (value) {
+                  if (value?.isEmpty ?? true) {
+                    return '${l10n.pleaseEnter} ${l10n.quantity}';
+                  }
+                  final quantity = int.tryParse(value!);
+                  if (quantity == null || quantity < 0) {
+                    return '${l10n.pleaseEnterValid} ${l10n.quantity}';
+                  }
+                  return null;
+                },
+              ),
+            ],
             SizedBox(height: context.cardPadding),
 
             // Rental & Consumable Toggles
@@ -953,7 +980,11 @@ class _AddProductDialogState extends State<AddProductDialog>
                             hint: 'Search or select category',
                             prefixIcon: Icons.category_outlined,
                             textInputAction: TextInputAction.next,
-                            onChanged: _searchCategories,
+                            onChanged: (val) {
+                              if (val != _categorySearchText) {
+                                _searchCategories(val);
+                              }
+                            },
                             onTap: () {
                               if (_categoryController.text.isEmpty) {
                                 _searchCategories('');

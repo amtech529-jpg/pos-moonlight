@@ -21,6 +21,7 @@ class OrderItemModel {
   final String? productColor;
   final String? productFabric;
   final String? productCategory;
+  final bool productIsRental;
   final int? currentStock;
 
   // Sales tracking
@@ -45,6 +46,7 @@ class OrderItemModel {
     this.productColor,
     this.productFabric,
     this.productCategory,
+    this.productIsRental = true,
     this.currentStock,
     this.remainingToSell,
     this.hasBeenSold,
@@ -81,6 +83,7 @@ class OrderItemModel {
       productColor: json['product_color']?.toString(),
       productFabric: json['product_fabric']?.toString(),
       productCategory: json['product_category']?.toString(),
+      productIsRental: json['product_is_rental'] as bool? ?? true,
       currentStock: json['current_stock'] as int?,
       remainingToSell: json['remaining_to_sell'] as int?,
       hasBeenSold: json['has_been_sold'] as bool?,
@@ -115,6 +118,7 @@ class OrderItemModel {
       'product_color': productColor,
       'product_fabric': productFabric,
       'product_category': productCategory,
+      'product_is_rental': productIsRental,
       'current_stock': currentStock,
       'remaining_to_sell': remainingToSell,
       'has_been_sold': hasBeenSold,
@@ -168,6 +172,7 @@ class OrderItemModel {
     String? productColor,
     String? productFabric,
     String? productCategory,
+    bool? productIsRental,
     int? currentStock,
     int? remainingToSell,
     bool? hasBeenSold,
@@ -194,6 +199,7 @@ class OrderItemModel {
       productColor: productColor ?? this.productColor,
       productFabric: productFabric ?? this.productFabric,
       productCategory: productCategory ?? this.productCategory,
+      productIsRental: productIsRental ?? this.productIsRental,
       currentStock: currentStock ?? this.currentStock,
       remainingToSell: remainingToSell ?? this.remainingToSell,
       hasBeenSold: hasBeenSold ?? this.hasBeenSold,

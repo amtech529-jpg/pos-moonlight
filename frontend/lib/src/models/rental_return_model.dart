@@ -101,6 +101,7 @@ class RentalReturnItemModel {
   final int qtyDamaged;
   final int qtyMissing;
   final double damageCharge;
+  final bool productIsRental;
   final String? conditionNotes;
   final bool isPartnerItem;
 
@@ -113,6 +114,7 @@ class RentalReturnItemModel {
     required this.qtyDamaged,
     required this.qtyMissing,
     required this.damageCharge,
+    this.productIsRental = true,
     this.conditionNotes,
     this.isPartnerItem = false,
   });
@@ -127,6 +129,7 @@ class RentalReturnItemModel {
       qtyDamaged: json['qty_damaged'] ?? 0,
       qtyMissing: json['qty_missing'] ?? 0,
       damageCharge: double.tryParse(json['damage_charge']?.toString() ?? '0') ?? 0.0,
+      productIsRental: json['product_is_rental'] as bool? ?? true,
       conditionNotes: json['condition_notes'],
       isPartnerItem: json['is_partner_item'] as bool? ?? false,
     );

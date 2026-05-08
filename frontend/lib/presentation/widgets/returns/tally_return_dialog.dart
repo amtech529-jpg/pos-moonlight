@@ -41,7 +41,7 @@ class _TallyReturnDialogState extends State<TallyReturnDialog> with SingleTicker
     _responsibility = widget.rentalReturn.responsibility;
     
     // Initialize items from the existing return
-    _tallyItems = widget.rentalReturn.items.map((item) {
+    _tallyItems = widget.rentalReturn.items.where((item) => item.productIsRental).map((item) {
       return TallyItemInput(
         id: item.id,
         productId: item.productId,

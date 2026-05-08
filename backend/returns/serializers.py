@@ -7,11 +7,12 @@ from .models import RentalReturn, RentalReturnItem, DamageRecovery
 
 class RentalReturnItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
+    product_is_rental = serializers.BooleanField(source='product.is_rental', read_only=True)
     
     class Meta:
         model = RentalReturnItem
         fields = [
-            'id', 'product', 'product_name', 'qty_sent', 'qty_returned',
+            'id', 'product', 'product_name', 'product_is_rental', 'qty_sent', 'qty_returned',
             'qty_damaged', 'qty_missing', 'damage_charge', 'condition_notes',
             'is_partner_item',
         ]

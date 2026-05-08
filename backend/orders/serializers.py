@@ -765,10 +765,14 @@ class OrderCustomerUpdateSerializer(serializers.Serializer):
 class DispatchItemSerializer(serializers.ModelSerializer):
     """Serializer for DispatchItem model"""
     dispatch_form = serializers.PrimaryKeyRelatedField(read_only=True)
+    product_is_rental = serializers.BooleanField(source='product.is_rental', read_only=True)
     
     class Meta:
         model = DispatchItem
-        fields = '__all__'
+        fields = [
+            'id', 'dispatch_form', 'product', 'product_name', 'quantity', 
+            'is_extra', 'product_is_rental', 'created_at'
+        ]
         read_only_fields = ('id', 'created_at')
 
 

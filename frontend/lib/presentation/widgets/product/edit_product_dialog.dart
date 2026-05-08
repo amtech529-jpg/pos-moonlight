@@ -186,6 +186,7 @@ class _EditProductDialogState extends State<EditProductDialog>
 
     setState(() {
       _categorySearchText = query;
+      _selectedCategoryId = null; // Reset selection when user types
       if (query.isEmpty) {
         _categorySearchResults = categories;
       } else {
@@ -507,60 +508,76 @@ class _EditProductDialogState extends State<EditProductDialog>
               focusNode: _detailFocusNode,
               prefixIcon: Icons.description_outlined,
               maxLines: 3,
-              onSubmitted: (_) => _priceFocusNode.requestFocus(),
+              onSubmitted: (_) => _isConsumable ? _quantityFocusNode.requestFocus() : _priceFocusNode.requestFocus(),
               onKeyEvent: (node, event) => _handleBack(_detailController, _nameFocusNode, event),
             ),
             SizedBox(height: context.cardPadding),
 
-            PremiumTextField(
-              label: l10n.price,
-              hint: '${l10n.enterEmail} ${l10n.price} (PKR)',
-              controller: _priceController,
-              focusNode: _priceFocusNode,
-              prefixIcon: Icons.attach_money_rounded,
-              keyboardType: TextInputType.number,
-              selectAllOnFocus: true,
-              onSubmitted: (_) => _quantityFocusNode.requestFocus(),
-              onKeyEvent: (node, event) => _handleBack(_priceController, _detailFocusNode, event),
-            ),
-            SizedBox(height: context.cardPadding),
+            if (!_isConsumable) ...[
+              PremiumTextField(
+                label: l10n.price,
+                hint: '${l10n.enterEmail} ${l10n.price} (PKR)',
+                controller: _priceController,
+                focusNode: _priceFocusNode,
+                prefixIcon: Icons.attach_money_rounded,
+                keyboardType: TextInputType.number,
+                selectAllOnFocus: true,
+                onSubmitted: (_) => _quantityFocusNode.requestFocus(),
+                onKeyEvent: (node, event) => _handleBack(_priceController, _detailFocusNode, event),
+              ),
+              SizedBox(height: context.cardPadding),
+            ],
 
-            Row(
-              children: [
-                Expanded(
-                  child: PremiumTextField(
-                    label: l10n.quantity,
-                    hint: '${l10n.enterEmail} ${l10n.quantity}',
-                    controller: _quantityController,
-                    focusNode: _quantityFocusNode,
-                    prefixIcon: Icons.inventory_2_outlined,
-                    keyboardType: TextInputType.number,
-                    selectAllOnFocus: true,
-                    onSubmitted: (_) => _pricingFocusNode.requestFocus(),
-                    onKeyEvent: (node, event) => _handleBack(_quantityController, _priceFocusNode, event),
+            if (!_isConsumable) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: PremiumTextField(
+                      label: l10n.quantity,
+                      hint: '${l10n.enterEmail} ${l10n.quantity}',
+                      controller: _quantityController,
+                      focusNode: _quantityFocusNode,
+                      prefixIcon: Icons.inventory_2_outlined,
+                      keyboardType: TextInputType.number,
+                      selectAllOnFocus: true,
+                      onSubmitted: (_) => _pricingFocusNode.requestFocus(),
+                      onKeyEvent: (node, event) => _handleBack(_quantityController, _priceFocusNode, event),
+                    ),
                   ),
-                ),
-                SizedBox(width: context.cardPadding),
-                Expanded(
-                  child: PremiumDropdownField<String>(
-                    focusNode: _pricingFocusNode,
-                    label: 'Pricing Type',
-                    hint: 'Select pricing model',
-                    prefixIcon: Icons.payments_outlined,
-                    focusColor: AppTheme.accentGold,
-                    items: [
-                      DropdownItem(value: 'PER_DAY', label: 'Per Day'),
-                      DropdownItem(value: 'PER_EVENT', label: 'Per Event'),
-                    ],
-                    value: _pricingType,
-                    onChanged: (value) {
-                      if (value != null) setState(() => _pricingType = value);
-                      _rentalFocusNode.requestFocus();
-                    },
+                  SizedBox(width: context.cardPadding),
+                  Expanded(
+                    child: PremiumDropdownField<String>(
+                      focusNode: _pricingFocusNode,
+                      label: 'Pricing Type',
+                      hint: 'Select pricing model',
+                      prefixIcon: Icons.payments_outlined,
+                      focusColor: AppTheme.accentGold,
+                      items: [
+                        DropdownItem(value: 'PER_DAY', label: 'Per Day'),
+                        DropdownItem(value: 'PER_EVENT', label: 'Per Event'),
+                      ],
+                      value: _pricingType,
+                      onChanged: (value) {
+                        if (value != null) setState(() => _pricingType = value);
+                        _rentalFocusNode.requestFocus();
+                      },
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ] else ...[
+              PremiumTextField(
+                label: l10n.quantity,
+                hint: '${l10n.enterEmail} ${l10n.quantity}',
+                controller: _quantityController,
+                focusNode: _quantityFocusNode,
+                prefixIcon: Icons.inventory_2_outlined,
+                keyboardType: TextInputType.number,
+                selectAllOnFocus: true,
+                onSubmitted: (_) => _rentalFocusNode.requestFocus(),
+                onKeyEvent: (node, event) => _handleBack(_quantityController, _priceFocusNode, event),
+              ),
+            ],
             SizedBox(height: context.cardPadding),
 
             Row(
@@ -804,7 +821,11 @@ class _EditProductDialogState extends State<EditProductDialog>
                             hint: "Type category...",
                             prefixIcon: Icons.category_outlined,
                             textInputAction: TextInputAction.next,
-                            onChanged: _searchCategories,
+                            onChanged: (val) {
+                              if (val != _categorySearchText) {
+                                _searchCategories(val);
+                              }
+                            },
                             onTap: () {
                               if (_categoryController.text.isEmpty) {
                                 _searchCategories('');

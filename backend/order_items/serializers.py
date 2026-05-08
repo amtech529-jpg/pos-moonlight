@@ -19,6 +19,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
     product_color = serializers.CharField(source='product.color', read_only=True)
     product_fabric = serializers.CharField(source='product.fabric', read_only=True)
     product_category = serializers.CharField(source='product.category.name', read_only=True)
+    product_is_rental = serializers.BooleanField(source='product.is_rental', read_only=True)
     current_stock = serializers.IntegerField(source='product.quantity', read_only=True)
     
     # Computed fields
@@ -39,6 +40,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'product_color',
             'product_fabric',
             'product_category',
+            'product_is_rental',
             'current_stock',
             'quantity',
             'rate',
@@ -310,6 +312,7 @@ class OrderItemListSerializer(serializers.ModelSerializer):
     product_id = serializers.UUIDField(source='product.id', read_only=True)
     product_color = serializers.CharField(source='product.color', read_only=True)
     product_fabric = serializers.CharField(source='product.fabric', read_only=True)
+    product_is_rental = serializers.BooleanField(source='product.is_rental', read_only=True)
     remaining_to_sell = serializers.IntegerField(source='remaining_quantity_to_sell', read_only=True)
     has_been_sold = serializers.BooleanField(read_only=True)
     current_stock = serializers.SerializerMethodField()
@@ -344,6 +347,7 @@ class OrderItemListSerializer(serializers.ModelSerializer):
             'product_name',
             'product_color',
             'product_fabric',
+            'product_is_rental',
             'quantity',
             'rate',
             'days',
